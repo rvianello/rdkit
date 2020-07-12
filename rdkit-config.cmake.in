@@ -26,12 +26,37 @@ set(RDKit_USE_BOOST_SERIALIZATION @RDK_USE_BOOST_SERIALIZATION@)
 set(RDKit_USE_BOOST_REGEX @RDK_USE_BOOST_REGEX@)
 set(RDKit_USE_BOOST_IOSTREAMS @RDK_USE_BOOST_IOSTREAMS@)
 
+if(RDKit_HAS_PYTHON_WRAPPERS)
+    set(RDKit_BOOST_COMPONENTS ${RDKit_BOOST_COMPONENTS} @Boost_Python_Lib@)
+endif()
+
+if(RDKit_USE_BOOST_SERIALIZATION)
+    set(RDKit_BOOST_COMPONENTS ${RDKit_BOOST_COMPONENTS} serialization)
+endif()
+
+if(RDKit_USE_BOOST_REGEX)
+    set(RDKit_BOOST_COMPONENTS ${RDKit_BOOST_COMPONENTS} regex)
+endif()
+
+if(RDKit_HAS_COMPRESSED_SUPPLIERS)
+    set(RDKit_BOOST_COMPONENTS ${RDKit_BOOST_COMPONENTS} iostreams)
+endif()
+
+if(RDKit_USE_BOOST_IOSTREAMS)
+    set(RDKit_BOOST_COMPONENTS ${RDKit_BOOST_COMPONENTS} system iostreams)
+    if(WIN32)
+        set(RDKit_BOOST_COMPONENTS ${RDKit_BOOST_COMPONENTS} zlib)
+    endif()
+endif()
+
+set(RDKit_BOOST_COMPONENTS list(REMOVE_DUPLICATES ${RDKit_BOOST_COMPONENTS}))
+
 # Find the RDKit dependencies
 include(CMakeFindDependencyMacro)
 
 find_dependency(Threads REQUIRED)
 
-find_dependency(Boost @Boost_VERSION_STRING@ REQUIRED)
+find_dependency(Boost @Boost_VERSION_STRING@ REQUIRED COMPONENTS ${RDKit_BOOST_COMPONENTS})
 
 if(RDKit_HAS_DESCRIPTORS3D)
     find_dependency(Eigen3 REQUIRED NO_MODULE)
