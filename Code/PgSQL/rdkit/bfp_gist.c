@@ -68,24 +68,32 @@ typedef struct {
 #define ALL1_UNION        0x02 /* NOT USED YET */
 #define ALL0_INTERSECTION 0x04 /* NOT USED YET */
 
-#define IS_INNER_KEY(x)  (((x)->flag & INNER_KEY) != 0x00)
+#define IS_INNER_KEY(x)  ((((GBfp*)x)->flag & INNER_KEY) != 0x00)
 #define IS_LEAF_KEY(x) (!IS_INNER_KEY(x))
+#define IS_ALL1_UNION(x)	(((GBfp*)x)->flag & ALL1_UNION)
+#define IS_ALL0_INTERSECTION(x)	(((GBfp*)x)->flag & ALL0_INTERSECTION)
 
 #define GET_LEAF_DATA(x) ((GBfpLeafData *)((x)->data))
 #define GET_INNER_DATA(x) ((GBfpInnerData *)((x)->data))
 
-/* estimate the memory size of the index entries based on the 
-** signature size
+/* compute the memory size of the index entries based on the 
+** signature bfp size
 */
 #define GBFP_LEAF_VARSIZE(x) (sizeof(GBfp) + sizeof(GBfpLeafData) + (x))
 #define GBFP_INNER_VARSIZE(x) (sizeof(GBfp) + sizeof(GBfpInnerData) + 2*(x))
 
+/* compute the size of the signature bfp size from the size of the index
+** entry
+*/
 #define GBFP_LEAF_SIGLEN(x) (VARSIZE(x) - sizeof(GBfp) - sizeof(GBfpLeafData))
 #define GBFP_INNER_SIGLEN(x) \
   ((VARSIZE(x) - sizeof(GBfp) - sizeof(GBfpInnerData))/2)
 #define GBFP_SIGLEN(x) \
   (IS_INNER_KEY(x) ? GBFP_INNER_SIGLEN(x) : GBFP_LEAF_SIGLEN(x))
 
+/* get the pointer of the entry at given pos from a vector of entries
+** (used in the union and picksplit methods)
+*/
 #define GETENTRY(vec,pos) ((GBfp *) DatumGetPointer((vec)->vector[(pos)].key))
 
 /* collect 'key' into 'result' */
@@ -99,6 +107,7 @@ static GBfp * copy_key(GBfp *key);
 
 /*
  * Compress method
+ * Converts a data item into a format suitable for physical storage in an index page. 
  */
 
 PGDLLEXPORT Datum gbfp_compress(PG_FUNCTION_ARGS);
@@ -139,6 +148,7 @@ gbfp_compress(PG_FUNCTION_ARGS)
 		  entry->offset, false);
   }
   /* no change should be required on inner nodes */
+  /* TODO: check if union and/or intersection are trivial and can be compressed */
   else {
     retval = entry;
   }
@@ -148,6 +158,8 @@ gbfp_compress(PG_FUNCTION_ARGS)
 
 /*
  * Decompress method
+ * Converts the stored representation of a data item into a format that
+ * can be manipulated by the other GiST methods in the operator class.
  */
 
 PGDLLEXPORT Datum gbfp_decompress(PG_FUNCTION_ARGS);
@@ -400,9 +412,10 @@ gbfp_picksplit(PG_FUNCTION_ARGS)
 }
 
 static bool
-gbfp_inner_consistent(BfpSignature *query, GBfpInnerData *keyData, int siglen,
+gbfp_inner_consistent(BfpSignature *query, GBfp *key, int siglen,
 		      StrategyNumber strategy)
 {
+  GBfpInnerData *keyData = GET_INNER_DATA(key);
   bool result;
   double t;
   double nCommon, nDelta;
@@ -444,10 +457,14 @@ gbfp_inner_consistent(BfpSignature *query, GBfpInnerData *keyData, int siglen,
     ** T <= Ncommon / (Na + Ndelta)  
     */
     else {
-      nCommon = (double)bitstringIntersectionWeight(siglen,
-						    keyData->fp, query->fp);
-      nDelta = (double)bitstringDifferenceWeight(siglen,
-						 query->fp, keyData->fp+siglen);
+      nCommon = (double)(IS_ALL1_UNION(key) ?
+        nQuery :
+        bitstringIntersectionWeight(siglen, keyData->fp, query->fp));
+      nDelta = (double)(IS_ALL0_INTERSECTION(key) ?
+        0 :
+        bitstringDifferenceWeight(
+          siglen, query->fp,
+          IS_ALL1_UNION(key) ? keyData->fp : keyData->fp+siglen));
       result = nCommon >= t*(nQuery + nDelta);
     }
     break;
@@ -456,10 +473,14 @@ gbfp_inner_consistent(BfpSignature *query, GBfpInnerData *keyData, int siglen,
      * 2 * Nsame / (Na + Nb)
      */
     t = getDiceLimit();
-    nCommon = (double)bitstringIntersectionWeight(siglen,
-						  keyData->fp, query->fp);
-    nDelta = (double)bitstringDifferenceWeight(siglen,
-					       query->fp, keyData->fp+siglen);
+    nCommon = (double)(IS_ALL1_UNION(key) ?
+      nQuery :
+      bitstringIntersectionWeight(siglen, keyData->fp, query->fp));
+    nDelta = (double)(IS_ALL0_INTERSECTION(key) ?
+      0 :
+      bitstringDifferenceWeight(
+        siglen, query->fp,
+        IS_ALL1_UNION(key) ? keyData->fp : keyData->fp+siglen));
     result = 2.0 * nCommon >= t*(nQuery + nCommon + nDelta);
     break;
   default:
@@ -470,9 +491,10 @@ gbfp_inner_consistent(BfpSignature *query, GBfpInnerData *keyData, int siglen,
 }
 
 static bool
-gbfp_leaf_consistent(BfpSignature *query, GBfpLeafData *keyData, int siglen,
+gbfp_leaf_consistent(BfpSignature *query, GBfp *key, int siglen,
 		     StrategyNumber strategy)
 {
+  GBfpLeafData *keyData = GET_LEAF_DATA(key);
   bool result;
   double t;
   double nCommon;
@@ -511,6 +533,13 @@ gbfp_leaf_consistent(BfpSignature *query, GBfpLeafData *keyData, int siglen,
 }
 
 
+/*
+ * Consistent method
+ * 
+ * Given an index entry and a query constraint, determines whether the index entry
+ * is “consistent” with the query (prunes subtrees that can't match the query, and
+ * selects the leaf entries that do)
+ */
 PGDLLEXPORT Datum gbfp_consistent(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(gbfp_consistent);
 Datum
@@ -543,11 +572,11 @@ gbfp_consistent(PG_FUNCTION_ARGS)
 
   if (GIST_LEAF(entry)) {
     Assert(IS_LEAF_KEY(key));
-    result = gbfp_leaf_consistent(query, GET_LEAF_DATA(key), siglen, strategy);
+    result = gbfp_leaf_consistent(query, key, siglen, strategy);
   }
   else {
     Assert(IS_INNER_KEY(key));
-    result = gbfp_inner_consistent(query, GET_INNER_DATA(key), siglen, strategy);
+    result = gbfp_inner_consistent(query, key, siglen, strategy);
   }
   
   PG_RETURN_BOOL(result);
@@ -555,15 +584,18 @@ gbfp_consistent(PG_FUNCTION_ARGS)
 
 
 static double
-gbfp_inner_distance(BfpSignature *query, GBfpInnerData *keyData, int siglen,
+gbfp_inner_distance(BfpSignature *query, GBfp *key, int siglen,
 		    StrategyNumber strategy)
 {
+  GBfpInnerData *keyData = GET_INNER_DATA(key);
   double nDelta, nQuery, nCommon, similarity;
   
   nQuery = (double)query->weight;
-  nCommon = (double)bitstringIntersectionWeight(siglen, keyData->fp, query->fp);
-  nDelta = (double)bitstringDifferenceWeight(siglen,
-					     query->fp, keyData->fp+siglen);
+  nCommon = (double)(IS_ALL1_UNION(key) ?
+    nQuery : bitstringIntersectionWeight(siglen, keyData->fp, query->fp));
+  nDelta = (double)(IS_ALL0_INTERSECTION(key) ?
+    0 : bitstringDifferenceWeight(
+      siglen, query->fp, IS_ALL1_UNION(key) ? keyData->fp : keyData->fp+siglen));
     
   switch (strategy) {
   case RDKitOrderByTanimotoStrategy:
@@ -587,9 +619,10 @@ gbfp_inner_distance(BfpSignature *query, GBfpInnerData *keyData, int siglen,
 
 
 static double
-gbfp_leaf_distance(BfpSignature *query, GBfpLeafData *keyData, int siglen,
+gbfp_leaf_distance(BfpSignature *query, GBfp *key, int siglen,
 		   StrategyNumber strategy)
 {
+  GBfpLeafData *keyData = GET_LEAF_DATA(key);
   double nKey, nQuery, nCommon, similarity;
   
   nKey = (double)keyData->weight;
@@ -617,6 +650,15 @@ gbfp_leaf_distance(BfpSignature *query, GBfpLeafData *keyData, int siglen,
 }
 
 
+/*
+ * Distance method
+ * 
+ * Given an index entry p and a query value q, this function determines the index
+ * entry's “distance” from the query value.
+ * For a leaf index entry the result just represents the distance to the index
+ * entry; for an internal tree node, the result must be the smallest distance
+ * that any child entry could have.
+ */
 PGDLLEXPORT Datum  gbfp_distance(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(gbfp_distance);
 Datum
@@ -643,14 +685,19 @@ gbfp_distance(PG_FUNCTION_ARGS)
   }
 
   distance = GIST_LEAF(entry) ?
-    gbfp_leaf_distance(query, GET_LEAF_DATA(key), siglen, strategy) :
-    gbfp_inner_distance(query, GET_INNER_DATA(key), siglen, strategy)
+    gbfp_leaf_distance(query, key, siglen, strategy) :
+    gbfp_inner_distance(query, key, siglen, strategy)
     ;
   
   PG_RETURN_FLOAT8(distance);
 }
 
-
+/*
+ * Fetch method
+ * 
+ * Converts the compressed index representation of a data item into the
+ * original data type, for index-only scans.
+ */
 PGDLLEXPORT Datum  gbfp_fetch(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(gbfp_fetch);
 Datum
