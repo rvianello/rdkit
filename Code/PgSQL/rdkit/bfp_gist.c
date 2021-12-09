@@ -735,6 +735,11 @@ gbfp_fetch(PG_FUNCTION_ARGS)
 
 /* utility functions */
 
+/*
+ * merge_key
+ * used in the union and picksplit methods
+ * note: the result key must always be an inner key
+ */
 static void
 merge_key(GBfp *result, GBfp *key)
 {
@@ -744,22 +749,69 @@ merge_key(GBfp *result, GBfp *key)
   
   int siglen = GBFP_INNER_SIGLEN(result);  
   GBfpInnerData * resultData = GET_INNER_DATA(result);
-  
+
+  /*
+   * we want to update the summary information in the result
+   * (inner key) with the data from the new key.
+   */
+   
   if (IS_INNER_KEY(key)) {
+    int i;
+    uint8 *fp, *fp_end;
     GBfpInnerData *innerData = GET_INNER_DATA(key);
 
     if (GBFP_INNER_SIGLEN(key) != siglen) {
       elog(ERROR, "All fingerprints should be the same length");
     }
     
+    /* update the weight interval */
     if (innerData->minWeight < resultData->minWeight) {
       resultData->minWeight = innerData->minWeight;
     }
     if (innerData->maxWeight > resultData->maxWeight) {
       resultData->maxWeight = innerData->maxWeight;
     }
-    bitstringUnion(siglen, resultData->fp, innerData->fp);
-    bitstringIntersection(siglen, resultData->fp+siglen, innerData->fp+siglen);
+
+    /*
+     * merging the union/intersection fingerprint data needs to
+     * consider that both the result and new key may have trivial
+     * data
+     */
+    if (IS_ALL1_UNION(result)) {
+      /* no need to merge the union fp from key */
+    }
+    else if (IS_ALL1_UNION(key)) {
+      /* fill the fp union data in result with 1s */
+      fp = resultData->fp;
+      fp_end = fp + siglen;
+      while (fp < fp_end) {
+        *fp++ = 0xff;
+      }
+    }
+    else {
+      /* merge the fp union data from key into result */
+      bitstringUnion(siglen, resultData->fp, innerData->fp);
+    }
+
+    if (IS_ALL0_INTERSECTION(result)) {
+      /* no need to merge the intersection fp from key */
+    }
+    else if (IS_ALL0_INTERSECTION(key)) {
+      /* zero the fp intersection data in result */
+      fp = IS_ALL1_UNION(result) ? resultData->fp : resultData->fp+siglen;
+      fp_end = fp + siglen;
+      while (fp < fp_end) {
+        *fp++ = 0x00;
+      }
+    }
+    else {
+      /* merge the fp intersection data from key into result */
+      bitstringIntersection(
+        siglen,
+        IS_ALL1_UNION(result) ? resultData->fp : resultData->fp+siglen,
+        IS_ALL1_UNION(key) ? innerData->fp : innerData->fp+siglen
+        );
+    }
   }
   else {
     GBfpLeafData *leafData = GET_LEAF_DATA(key);
@@ -768,17 +820,35 @@ merge_key(GBfp *result, GBfp *key)
       elog(ERROR, "All fingerprints should be the same length");
     }
     
+    /* update the weight interval */
     if (leafData->weight < resultData->minWeight) {
       resultData->minWeight = leafData->weight;
     }
     if (leafData->weight > resultData->maxWeight) {
       resultData->maxWeight = leafData->weight;
     }
-    bitstringUnion(siglen, resultData->fp, leafData->fp);
-    bitstringIntersection(siglen, resultData->fp+siglen, leafData->fp);
+
+    /*
+     * merging a leaf key is a bit more straightforward
+     */
+    if (!IS_ALL1_UNION(result)) {
+      bitstringUnion(siglen, resultData->fp, leafData->fp);
+    }
+
+    if (!IS_ALL0_INTERSECTION(result)) {
+      bitstringIntersection(
+        siglen,
+        IS_ALL1_UNION(result) ? resultData->fp : resultData->fp+siglen,
+        leafData->fp
+        );
+    }
   }
 }
 
+/*
+ * keys_distance
+ * used in the penalty and picksplit methods
+ */
 static int
 keys_distance(GBfp *v1, GBfp *v2)
 {
@@ -865,6 +935,11 @@ copy_leaf_key(GBfp *key)
 }
 
 
+/*
+ * copy_key
+ * used in the union and picksplit methods
+ * Note: the result of the copy is always an inner key
+ */
 static GBfp *
 copy_key(GBfp *key)
 {
