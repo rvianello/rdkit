@@ -231,6 +231,7 @@ gbfp_same(PG_FUNCTION_ARGS)
   *result =
     (VARSIZE(a) == VARSIZE(b))
     &&
+    /* TODO: review if memcmp is ok, or if padding space may be dirty */
     (memcmp(VARDATA(a), VARDATA(b), VARSIZE(a) - VARHDRSZ) == 0)
     ;
 
@@ -334,9 +335,9 @@ gbfp_picksplit(PG_FUNCTION_ARGS)
       gbfpj = GETENTRY(entryvec, j);
       size_waste = keys_distance(gbfpk, gbfpj);
       if (size_waste > waste) {
-	waste = size_waste;
-	seed_1 = k;
-	seed_2 = j;
+        waste = size_waste;
+        seed_1 = k;
+        seed_2 = j;
       }
     }
   }
@@ -389,7 +390,7 @@ gbfp_picksplit(PG_FUNCTION_ARGS)
     size_beta = keys_distance(datum_r, gbfpj);
     
     if ((size_alpha < size_beta) ||
-	((size_alpha == size_beta) && (v->spl_nleft < v->spl_nright))) {
+        ((size_alpha == size_beta) && (v->spl_nleft < v->spl_nright))) {
       merge_key(datum_l, gbfpj);
       
       *left++ = j;
@@ -1037,6 +1038,8 @@ copy_leaf_key(GBfp *key)
   siglen = GBFP_LEAF_SIGLEN(key);
   leafData = GET_LEAF_DATA(key);
 
+  // TODO: this size estimation needs to change when the
+  // size of inner keys depends on flags due to compression
   size = GBFP_INNER_VARSIZE(siglen);
 
   result = palloc0(size);
