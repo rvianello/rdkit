@@ -863,42 +863,159 @@ keys_distance(GBfp *v1, GBfp *v2)
   if (GBFP_SIGLEN(v2) != siglen) {
     elog(ERROR, "All fingerprints should be the same length");
   }
-    
+
+  /*
+   * The computed distance includes contributions coming from
+   * - the (scaled) distance between the weight intervals
+   * - the distance between the union bfps
+   * - the distance between the intersection bfps
+   */
+
+  /* weight distance */
+
   if (IS_INNER_KEY(v1)) {
     innerData = GET_INNER_DATA(v1);
-    u1 = innerData->fp;
-    i1 = innerData->fp+siglen;
     minw1 = innerData->minWeight;
     maxw1 = innerData->maxWeight;
   }
   else {
     leafData = GET_LEAF_DATA(v1);
-    u1 = i1 = leafData->fp;
     minw1 = maxw1 = leafData->weight;
   }
     
   if (IS_INNER_KEY(v2)) {
     innerData = GET_INNER_DATA(v2);
-    u2 = innerData->fp;
-    i2 = innerData->fp+siglen;
     minw2 = innerData->minWeight;
     maxw2 = innerData->maxWeight;
   }
   else {
     leafData = GET_LEAF_DATA(v2);
-    u2 = i2 = leafData->fp;
     minw2 = maxw2 = leafData->weight;
   }
 
   distance = abs(minw1 - minw2) + abs(maxw1 - maxw2);
   distance *= siglen;
 
-  distance += bitstringHemDistance(siglen, u1, u2);
-  distance += bitstringHemDistance(siglen, i1, i2);
+  /* union bfp distance */
+
+  if (IS_INNER_KEY(v1) && IS_ALL1_UNION(v1) &&
+      IS_INNER_KEY(v2) && IS_ALL1_UNION(v2)) {
+    /* both keys have trivial union fp data */
+    /* distance += 0; */
+  }
+  else if (IS_INNER_KEY(v1) && IS_ALL1_UNION(v1)) {
+    /* v1 has trivial union fp data */
+    if (IS_INNER_KEY(v2)) {
+      innerData = GET_INNER_DATA(v2);
+      u2 = innerData->fp;
+    }
+    else {
+      leafData = GET_LEAF_DATA(v2);
+      u2 = leafData->fp;
+    }
+
+    distance += 8*siglen - bitstringWeight(siglen, u2);
+  }
+  else if (IS_INNER_KEY(v2) && IS_ALL1_UNION(v2)) {
+    /* v2 has trivial union fp data */
+    if (IS_INNER_KEY(v1)) {
+      innerData = GET_INNER_DATA(v1);
+      u1 = innerData->fp;
+    }
+    else {
+      leafData = GET_LEAF_DATA(v1);
+      u1 = leafData->fp;
+    }
+
+    distance += 8*siglen - bitstringWeight(siglen, u1);
+  }
+  else {
+    /* concrete union bfp data available for both keys */
+    if (IS_INNER_KEY(v1)) {
+      innerData = GET_INNER_DATA(v1);
+      u1 = innerData->fp;
+    }
+    else {
+      leafData = GET_LEAF_DATA(v1);
+      u1 = leafData->fp;
+    }
+      
+    if (IS_INNER_KEY(v2)) {
+      innerData = GET_INNER_DATA(v2);
+      u2 = innerData->fp;
+    }
+    else {
+      leafData = GET_LEAF_DATA(v2);
+      u2 = leafData->fp;
+    }
+
+    distance += bitstringHemDistance(siglen, u1, u2);
+  }
+  
+  /* intersection bfp distance */
+
+  if (IS_INNER_KEY(v1) && IS_ALL0_INTERSECTION(v1) &&
+      IS_INNER_KEY(v2) && IS_ALL0_INTERSECTION(v2)) {
+    /* both keys have trivial intersection fp data */
+    /* distance += 0; */
+  }
+  else if (IS_INNER_KEY(v1) && IS_ALL0_INTERSECTION(v1)) {
+    /* v1 has trivial intersection fp data */
+    if (IS_INNER_KEY(v2)) {
+      innerData = GET_INNER_DATA(v2);
+      i2 = IS_ALL1_UNION(v2) ? innerData->fp : innerData->fp+siglen;
+    }
+    else {
+      leafData = GET_LEAF_DATA(v2);
+      i2 = leafData->fp;
+    }
+
+    distance += bitstringWeight(siglen, i2);
+  }
+  else if (IS_INNER_KEY(v2) && IS_ALL0_INTERSECTION(v2)) {
+    /* v2 has trivial intersection fp data */
+    if (IS_INNER_KEY(v1)) {
+      innerData = GET_INNER_DATA(v1);
+      i1 = IS_ALL1_UNION(v1) ? innerData->fp : innerData->fp+siglen;
+    }
+    else {
+      leafData = GET_LEAF_DATA(v1);
+      i1 = leafData->fp;
+    }
+
+    distance += bitstringWeight(siglen, i1);
+  }
+  else {
+    if (IS_INNER_KEY(v1)) {
+      innerData = GET_INNER_DATA(v1);
+      i1 = IS_ALL1_UNION(v1) ? innerData->fp : innerData->fp+siglen;
+    }
+    else {
+      leafData = GET_LEAF_DATA(v1);
+      i1 = leafData->fp;
+    }
+
+    if (IS_INNER_KEY(v2)) {
+      innerData = GET_INNER_DATA(v2);
+      i2 = IS_ALL1_UNION(v2) ? innerData->fp : innerData->fp+siglen;
+    }
+    else {
+      leafData = GET_LEAF_DATA(v2);
+      i2 = leafData->fp;
+    }
+
+    distance += bitstringHemDistance(siglen, i1, i2);
+  }
   
   return distance;
 }
 
+
+/*
+ * copy_key
+ * used in the union and picksplit methods
+ * Note: the result of the copy is always an inner key
+ */
 static GBfp *
 copy_inner_key(GBfp *key)
 {
@@ -934,12 +1051,6 @@ copy_leaf_key(GBfp *key)
   return result;
 }
 
-
-/*
- * copy_key
- * used in the union and picksplit methods
- * Note: the result of the copy is always an inner key
- */
 static GBfp *
 copy_key(GBfp *key)
 {
