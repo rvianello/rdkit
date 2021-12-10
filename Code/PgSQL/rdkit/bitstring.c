@@ -415,20 +415,28 @@ bool bitstringIntersects(int length, uint8 *bstr1, uint8 *bstr2)
 }
 
 
-bool bitstringAllTrue(int length, uint8 *bstr)
+bool bitstringAllSame(int length, uint8 *bstr, uint8 value)
 {
-  bool allTrue = true;
+  bool all = true;
   uint8 * bstr_end = bstr + length;
 
-#ifdef USE_BUILTIN_POPCOUNT
-  /* TODO consider optimizing */
-#endif
-  
-  while (allTrue && bstr < bstr_end) {
-    allTrue = *bstr++ == 0xFF;
+  while (all && bstr < bstr_end) {
+    all = *bstr++ == value;
   }
 
-  return allTrue;
+  return all;
+}
+
+
+bool bitstringAllTrue(int length, uint8 *bstr)
+{
+  return bitstringAllSame(length, bstr, 0xFF);
+}
+
+
+bool bitstringAllFalse(int length, uint8 *bstr)
+{
+  return bitstringAllSame(length, bstr, 0x00);
 }
 
 

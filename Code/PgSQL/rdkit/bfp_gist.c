@@ -65,8 +65,8 @@ typedef struct {
 } GBfpInnerData;
 
 #define INNER_KEY         0x01
-#define ALL1_UNION        0x02 /* NOT USED YET */
-#define ALL0_INTERSECTION 0x04 /* NOT USED YET */
+#define ALL1_UNION        0x02
+#define ALL0_INTERSECTION 0x04
 
 #define IS_INNER_KEY(x)  ((((GBfp*)x)->flag & INNER_KEY) != 0x00)
 #define IS_LEAF_KEY(x) (!IS_INNER_KEY(x))
@@ -77,7 +77,7 @@ typedef struct {
 #define GET_INNER_DATA(x) ((GBfpInnerData *)((x)->data))
 
 /* compute the memory size of the index entries based on the 
-** signature bfp size
+** signature bfp size (used when instantiating uncompressed keys)
 */
 #define GBFP_LEAF_VARSIZE(x) (sizeof(GBfp) + sizeof(GBfpLeafData) + (x))
 #define GBFP_INNER_VARSIZE(x) (sizeof(GBfp) + sizeof(GBfpInnerData) + 2*(x))
@@ -87,7 +87,7 @@ typedef struct {
 */
 #define GBFP_LEAF_SIGLEN(x) (VARSIZE(x) - sizeof(GBfp) - sizeof(GBfpLeafData))
 #define GBFP_INNER_SIGLEN(x) \
-  ((VARSIZE(x) - sizeof(GBfp) - sizeof(GBfpInnerData))/2)
+  ((VARSIZE(x) - sizeof(GBfp) - sizeof(GBfpInnerData))/((IS_ALL1_UNION(x) || IS_ALL0_INTERSECTION(x)) ? 1 : 2))
 #define GBFP_SIGLEN(x) \
   (IS_INNER_KEY(x) ? GBFP_INNER_SIGLEN(x) : GBFP_LEAF_SIGLEN(x))
 
@@ -107,6 +107,7 @@ static GBfp * copy_key(GBfp *key);
 
 /*
  * Compress method
+ *
  * Converts a data item into a format suitable for physical storage in an index page. 
  */
 
@@ -147,10 +148,75 @@ gbfp_compress(PG_FUNCTION_ARGS)
 		  entry->rel, entry->page,
 		  entry->offset, false);
   }
-  /* no change should be required on inner nodes */
-  /* TODO: check if union and/or intersection are trivial and can be compressed */
+  /* on inner nodes check if union and/or intersection are trivial and can be "compressed" */
   else {
-    retval = entry;
+    GBfp *key, *ckey;
+    GBfpInnerData *data, *cdata;
+    int size, siglen;
+    bool is_all1_union, is_all0_intersection;
+
+    key = (GBfp*) DatumGetPointer(entry->key);
+    Assert(IS_INNER_KEY(key));
+
+    siglen = GBFP_INNER_SIGLEN(key);
+    data = GET_INNER_DATA(key);
+
+    is_all1_union = IS_ALL1_UNION(key) ? true : bitstringAllTrue(siglen, data->fp);
+    is_all0_intersection = IS_ALL0_INTERSECTION(key) ? 
+      true : bitstringAllFalse(siglen, IS_ALL1_UNION(key) ? data->fp : data->fp+siglen);
+
+    if ((is_all1_union == IS_ALL1_UNION(key)) &&
+        (is_all0_intersection == IS_ALL0_INTERSECTION(key))) {
+      /* nothing to check or do in this case */
+      retval = entry;
+    }
+    else {
+      /* either the union or the intersection doesn't need to be
+       * explictly stored */
+      Assert(is_all1_union || is_all0_intersection);
+
+      /* create a key of a suitable size. start with an
+       * uncompressed estimate, and remove the fps that are
+       * implicit */
+      size = GBFP_INNER_VARSIZE(siglen); /* uncompressed */
+      if (is_all1_union) {
+        size -= siglen;
+      }
+      if (is_all0_intersection) {
+        size -= siglen;
+      }
+
+      retval = (GISTENTRY *) palloc(sizeof(GISTENTRY));
+    
+      ckey = palloc0(size);
+      SET_VARSIZE(ckey, size);
+
+      ckey->flag = INNER_KEY;
+      if (is_all1_union) {
+        ckey->flag |= ALL1_UNION;
+      }
+      if (is_all0_intersection) {
+        ckey->flag |= ALL0_INTERSECTION;
+      }
+
+      cdata = GET_INNER_DATA(ckey);
+      cdata->minWeight = data->minWeight;
+      cdata->maxWeight = data->maxWeight;
+
+      if (!is_all1_union) {
+        memcpy(cdata->fp, data->fp, siglen);
+      }
+      if (!is_all0_intersection) {
+        memcpy(
+          cdata->fp,
+          IS_ALL1_UNION(key) ? data->fp : data->fp+siglen,
+          siglen);
+      }
+
+      gistentryinit(*retval, PointerGetDatum(ckey),
+		    entry->rel, entry->page,
+		    entry->offset, false);
+    }
   }
                 
   PG_RETURN_POINTER(retval);
@@ -158,6 +224,7 @@ gbfp_compress(PG_FUNCTION_ARGS)
 
 /*
  * Decompress method
+ *
  * Converts the stored representation of a data item into a format that
  * can be manipulated by the other GiST methods in the operator class.
  */
@@ -231,7 +298,6 @@ gbfp_same(PG_FUNCTION_ARGS)
   *result =
     (VARSIZE(a) == VARSIZE(b))
     &&
-    /* TODO: review if memcmp is ok, or if padding space may be dirty */
     (memcmp(VARDATA(a), VARDATA(b), VARSIZE(a) - VARHDRSZ) == 0)
     ;
 
@@ -1038,8 +1104,6 @@ copy_leaf_key(GBfp *key)
   siglen = GBFP_LEAF_SIGLEN(key);
   leafData = GET_LEAF_DATA(key);
 
-  // TODO: this size estimation needs to change when the
-  // size of inner keys depends on flags due to compression
   size = GBFP_INNER_VARSIZE(siglen);
 
   result = palloc0(size);

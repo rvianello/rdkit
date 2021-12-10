@@ -50,7 +50,10 @@ double bitstringTanimotoDistance(int length, uint8 *bstr1, uint8 *bstr2);
 
 bool bitstringContains(int length, uint8 *bstr1, uint8 *bstr2);
 bool bitstringIntersects(int length, uint8 *bstr1, uint8 *bstr2);
+
+bool bitstringAllSame(int length, uint8 *bstr, uint8 value);
 bool bitstringAllTrue(int length, uint8 *bstr);
+bool bitstringAllFalse(int length, uint8 *bstr);
 
 void bitstringSimpleSubset(int length, uint8 *bstr, int sub_weight,
                            uint8 *sub_bstr);
