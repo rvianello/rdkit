@@ -2,6 +2,21 @@
 (Changes relative to Release_2021.09.1)
 
 ## Backwards incompatible changes
+- When running in Jupyter Notebook, logs are now sent only to Python's
+  standard error stream, and no longer include the `RDKit LEVEL` prefix.
+- The Debug and Info logs are now disabled by default. If you would like to
+  enable them within your code you can call `rdBase.EnableLog("rdApp.info")`
+  and/or `rdBase.EnableLog("rdApp.debug")`.
+- The MolHash functions now reassign stereochemistry after modifying the
+  molecule and before calculating the hash. Previous versions would still
+  include information about atom/bond stereochemistry in the output hash even if
+  that no longer applies in the modified molecule.
+- In the PostgreSQL cartridge the `mol_in()` function no longer performs full
+  sanitization of the molecule. One consequence of this is that directly casting
+  from strings to molecules also no longer does sanitization, so `select 'CN(=O)=O'::mol` 
+  does not sanitize the molecule. If you want to convert a string to a molecule
+  with full sanitization you can either cast to `text` first 
+  (i.e. `select 'CN(=O)=O'::text::mol` or use the `mol_from_smiles()` function.
 
 ## Code removed in this release:
 - The `useCountSimulation` keyword argument for
@@ -13,6 +28,15 @@
 - The `computeBalabanJ()` functions from the `MolOps` namespace were removed.
   These were not exposed to Python, so this will not affect any Python code.
 
+## Deprecated code (to be removed in a future release):
+- Python function `rdkit.Chem.WrapLogs()` is deprecated in favor of
+  `rdkit.rdBase.LogToPythonStderr()`.  `rdkit.rdBase.WrapLogs()` also exists,
+  but unless you need the old teeing behavior, prefer the former.
+- Python function `rdkit.Chem.LogWarning()` is deprecated in favor of
+  `rdkit.rdBase.LogWarning()`.
+- Python function `rdkit.Chem.LogError()` is deprecated in favor of
+  `rdkit.rdBase.LogError()`.
+- The C++ class `RDLog::BlockLogs` is deprecated in favor of the the class `RDLog::LogStateSetter`.
 
 # Release_2021.09.1
 (Changes relative to Release_2021.03.1)

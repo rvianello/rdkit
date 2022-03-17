@@ -296,6 +296,7 @@ int testMolSup() {
     TEST_ASSERT(ok);
   }
 
+#if RDK_USE_BOOST_IOSTREAMS
   {  // Test Maestro PDB property reading
     fname = rdbase + "/Code/GraphMol/FileParsers/test_data/1kv1.maegz";
     auto *strm = new gzstream(fname);
@@ -309,6 +310,7 @@ int testMolSup() {
     TEST_ASSERT(info->getChainId() == "A");
     TEST_ASSERT(info->getResidueNumber() == 5);
   }
+#endif
 #endif  // RDK_BUILD_MAEPARSER_SUPPORT
   return 1;
 }
@@ -1772,7 +1774,7 @@ void testSetStreamIndices() {
     if (addIndex) {
       pos = ifs.tellg();
     }
-    notEof = (std::getline(ifs, line) ? true : false);
+    notEof = !std::getline(ifs, line).fail();
     if (notEof) {
       if (addIndex) {
         indices.push_back(pos);
@@ -2330,6 +2332,7 @@ int testForwardSDSupplier() {
     }
     TEST_ASSERT(i == 1663);
   }
+#if RDK_USE_BOOST_IOSTREAMS  
   {
     gzstream strm(maefname2);
 
@@ -2361,6 +2364,7 @@ int testForwardSDSupplier() {
     }
     TEST_ASSERT(i == 16);
   }
+#endif
 #endif  // RDK_BUILD_MAEPARSER_SUPPORT
 
   return 1;

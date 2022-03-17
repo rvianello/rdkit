@@ -10,16 +10,23 @@
 #ifndef RDKIT_DRAWTEXTQT_H
 #define RDKIT_DRAWTEXTQT_H
 
-#include <GraphMol/MolDraw2D/DrawText.h>
+#include <RDGeneral/export.h>
+#include <GraphMol/MolDraw2D/DrawTextNotFT.h>
 
 class QPainter;
 
 namespace RDKit {
 
+namespace MolDraw2D_detail {
+
 // ****************************************************************************
-class DrawTextQt : public DrawText {
+class RDKIT_MOLDRAW2DQT_EXPORT DrawTextQt : public DrawTextNotFT {
  public:
   DrawTextQt(double max_fnt_sz, double min_fnt_sz, QPainter *qp);
+  DrawTextQt(const DrawTextQt &rhs) = delete;
+  DrawTextQt(DrawTextQt &&rhs) = delete;
+  DrawTextQt &operator=(const DrawTextQt &rhs) = delete;
+  DrawTextQt &operator=(DrawTextQt &&rhs) = delete;
 
 #if 0
   void getStringSize(const std::string &label, double &label_width,
@@ -39,6 +46,6 @@ class DrawTextQt : public DrawText {
                       std::vector<char> &draw_chars) const override;
 };
 
+}  // namespace MolDraw2D_detail
 }  // namespace RDKit
-
 #endif  // RDKIT_DRAWTEXTQT_H

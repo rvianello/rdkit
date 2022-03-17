@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2003-2020 Greg Landrum and Rational Discovery LLC
+// Copyright (C) 2003-2021 Greg Landrum and other RDKit contributors
 //
 //  @@ All Rights Reserved @@
 //  This file is part of the RDKit.
@@ -60,6 +60,8 @@ class RDKIT_RDGENERAL_EXPORT Dict {
     }
   }
 
+  Dict(Dict &&other) noexcept = default;
+
   ~Dict() {
     reset();  // to clear pointers if necessary
   }
@@ -68,7 +70,9 @@ class RDKIT_RDGENERAL_EXPORT Dict {
     if (!preserveExisting) {
       *this = other;
     } else {
-      if (other._hasNonPodData) _hasNonPodData = true;
+      if (other._hasNonPodData) {
+        _hasNonPodData = true;
+      }
       for (size_t i = 0; i < other._data.size(); ++i) {
         const Pair &pair = other._data[i];
         Pair *target = nullptr;
@@ -92,8 +96,12 @@ class RDKIT_RDGENERAL_EXPORT Dict {
   }
 
   Dict &operator=(const Dict &other) {
-    if (this == &other) return *this;
-    if (_hasNonPodData) reset();
+    if (this == &other) {
+      return *this;
+    }
+    if (_hasNonPodData) {
+      reset();
+    }
 
     if (other._hasNonPodData) {
       std::vector<Pair> data(other._data.size());
@@ -106,6 +114,19 @@ class RDKIT_RDGENERAL_EXPORT Dict {
       _data = other._data;
     }
     _hasNonPodData = other._hasNonPodData;
+    return *this;
+  }
+
+  Dict &operator=(Dict &&other) noexcept {
+    if (this == &other) {
+      return *this;
+    }
+    if (_hasNonPodData) {
+      reset();
+    }
+    _hasNonPodData = other._hasNonPodData;
+    other._hasNonPodData = false;
+    _data = std::move(other._data);
     return *this;
   }
 
@@ -125,7 +146,9 @@ class RDKIT_RDGENERAL_EXPORT Dict {
   //!        key.
   bool hasVal(const std::string &what) const {
     for (const auto &data : _data) {
-      if (data.key == what) return true;
+      if (data.key == what) {
+        return true;
+      }
     }
     return false;
   }

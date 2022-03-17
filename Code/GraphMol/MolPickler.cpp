@@ -214,8 +214,7 @@ QueryDetails getQueryDetails(const Query<int, T const *, true> *query) {
             ->getLower(),
         static_cast<const RangeQuery<int, T const *, true> *>(query)
             ->getUpper(),
-        static_cast<const EqualityQuery<int, T const *, true> *>(query)
-            ->getTol(),
+        static_cast<const RangeQuery<int, T const *, true> *>(query)->getTol(),
         ends));
   } else if (typeid(*query) == typeid(SetQuery<int, T const *, true>)) {
     std::set<int32_t> tset(
@@ -488,7 +487,9 @@ Query<int, Atom const *, true> *unpickleQuery(std::istream &ss,
 
   res->setNegation(isNegated);
   res->setDescription(descr);
-  if (!typeLabel.empty()) res->setTypeLabel(typeLabel);
+  if (!typeLabel.empty()) {
+    res->setTypeLabel(typeLabel);
+  }
 
   QueryOps::finalizeQueryFromDescription(res, owner);
 

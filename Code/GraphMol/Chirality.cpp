@@ -31,7 +31,8 @@ namespace {
 bool shouldDetectDoubleBondStereo(const Bond *bond) {
   const RingInfo *ri = bond->getOwningMol().getRingInfo();
   return (!ri->numBondRings(bond->getIdx()) ||
-          ri->minBondRingSize(bond->getIdx()) > 7);
+          ri->minBondRingSize(bond->getIdx()) >=
+              Chirality::minRingSizeForDoubleBondStereo);
 }
 
 // ----------------------------------- -----------------------------------
@@ -407,7 +408,9 @@ bool isLinearArrangement(const RDGeom::Point3D &v1, const RDGeom::Point3D &v2) {
   double lsq = v1.lengthSq() * v2.lengthSq();
 
   // treat zero length vectors as linear
-  if (lsq < 1.0e-6) return true;
+  if (lsq < 1.0e-6) {
+    return true;
+  }
 
   double dotProd = v1.dotProduct(v2);
 
@@ -602,11 +605,7 @@ void updateDoubleBondNeighbors(ROMol &mol, Bond *dblBond, const Conformer *conf,
     }
 
     double ang = RDGeom::computeDihedralAngle(bond1P, beginP, endP, bond2P);
-    if (ang < M_PI / 2) {
-      sameTorsionDir = false;
-    } else {
-      sameTorsionDir = true;
-    }
+    sameTorsionDir = ang >= M_PI / 2;
     // std::cerr << "   angle: " << ang << " sameTorsionDir: " << sameTorsionDir
     // << "\n";
   } else {
@@ -739,15 +738,12 @@ void updateDoubleBondNeighbors(ROMol &mol, Bond *dblBond, const Conformer *conf,
 
 bool isBondCandidateForStereo(const Bond *bond) {
   PRECONDITION(bond, "no bond");
-  if (bond->getBondType() == Bond::DOUBLE &&
-      bond->getStereo() != Bond::STEREOANY &&
-      bond->getBondDir() != Bond::EITHERDOUBLE &&
-      bond->getBeginAtom()->getDegree() > 1 &&
-      bond->getEndAtom()->getDegree() > 1 &&
-      shouldDetectDoubleBondStereo(bond)) {
-    return true;
-  }
-  return false;
+  return bond->getBondType() == Bond::DOUBLE &&
+         bond->getStereo() != Bond::STEREOANY &&
+         bond->getBondDir() != Bond::EITHERDOUBLE &&
+         bond->getBeginAtom()->getDegree() > 1u &&
+         bond->getEndAtom()->getDegree() > 1u &&
+         shouldDetectDoubleBondStereo(bond);
 }
 
 const Atom *findHighestCIPNeighbor(const Atom *atom, const Atom *skipAtom) {
@@ -1037,10 +1033,12 @@ void iterateCIPRanks(const ROMol &mol, const DOUBLE_VECT &invars,
     numRanks = *std::max_element(ranks.begin(), ranks.end()) + 1;
 
     // now truncate each vector and stick the rank at the end
-    for (unsigned int i = 0; i < numAtoms; ++i) {
-      cipEntries[i][numIts + 1] = ranks[i];
-      cipEntries[i].erase(cipEntries[i].begin() + numIts + 2,
-                          cipEntries[i].end());
+    if (static_cast<unsigned int>(lastNumRanks) != numRanks) {
+      for (unsigned int i = 0; i < numAtoms; ++i) {
+        cipEntries[i][numIts + 1] = ranks[i];
+        cipEntries[i].erase(cipEntries[i].begin() + numIts + 2,
+                            cipEntries[i].end());
+      }
     }
 
     ++numIts;
@@ -1230,11 +1228,7 @@ bool atomIsCandidateForRingStereochem(const ROMol &mol, const Atom *atom) {
                                                rank1) &&
               nonRingNbrs[1]->getPropIfPresent(common_properties::_CIPRank,
                                                rank2)) {
-            if (rank1 == rank2) {
-              res = false;
-            } else {
-              res = true;
-            }
+            res = rank1 != rank2;
           }
           break;
         case 1:
@@ -1825,6 +1819,28 @@ INT_VECT findStereoAtoms(const Bond *bond) {
   }
 }
 
+void cleanupStereoGroups(ROMol &mol) {
+  std::vector<StereoGroup> newsgs;
+  for (auto sg : mol.getStereoGroups()) {
+    std::vector<Atom *> okatoms;
+    bool keep = true;
+    for (const auto atom : sg.getAtoms()) {
+      if (atom->getChiralTag() == Atom::ChiralType::CHI_UNSPECIFIED) {
+        keep = false;
+      } else {
+        okatoms.push_back(atom);
+      }
+    }
+
+    if (keep) {
+      newsgs.push_back(sg);
+    } else if (!okatoms.empty()) {
+      newsgs.emplace_back(sg.getGroupType(), std::move(okatoms));
+    }
+  }
+  mol.setStereoGroups(std::move(newsgs));
+}
+
 }  // namespace Chirality
 
 namespace MolOps {
@@ -2074,6 +2090,7 @@ void assignStereochemistry(ROMol &mol, bool cleanIt, bool force,
       }
 #endif
     }
+    Chirality::cleanupStereoGroups(mol);
   }
   mol.setProp(common_properties::_StereochemDone, 1, true);
 

@@ -12,7 +12,7 @@ if(RDK_BUILD_FREETYPE_SUPPORT AND RDK_INSTALL_COMIC_FONTS)
     set(needDownload "FALSE")
   endif()
   if(needDownload)
-    set(MD5Sum "23ed3f833c1ae0adb141a26b4a30d73e")
+    set(MD5Sum "850b0df852f1cda4970887b540f8f333")
     downloadAndCheckMD5("https://fonts.google.com/download?family=Comic%20Neue"
           "${CMAKE_CURRENT_SOURCE_DIR}/Comic_Neue.zip"
           ${MD5Sum})
@@ -27,15 +27,14 @@ rdkit_headers(MolDraw2D.h
   MolDraw2Dwx.h
   MolDraw2DJS.h
   MolDraw2DUtils.h
-  DrawText.h
-  DrawTextSVG.h
-  DrawTextJS.h
+  MolDraw2DHelpers.h
   DEST GraphMol/MolDraw2D
 )
 
 rdkit_library(MolDraw2D MolDraw2D.cpp MolDraw2DSVG.cpp
-  MolDraw2DDetails.cpp MolDraw2DUtils.cpp DrawText.cpp
-  DrawTextSVG.cpp 
+  MolDraw2DDetails.cpp MolDraw2DUtils.cpp AtomSymbol.cpp
+  DrawAnnotation.cpp DrawMol.cpp DrawMolMCH.cpp
+  DrawShape.cpp DrawText.cpp DrawTextNotFT.cpp DrawTextSVG.cpp
   MolDraw2DJS.cpp DrawTextJS.cpp
   LINK_LIBRARIES
   ChemReactions Depictor MolTransforms 
@@ -57,7 +56,7 @@ if(RDK_BUILD_CAIRO_SUPPORT)
      target_link_libraries(MolDraw2D_static PUBLIC Cairo::Cairo)
      target_sources(MolDraw2D_static PRIVATE MolDraw2DCairo.cpp DrawTextCairo.cpp)
   endif()
-  rdkit_headers(MolDraw2DCairo.h DrawTextCairo.h DEST GraphMol/MolDraw2D)
+  rdkit_headers(MolDraw2DCairo.h DEST GraphMol/MolDraw2D)
 endif(RDK_BUILD_CAIRO_SUPPORT)
 
 if(RDK_BUILD_FREETYPE_SUPPORT)
@@ -84,14 +83,11 @@ if(RDK_BUILD_FREETYPE_SUPPORT)
         target_link_libraries(MolDraw2D_static PUBLIC Freetype::Freetype)
       endif()
   endif()
-  rdkit_headers(DrawText.h DrawTextFT.h
-          DrawTextFTSVG.h DrawTextFTJS.h DEST GraphMol/MolDraw2D)
   if(RDK_BUILD_CAIRO_SUPPORT)
     target_sources(MolDraw2D PRIVATE DrawTextFTCairo.cpp)
     if(RDK_INSTALL_STATIC_LIBS AND NOT WIN32)
       target_sources(MolDraw2D_static PRIVATE DrawTextFTCairo.cpp)
     endif()
-    rdkit_headers(DrawTextFTCairo.h DEST GraphMol/MolDraw2D)
   endif()
 endif(RDK_BUILD_FREETYPE_SUPPORT)
 

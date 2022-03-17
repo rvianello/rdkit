@@ -1,5 +1,5 @@
 //
-//  Copyright (C) 2001-2017 Greg Landrum and Rational Discovery LLC
+//  Copyright (C) 2001-2022 Greg Landrum and other RDKit contributors
 //
 //   @@ All Rights Reserved @@
 //  This file is part of the RDKit.
@@ -8,9 +8,10 @@
 //  of the RDKit source tree.
 //
 #include <RDGeneral/export.h>
-#ifndef _RD_QUERYATOM_H_
-#define _RD_QUERYATOM_H_
+#ifndef RD_QUERYATOM_H
+#define RD_QUERYATOM_H
 
+#include <utility>
 #include "Atom.h"
 #include <Query/QueryObjects.h>
 #include <GraphMol/QueryOps.h>
@@ -54,7 +55,9 @@ class RDKIT_GRAPHMOL_EXPORT QueryAtom : public Atom {
     }
   }
   QueryAtom &operator=(const QueryAtom &other) {
-    if (this == &other) return *this;
+    if (this == &other) {
+      return *this;
+    }
     Atom::operator=(other);
     delete dp_query;
     if (other.dp_query) {
@@ -64,6 +67,19 @@ class RDKIT_GRAPHMOL_EXPORT QueryAtom : public Atom {
     }
     return *this;
   }
+
+  QueryAtom(QueryAtom &&other) noexcept : Atom(std::move(other)) {
+    dp_query = std::exchange(other.dp_query, nullptr);
+  }
+  QueryAtom &operator=(QueryAtom &&other) noexcept {
+    if (this == &other) {
+      return *this;
+    }
+    QueryAtom::operator=(std::move(other));
+    dp_query = std::exchange(other.dp_query, nullptr);
+    return *this;
+  }
+
   ~QueryAtom() override;
 
   //! returns a copy of this query, owned by the caller
@@ -71,6 +87,9 @@ class RDKIT_GRAPHMOL_EXPORT QueryAtom : public Atom {
 
   // This method can be used to distinguish query atoms from standard atoms:
   bool hasQuery() const override { return dp_query != nullptr; }
+
+  //! replaces our current query with the value passed in
+  std::string getQueryType() const override { return dp_query->getTypeLabel(); }
 
   //! replaces our current query with the value passed in
   void setQuery(QUERYATOM_QUERY *what) override {
@@ -116,7 +135,9 @@ namespace detail {
 inline std::string qhelper(Atom::QUERYATOM_QUERY *q, unsigned int depth) {
   std::string res = "";
   if (q) {
-    for (unsigned int i = 0; i < depth; ++i) res += "  ";
+    for (unsigned int i = 0; i < depth; ++i) {
+      res += "  ";
+    }
     res += q->getFullDescription() + "\n";
     for (Atom::QUERYATOM_QUERY::CHILD_VECT_CI ci = q->beginChildren();
          ci != q->endChildren(); ++ci) {

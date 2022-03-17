@@ -20,8 +20,9 @@ CIPMol::CIPMol(ROMol &mol) : d_mol{mol} {}
 
 boost::rational<int> CIPMol::getFractionalAtomicNum(Atom *atom) const {
   PRECONDITION(atom, "bad atom")
-  if (d_atomnums.empty())
+  if (d_atomnums.empty()) {
     const_cast<CIPMol *>(this)->d_atomnums = calcFracAtomNums(*this);
+  }
   return d_atomnums[atom->getIdx()];
 }
 
@@ -62,7 +63,10 @@ int CIPMol::getBondOrder(Bond *bond) const {
   PRECONDITION(bond, "bad bond")
   if (dp_kekulized_mol == nullptr) {
     auto tmp = new RWMol(d_mol);
-    MolOps::Kekulize(*tmp);
+    try {
+      MolOps::Kekulize(*tmp);
+    } catch (const MolSanitizeException &) {
+    }
     const_cast<CIPMol *>(this)->dp_kekulized_mol.reset(tmp);
   }
 
@@ -78,6 +82,11 @@ int CIPMol::getBondOrder(Bond *bond) const {
     case Bond::DATIVER:
       return 0;
     case Bond::SINGLE:
+      return 1;
+    case Bond::AROMATIC:
+      BOOST_LOG(rdWarningLog)
+          << "non kekulizable aromatic bond being treated as bond order 1"
+          << std::endl;
       return 1;
     case Bond::DOUBLE:
       return 2;
