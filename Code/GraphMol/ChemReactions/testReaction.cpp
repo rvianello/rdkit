@@ -7712,6 +7712,69 @@ void testMultiTemplateRxnQueries() {
   delete rxn;
 }
 
+void testChemicalReactionCopyAssignment() {
+  BOOST_LOG(rdInfoLog) << "-------------------------------------" << std::endl;
+  BOOST_LOG(rdInfoLog) << "Testing ChemicalReaction copy assignment operator"
+                       << std::endl;
+
+  std::string rxn_smarts1 =
+    "[C;$(C=O):1][OH1].[N;$(N[#6]);!$(N=*);!$([N-]);!$(N#*);!$([ND3]);!$([ND4]);!$(N[O,N]);!$(N[C,S]=[S,O,N]):2]>>[C:1][N+0:2]";
+  ChemicalReaction* rxn1 = RxnSmartsToChemicalReaction(rxn_smarts1);
+  rxn1->setImplicitPropertiesFlag(true);
+  rxn1->initReactantMatchers();
+  unsigned int nWarn, nError;
+  TEST_ASSERT(rxn1->validate(nWarn, nError, false));
+  TEST_ASSERT(nWarn == 0 && nError == 0);
+
+  std::string rxn_smarts2 = "[O:1]>>[N:1]";
+  ChemicalReaction* rxn2 = RxnSmartsToChemicalReaction(rxn_smarts2);
+
+  *rxn2 = *rxn1;
+
+  // Check we copied the base class members
+  TEST_ASSERT(rxn2->getPropList() == rxn1->getPropList());
+
+  // Check we copied the flags
+  TEST_ASSERT(rxn2->getImplicitPropertiesFlag());
+  TEST_ASSERT(rxn2->isInitialized());
+
+  // Check we copied the reactant/product templates
+  TEST_ASSERT(rxn2->getNumReactantTemplates() == 2);
+  TEST_ASSERT(rxn2->getNumProductTemplates() == 1);
+  MOL_SPTR_VECT::const_iterator it1 = rxn1->beginReactantTemplates();
+  MOL_SPTR_VECT::const_iterator it2 = rxn2->beginReactantTemplates();
+  MOL_SPTR_VECT::const_iterator end_it1 = rxn1->endReactantTemplates();
+  while (it1 != end_it1) {
+    TEST_ASSERT(MolToSmiles(**it1) == MolToSmiles(**it2));
+    ++it1;
+    ++it2;
+  }
+  it1 = rxn1->beginProductTemplates();
+  it2 = rxn2->beginProductTemplates();
+  end_it1 = rxn1->endProductTemplates();
+  while (it1 != end_it1) {
+    TEST_ASSERT(MolToSmiles(**it1) == MolToSmiles(**it2));
+    ++it1;
+    ++it2;
+  }
+
+  // Check that the reactions don't share resources
+  const RWMol& rxn1_reactant = *rxn1->getReactants().at(0);
+  const_cast<RWMol&>(rxn1_reactant).clear();
+  ROMOL_SPTR rxn2_reactant = rxn2->getReactants().at(0);
+  TEST_ASSERT(rxn2_reactant->getNumAtoms() > 0);
+
+  // Check the reaction works
+  MOL_SPTR_VECT reactants;
+  reactants.emplace_back(SmilesToMol("CC(=O)O"));
+  reactants.emplace_back(SmilesToMol("CCN"));
+  std::vector<MOL_SPTR_VECT> products = rxn2->runReactants(reactants);
+  TEST_ASSERT(MolToSmiles(*products[0][0]) == "CCNC(C)=O");
+
+  delete rxn1;
+  delete rxn2;
+}
+
 int main() {
   RDLog::InitLogs();
 
@@ -7810,6 +7873,7 @@ int main() {
   testGithub4183();
   testGithub4410();
   testMultiTemplateRxnQueries();
+  testChemicalReactionCopyAssignment();
 
   BOOST_LOG(rdInfoLog)
       << "*******************************************************\n";
