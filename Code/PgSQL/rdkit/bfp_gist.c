@@ -619,7 +619,7 @@ gbfp_consistent(PG_FUNCTION_ARGS)
 
   GBfp *key;
   BfpSignature *query;
-  int siglen;
+  int siglen, gbfp_siglen;
   
   *recheck = false;
   
@@ -632,8 +632,9 @@ gbfp_consistent(PG_FUNCTION_ARGS)
   siglen = VARSIZE(query) - sizeof(BfpSignature);
   
   key = (GBfp*) DatumGetPointer(entry->key);
+  gbfp_siglen = GBFP_SIGLEN(key);
 
-  if (siglen != GBFP_SIGLEN(key)) {
+  if (gbfp_siglen > 0 && siglen != gbfp_siglen) {
     elog(ERROR, "All fingerprints should be the same length");
   }
 
@@ -737,7 +738,7 @@ gbfp_distance(PG_FUNCTION_ARGS)
   GBfp *key = (GBfp *)DatumGetPointer(entry->key);
 
   BfpSignature *query;
-  int siglen;
+  int siglen, gbfp_siglen;
   double distance;
   
   fcinfo->flinfo->fn_extra = searchBfpCache(fcinfo->flinfo->fn_extra,
@@ -746,8 +747,9 @@ gbfp_distance(PG_FUNCTION_ARGS)
 					    NULL, NULL,&query);
 
   siglen = VARSIZE(query) - sizeof(BfpSignature);
-  
-  if (siglen != GBFP_SIGLEN(key)) {
+  gbfp_siglen = GBFP_SIGLEN(key);
+
+  if (gbfp_siglen > 0 && siglen != gbfp_siglen) {
     elog(ERROR, "All fingerprints should be the same length");
   }
 
@@ -814,7 +816,7 @@ merge_key(GBfp *result, GBfp *key)
     elog(ERROR, "Unexpected leaf key");
   }
   
-  int siglen = GBFP_INNER_SIGLEN(result);  
+  int siglen = GBFP_INNER_SIGLEN(result);
   GBfpInnerData * resultData = GET_INNER_DATA(result);
 
   /*
@@ -823,14 +825,15 @@ merge_key(GBfp *result, GBfp *key)
    */
    
   if (IS_INNER_KEY(key)) {
-    int i;
+    int i, key_siglen;
     uint8 *fp, *fp_end;
     GBfpInnerData *innerData = GET_INNER_DATA(key);
 
-    if (GBFP_INNER_SIGLEN(key) != siglen) {
+    key_siglen = GBFP_INNER_SIGLEN(key);
+    if (siglen > 0 && key_siglen > 0 && key_siglen != siglen) {
       elog(ERROR, "All fingerprints should be the same length");
     }
-    
+
     /* update the weight interval */
     if (innerData->minWeight < resultData->minWeight) {
       resultData->minWeight = innerData->minWeight;
@@ -883,7 +886,7 @@ merge_key(GBfp *result, GBfp *key)
   else {
     GBfpLeafData *leafData = GET_LEAF_DATA(key);
       
-    if (GBFP_LEAF_SIGLEN(key) != siglen) {
+    if (siglen > 0 && GBFP_LEAF_SIGLEN(key) != siglen) {
       elog(ERROR, "All fingerprints should be the same length");
     }
     
@@ -926,8 +929,8 @@ keys_distance(GBfp *v1, GBfp *v2)
   int distance;
   
   int siglen = GBFP_SIGLEN(v1);
-  
-  if (GBFP_SIGLEN(v2) != siglen) {
+  int v2_siglen = GBFP_SIGLEN(v2);
+  if (siglen > 0 && v2_siglen > 0 && v2_siglen != siglen) {
     elog(ERROR, "All fingerprints should be the same length");
   }
 
