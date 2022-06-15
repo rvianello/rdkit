@@ -83,7 +83,10 @@ typedef struct {
 #define GBFP_INNER_VARSIZE(x) (sizeof(GBfp) + sizeof(GBfpInnerData) + 2*(x))
 
 /* compute the size of the signature bfp size from the size of the index
-** entry
+** entry.
+**
+** inner entries for keys with trivial union and intersection data
+** do not store any fingerprints, and their computed siglen is zero.
 */
 #define GBFP_LEAF_SIGLEN(x) (VARSIZE(x) - sizeof(GBfp) - sizeof(GBfpLeafData))
 #define GBFP_INNER_SIGLEN(x) \
