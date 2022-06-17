@@ -54,7 +54,7 @@ typedef bytea Bfp;
 
 typedef struct {
   char vl_len_[4];
-  uint16 weight;
+  uint32 weight;
   uint8 fp[FLEXIBLE_ARRAY_MEMBER];
 } BfpSignature;
 

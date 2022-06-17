@@ -49,18 +49,10 @@
 
 typedef struct {
   char vl_len_[4];
-  uint8 flag; /* entry data type */
   uint16 minWeight;
   uint16 maxWeight;
   uint8 fp[FLEXIBLE_ARRAY_MEMBER]; /* leaf or inner fingerprint data */
 } GBfp;
-
-#define INNER_KEY         0x01
-#define ALL1_UNION        0x02
-
-#define IS_INNER_KEY(x)  ((((GBfp*)x)->flag & INNER_KEY) != 0x00)
-#define IS_LEAF_KEY(x) (!IS_INNER_KEY(x))
-#define IS_ALL1_UNION(x)	(((GBfp*)x)->flag & ALL1_UNION)
 
 /* compute the memory size of the index entries based on the 
 ** signature bfp size (used when instantiating uncompressed keys)
@@ -74,6 +66,9 @@ typedef struct {
 ** fingerprints, and their computed siglen is zero.
 */
 #define GBFP_SIGLEN(x) (VARSIZE(x) - sizeof(GBfp))
+
+/* check if the arg entry is compressed / has trivial bfp data */
+#define GBFP_ALL1(x)	(VARSIZE(x) == sizeof(GBfp))
 
 /* get the pointer of the entry at given pos from a vector of entries
 ** (used in the union and picksplit methods)
@@ -134,22 +129,22 @@ gbfp_compress(PG_FUNCTION_ARGS)
   else {
     GBfp *key, *ckey;
     int size, siglen;
-    bool is_all1_union;
+    bool is_all1, gbfp_all1_key;
 
     key = (GBfp*) DatumGetPointer(entry->key);
-    Assert(IS_INNER_KEY(key));
 
     siglen = GBFP_SIGLEN(key);
 
-    is_all1_union = IS_ALL1_UNION(key) ? true : bitstringAllTrue(siglen, key->fp);
+    gbfp_all1_key = GBFP_ALL1(key);
+    is_all1 = gbfp_all1_key ? true : bitstringAllTrue(siglen, key->fp);
 
-    if (is_all1_union == IS_ALL1_UNION(key)) {
+    if (is_all1 == gbfp_all1_key) {
       /* nothing to check or do in this case */
       retval = entry;
     }
     else {
       /* the union doesn't need to be explictly stored */
-      Assert(is_all1_union);
+      Assert(is_all1);
 
       /* create a key of a suitable size. start with an
        * uncompressed estimate, and remove the size for the implicitly
@@ -161,7 +156,6 @@ gbfp_compress(PG_FUNCTION_ARGS)
       ckey = palloc0(size);
       SET_VARSIZE(ckey, size);
 
-      ckey->flag = INNER_KEY | ALL1_UNION;
       ckey->minWeight = key->minWeight;
       ckey->maxWeight = key->maxWeight;
 
@@ -272,10 +266,10 @@ gbfp_penalty(PG_FUNCTION_ARGS)
   GISTENTRY  *newentry = (GISTENTRY *) PG_GETARG_POINTER(1);
   float      *penalty = (float *) PG_GETARG_POINTER(2);
   
+  Assert(!GIST_LEAF(origentry));
+
   GBfp *origval = (GBfp *) DatumGetPointer(origentry->key);
   GBfp *newval = (GBfp *) DatumGetPointer(newentry->key);
-  
-  Assert(IS_INNER_KEY(origval));
   
   *penalty = (float) keys_distance(origval, newval);
   
@@ -468,7 +462,7 @@ gbfp_inner_consistent(BfpSignature *query, GBfp *key, int siglen,
     ** T = Ncommon / (Na + Nb - Ncommon) <= Ncommon / Na
     */
     else {
-      nCommon = (double)(IS_ALL1_UNION(key) ?
+      nCommon = (double)(GBFP_ALL1(key) ?
         nQuery :
         bitstringIntersectionWeight(siglen, key->fp, query->fp));
       result = nCommon >= t*nQuery;
@@ -479,7 +473,7 @@ gbfp_inner_consistent(BfpSignature *query, GBfp *key, int siglen,
      * 2 * Nsame / (Na + Nb)
      */
     t = getDiceLimit();
-    nCommon = (double)(IS_ALL1_UNION(key) ?
+    nCommon = (double)(GBFP_ALL1(key) ?
       nQuery :
       bitstringIntersectionWeight(siglen, key->fp, query->fp));
     result = 2.0 * nCommon >= t*(nQuery + nCommon);
@@ -571,14 +565,10 @@ gbfp_consistent(PG_FUNCTION_ARGS)
     elog(ERROR, "All fingerprints should be the same length");
   }
 
-  if (GIST_LEAF(entry)) {
-    Assert(IS_LEAF_KEY(key));
-    result = gbfp_leaf_consistent(query, key, siglen, strategy);
-  }
-  else {
-    Assert(IS_INNER_KEY(key));
-    result = gbfp_inner_consistent(query, key, siglen, strategy);
-  }
+  result = GIST_LEAF(entry) ?
+     gbfp_leaf_consistent(query, key, siglen, strategy) :
+     gbfp_inner_consistent(query, key, siglen, strategy)
+     ;
   
   PG_RETURN_BOOL(result);
 }
@@ -591,7 +581,7 @@ gbfp_inner_distance(BfpSignature *query, GBfp *key, int siglen,
   double nDelta, nQuery, nCommon, similarity;
   
   nQuery = (double)query->weight;
-  nCommon = (double)(IS_ALL1_UNION(key) ?
+  nCommon = (double)(GBFP_ALL1(key) ?
     nQuery : bitstringIntersectionWeight(siglen, key->fp, query->fp));
     
   switch (strategy) {
@@ -707,7 +697,7 @@ gbfp_fetch(PG_FUNCTION_ARGS)
   Bfp *bfp;
   GISTENTRY  *retval;
 
-  Assert(IS_LEAF_KEY(gbfp));
+  Assert(GIST_LEAF(entry));
 
   siglen = GBFP_SIGLEN(gbfp);
   
@@ -737,75 +727,46 @@ gbfp_fetch(PG_FUNCTION_ARGS)
 static void
 merge_key(GBfp *result, GBfp *key)
 {
-  if (IS_LEAF_KEY(result)) {
-    elog(ERROR, "Unexpected leaf key");
-  }
-  
-  int siglen = GBFP_SIGLEN(result);
+  int i, siglen, key_siglen;
+  uint8 *fp, *fp_end;
+
+  siglen = GBFP_SIGLEN(result);
 
   /*
    * we want to update the summary information in the result
    * (inner key) with the data from the new key.
    */
-   
-  if (IS_INNER_KEY(key)) {
-    int i, key_siglen;
-    uint8 *fp, *fp_end;
+  key_siglen = GBFP_SIGLEN(key);
+  if (siglen > 0 && key_siglen > 0 && key_siglen != siglen) {
+    elog(ERROR, "All fingerprints should be the same length");
+  }
 
-    key_siglen = GBFP_SIGLEN(key);
-    if (siglen > 0 && key_siglen > 0 && key_siglen != siglen) {
-      elog(ERROR, "All fingerprints should be the same length");
-    }
+  /* update the weight interval */
+  if (key->minWeight < result->minWeight) {
+    result->minWeight = key->minWeight;
+  }
+  if (key->maxWeight > result->maxWeight) {
+    result->maxWeight = key->maxWeight;
+  }
 
-    /* update the weight interval */
-    if (key->minWeight < result->minWeight) {
-      result->minWeight = key->minWeight;
+  /*
+   * merging the union fingerprint data must consider that both
+   * the result and new key may have trivial data
+   */
+  if (GBFP_ALL1(result)) {
+    /* no need to merge the union fp from key */
+  }
+  else if (GBFP_ALL1(key)) {
+    /* fill the fp union data in result with 1s */
+    fp = result->fp;
+    fp_end = fp + siglen;
+    while (fp < fp_end) {
+      *fp++ = 0xff;
     }
-    if (key->maxWeight > result->maxWeight) {
-      result->maxWeight = key->maxWeight;
-    }
-
-    /*
-     * merging the union fingerprint data must consider that both
-     * the result and new key may have trivial data
-     */
-    if (IS_ALL1_UNION(result)) {
-      /* no need to merge the union fp from key */
-    }
-    else if (IS_ALL1_UNION(key)) {
-      /* fill the fp union data in result with 1s */
-      fp = result->fp;
-      fp_end = fp + siglen;
-      while (fp < fp_end) {
-        *fp++ = 0xff;
-      }
-    }
-    else {
-      /* merge the fp union data from key into result */
-      bitstringUnion(siglen, result->fp, key->fp);
-    }
-
   }
   else {
-
-    if (siglen > 0 && GBFP_SIGLEN(key) != siglen) {
-      elog(ERROR, "All fingerprints should be the same length");
-    }
-    
-    /* update the weight interval */
-    if (key->minWeight < result->minWeight) {
-      result->minWeight = key->minWeight;
-    }
-    if (key->maxWeight > result->maxWeight) {
-      result->maxWeight = key->maxWeight;
-    }
-
-    /*
-     * merging a leaf key is a bit more straightforward
-     */
-    if (!IS_ALL1_UNION(result)) {
-      bitstringUnion(siglen, result->fp, key->fp);
-    }
+    /* merge the fp union data from key into result */
+    bitstringUnion(siglen, result->fp, key->fp);
   }
 }
 
@@ -819,6 +780,7 @@ keys_distance(GBfp *v1, GBfp *v2)
   uint8 *u1, *i1, *u2, *i2;
   int32 minw1, maxw1, minw2, maxw2;
   int distance;
+  bool is_all1_v1, is_all1_v2;
   
   int siglen = GBFP_SIGLEN(v1);
   int v2_siglen = GBFP_SIGLEN(v2);
@@ -844,18 +806,20 @@ keys_distance(GBfp *v1, GBfp *v2)
   distance = abs(minw1 - minw2) + abs(maxw1 - maxw2);
   distance *= siglen;
 
+  is_all1_v1 = GBFP_ALL1(v1);
+  is_all1_v2 = GBFP_ALL1(v2);
+
   /* union bfp distance */
 
-  if (IS_INNER_KEY(v1) && IS_ALL1_UNION(v1) &&
-      IS_INNER_KEY(v2) && IS_ALL1_UNION(v2)) {
+  if (is_all1_v1 && is_all1_v2) {
     /* both keys have trivial union fp data */
     /* distance += 0; */
   }
-  else if (IS_INNER_KEY(v1) && IS_ALL1_UNION(v1)) {
+  else if (is_all1_v1) {
     /* v1 has trivial union fp data */
     distance += 8*siglen - bitstringWeight(siglen, v2->fp);
   }
-  else if (IS_INNER_KEY(v2) && IS_ALL1_UNION(v2)) {
+  else if (is_all1_v2) {
     /* v2 has trivial union fp data */
     distance += 8*siglen - bitstringWeight(siglen, v1->fp);
   }
@@ -879,7 +843,6 @@ copy_key(GBfp *key)
   int size = VARSIZE(key);
   GBfp * result = palloc(size);
   memcpy(result, key, size);
-  result->flag = INNER_KEY;
   return result;
 }
 
