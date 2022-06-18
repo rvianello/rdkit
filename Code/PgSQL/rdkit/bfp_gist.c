@@ -307,6 +307,7 @@ gbfp_penalty(PG_FUNCTION_ARGS)
   float max_similarity = 1.0f;
   if (origsiglen > 0) { // <=> !GBFP_ALL1(origval)
     float nCommon = (float)(bitstringIntersectionWeight(origsiglen, origval->fp, newval->fp));
+    if (nCommon > origval->maxWeight) { nCommon = (float)origval->maxWeight; }
     max_similarity = nCommon / newval->minWeight;
   }
 
