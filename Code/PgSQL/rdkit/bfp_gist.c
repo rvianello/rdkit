@@ -512,6 +512,7 @@ gbfp_inner_consistent(BfpSignature *query, GBfp *key, int siglen,
       nCommon = (double)(GBFP_ALL1(key) ?
         nQuery :
         bitstringIntersectionWeight(siglen, key->fp, query->fp));
+      if (nCommon > key->maxWeight) { nCommon = (double)key->maxWeight; }
       result = nCommon >= t*nQuery;
     }
     break;
@@ -523,6 +524,7 @@ gbfp_inner_consistent(BfpSignature *query, GBfp *key, int siglen,
     nCommon = (double)(GBFP_ALL1(key) ?
       nQuery :
       bitstringIntersectionWeight(siglen, key->fp, query->fp));
+    if (nCommon > key->maxWeight) { nCommon = (double)key->maxWeight; }
     result = 2.0 * nCommon >= t*(nQuery + nCommon);
     break;
   default:
@@ -630,7 +632,11 @@ gbfp_inner_distance(BfpSignature *query, GBfp *key, int siglen,
   nQuery = (double)query->weight;
   nCommon = (double)(GBFP_ALL1(key) ?
     nQuery : bitstringIntersectionWeight(siglen, key->fp, query->fp));
-    
+  
+  if (nCommon > key->maxWeight) {
+    nCommon = (double)key->maxWeight;
+  }
+
   switch (strategy) {
   case RDKitOrderByTanimotoStrategy:
     /*
