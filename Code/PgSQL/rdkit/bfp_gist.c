@@ -266,13 +266,60 @@ gbfp_penalty(PG_FUNCTION_ARGS)
   GISTENTRY  *newentry = (GISTENTRY *) PG_GETARG_POINTER(1);
   float      *penalty = (float *) PG_GETARG_POINTER(2);
   
-  Assert(!GIST_LEAF(origentry));
+  Assert(!GIST_LEAF(origentry)); /* always inserting into inner nodes */
 
   GBfp *origval = (GBfp *) DatumGetPointer(origentry->key);
-  GBfp *newval = (GBfp *) DatumGetPointer(newentry->key);
-  
-  *penalty = (float) keys_distance(origval, newval);
-  
+  int origsiglen = GBFP_SIGLEN(origval);
+
+  GBfp *newval = (GBfp *) DatumGetPointer(newentry->key);  
+  int newsiglen = GBFP_SIGLEN(newval);
+
+  if (origsiglen > 0 && newsiglen != origsiglen) {
+    elog(ERROR, "All fingerprints should be the same length");
+  }
+
+  /*
+   * The computed penalty determines the insertion path for the new
+   * entry into the tree.
+   *
+   * The penalty should be higher
+   * - if the weight of the new entry doesn't fall into the weight
+   *   interval of the selected subtree
+   * - depending on the estimated minimum distance from the entries in
+   *   the subtree
+   */
+
+  /* weight penalty
+   * how far is the weight of the new entry from the subtree's interval?
+   */
+  float weight_penalty = 0.f;
+
+  if (newval->minWeight < origval->minWeight) {
+    weight_penalty += origval->minWeight - newval->minWeight;
+  }
+  if (newval->maxWeight > origval->maxWeight) {
+    weight_penalty += newval->maxWeight - origval->maxWeight;
+  }
+
+  /* minimum distance penalty
+   * consider the minimum tanimoto distance of the new entry from the fps in this subtree
+   */
+  float max_similarity = 1.0f;
+  if (origsiglen > 0) { // <=> !GBFP_ALL1(origval)
+    float nCommon = (float)(bitstringIntersectionWeight(origsiglen, origval->fp, newval->fp));
+    max_similarity = nCommon / newval->minWeight;
+  }
+
+  float dist_penalty = 1.f - max_similarity;
+
+  /* overall penalty
+   * the distance penalty is in range (0., 1.) and it'd therefore multiplied by the length of
+   * the fingerprint so that it's comparable to the weight penalty. when the union fingerprint
+   * in the subtree is filled, the similarity criteria becomes less relevant, the distance 
+   * penalty goes to zero and the insertion should be basically determined by the weight penalty.
+   */
+  *penalty = weight_penalty + origsiglen*dist_penalty;
+
   PG_RETURN_POINTER(penalty);
 }
 
