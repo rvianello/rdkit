@@ -826,7 +826,7 @@ merge_key(GBfp *result, GBfp *key)
 
 /*
  * keys_distance
- * used in the penalty and picksplit methods
+ * used in the picksplit methods
  */
 static int
 keys_distance(GBfp *v1, GBfp *v2)
@@ -848,7 +848,15 @@ keys_distance(GBfp *v1, GBfp *v2)
    */
 
   /* weight distance */
+  int dwmin = abs(v1->minWeight - v2->minWeight);
+  int dwmax = abs(v1->maxWeight - v2->maxWeight);
 
+  distance = dwmin;
+  if (dwmax > distance) {
+    distance = dwmax;
+  }
+  
+#if 0
   minw1 = v1->minWeight;
   maxw1 = v1->maxWeight;
     
@@ -878,7 +886,7 @@ keys_distance(GBfp *v1, GBfp *v2)
     /* union bfp data available for both keys */
     distance += bitstringHemDistance(siglen, v1->fp, v2->fp);
   }
-  
+#endif
   return distance;
 }
 
