@@ -831,7 +831,6 @@ merge_key(GBfp *result, GBfp *key)
 static int
 keys_distance(GBfp *v1, GBfp *v2)
 {
-  uint8 *u1, *i1, *u2, *i2;
   int32 minw1, maxw1, minw2, maxw2;
   int distance;
   bool is_all1_v1, is_all1_v2;
@@ -844,9 +843,8 @@ keys_distance(GBfp *v1, GBfp *v2)
 
   /*
    * The computed distance includes contributions coming from
-   * - the (scaled) distance between the weight intervals
+   * - the distance between the weight intervals
    * - the distance between the union bfps
-   * - the distance between the intersection bfps
    */
 
   /* weight distance */
@@ -858,7 +856,6 @@ keys_distance(GBfp *v1, GBfp *v2)
   maxw2 = v2->maxWeight;
 
   distance = abs(minw1 - minw2) + abs(maxw1 - maxw2);
-  distance *= siglen;
 
   is_all1_v1 = GBFP_ALL1(v1);
   is_all1_v2 = GBFP_ALL1(v2);
