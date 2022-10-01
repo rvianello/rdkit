@@ -18,6 +18,7 @@
 #include <GraphMol/RDKitBase.h>
 #include <GraphMol/new_canon.h>
 #include <GraphMol/RDKitQueries.h>
+#include <GraphMol/QueryOps.h>
 #include <GraphMol/Chirality.h>
 #include <GraphMol/MonomerInfo.h>
 #include <GraphMol/FileParsers/FileParsers.h>
@@ -2004,6 +2005,7 @@ TEST_CASE("github #4071: StereoGroups not preserved by RenumberAtoms()",
         "C[C@@H](O)[C@H](C)[C@@H](C)[C@@H](C)O |&3:3,o1:7,&1:1,&2:5,r|"_smiles;
     REQUIRE(mol);
     REQUIRE(mol->getStereoGroups().size() == 4);
+
     std::vector<unsigned int> aindices(mol->getNumAtoms());
     std::iota(aindices.begin(), aindices.end(), 0);
     std::reverse(aindices.begin(), aindices.end());
@@ -2015,7 +2017,7 @@ TEST_CASE("github #4071: StereoGroups not preserved by RenumberAtoms()",
             mol->getStereoGroups()[i].getGroupType());
     }
     CHECK(MolToCXSmiles(*nmol) ==
-          "C[C@@H](O)[C@H](C)[C@@H](C)[C@@H](C)O |o1:1,&1:3,&2:5,&3:7|");
+          "C[C@H]([C@@H](C)[C@@H](C)O)[C@@H](C)O |o1:7,&1:1,&2:2,&3:4|");
   }
 }
 
@@ -2729,6 +2731,76 @@ TEST_CASE("metal hybridization") {
       REQUIRE(m);
       CHECK(m->getAtomWithIdx(1)->getHybridization() ==
             Atom::HybridizationType::SP3D);
+    }
+  }
+}
+
+TEST_CASE(
+    "github #5462: Invalid number of radical electrons calculated for [Pr+4]") {
+  SECTION("as reported") {
+    auto m = "[Pr+4]"_smiles;
+    REQUIRE(m);
+    CHECK(m->getAtomWithIdx(0)->getNumRadicalElectrons() == 0);
+  }
+  SECTION("also reported") {
+    auto m = "[U+5]"_smiles;
+    REQUIRE(m);
+    CHECK(m->getAtomWithIdx(0)->getNumRadicalElectrons() == 0);
+  }
+  SECTION("extreme") {
+    auto m = "[Fe+30]"_smiles;
+    REQUIRE(m);
+    CHECK(m->getAtomWithIdx(0)->getNumRadicalElectrons() == 0);
+  }
+}
+
+TEST_CASE(
+    "github #5505: Running kekulization on mols with query bonds will either fail or return incorrect results") {
+  SECTION("as reported") {
+    auto m = "[#6]-c1cccc(-[#6])c1"_smarts;
+    REQUIRE(m);
+    REQUIRE(m->getBondWithIdx(2)->hasQuery());
+    REQUIRE(m->getBondWithIdx(2)->getBondType() == Bond::BondType::AROMATIC);
+    MolOps::Kekulize(*m);
+    REQUIRE(m->getBondWithIdx(2)->hasQuery());
+    REQUIRE(m->getBondWithIdx(2)->getBondType() == Bond::BondType::AROMATIC);
+  }
+  SECTION("partial kekulization works") {
+    auto m1 = "c1ccccc1"_smiles;
+    REQUIRE(m1);
+    auto m2 = "c1ccccc1"_smarts;
+    REQUIRE(m2);
+    m1->insertMol(*m2);
+    MolOps::findSSSR(*m1);
+    REQUIRE(!m1->getBondWithIdx(1)->hasQuery());
+    REQUIRE(m1->getBondWithIdx(1)->getBondType() == Bond::BondType::AROMATIC);
+    REQUIRE(m1->getBondWithIdx(6)->hasQuery());
+    REQUIRE(m1->getBondWithIdx(6)->getBondType() == Bond::BondType::AROMATIC);
+    MolOps::Kekulize(*m1);
+    REQUIRE(!m1->getBondWithIdx(1)->hasQuery());
+    REQUIRE(m1->getBondWithIdx(1)->getBondType() != Bond::BondType::AROMATIC);
+    REQUIRE(m1->getBondWithIdx(6)->hasQuery());
+    REQUIRE(m1->getBondWithIdx(6)->getBondType() == Bond::BondType::AROMATIC);
+  }
+  SECTION("kekulization with non-bond-type queries works") {
+    auto m1 = "c1ccccc1"_smiles;
+    REQUIRE(m1);
+    QueryBond qbond;
+    qbond.setBondType(Bond::BondType::AROMATIC);
+    qbond.setIsAromatic(true);
+    qbond.setQuery(makeBondIsInRingQuery());
+    m1->replaceBond(0, &qbond);
+    REQUIRE(m1->getBondWithIdx(0)->hasQuery());
+    REQUIRE(m1->getBondWithIdx(0)->getBondType() == Bond::BondType::AROMATIC);
+    MolOps::Kekulize(*m1);
+    REQUIRE(m1->getBondWithIdx(0)->hasQuery());
+    REQUIRE(m1->getBondWithIdx(0)->getBondType() != Bond::BondType::AROMATIC);
+  }
+  SECTION("make sure single-atom molecules and mols without rings still fail") {
+    std::vector<std::string> expectedFailures = {"p", "c:c"};
+    for (const auto &smi : expectedFailures) {
+      INFO(smi);
+      CHECK_THROWS_AS(SmilesToMol(smi), MolSanitizeException);
     }
   }
 }

@@ -27,47 +27,41 @@
 
 namespace RDKit {
 namespace Canon {
+class canon_atom;
 
 struct RDKIT_GRAPHMOL_EXPORT bondholder {
-  Bond::BondType bondType{Bond::UNSPECIFIED};
-  unsigned int bondStereo;
+  Bond::BondType bondType{Bond::BondType::UNSPECIFIED};
+  unsigned int bondStereo{
+      static_cast<unsigned int>(Bond::BondStereo::STEREONONE)};
   unsigned int nbrSymClass{0};
   unsigned int nbrIdx{0};
+  Bond::BondStereo stype{Bond::BondStereo::STEREONONE};
+  const canon_atom *controllingAtoms[4]{nullptr, nullptr, nullptr, nullptr};
   const std::string *p_symbol{
       nullptr};  // if provided, this is used to order bonds
-  bondholder() : bondStereo(static_cast<unsigned int>(Bond::STEREONONE)) {}
+  unsigned int bondIdx{0};
+
+  bondholder(){};
   bondholder(Bond::BondType bt, Bond::BondStereo bs, unsigned int ni,
-             unsigned int nsc)
+             unsigned int nsc, unsigned int bidx)
       : bondType(bt),
         bondStereo(static_cast<unsigned int>(bs)),
         nbrSymClass(nsc),
-        nbrIdx(ni) {}
+        nbrIdx(ni),
+        bondIdx(bidx) {}
   bondholder(Bond::BondType bt, unsigned int bs, unsigned int ni,
-             unsigned int nsc)
-      : bondType(bt), bondStereo(bs), nbrSymClass(nsc), nbrIdx(ni) {}
-  bool operator<(const bondholder &o) const {
-    if (p_symbol && o.p_symbol) {
-      return (*p_symbol) < (*o.p_symbol);
-    }
-    if (bondType != o.bondType) {
-      return bondType < o.bondType;
-    }
-    if (bondStereo != o.bondStereo) {
-      return bondStereo < o.bondStereo;
-    }
-    return nbrSymClass < o.nbrSymClass;
-  }
+             unsigned int nsc, unsigned int bidx)
+      : bondType(bt),
+        bondStereo(bs),
+        nbrSymClass(nsc),
+        nbrIdx(ni),
+        bondIdx(bidx) {}
+
+  int compareStereo(const bondholder &o) const;
+
+  bool operator<(const bondholder &o) const { return compare(*this, o) < 0; }
   static bool greater(const bondholder &lhs, const bondholder &rhs) {
-    if (lhs.p_symbol && rhs.p_symbol && (*lhs.p_symbol) != (*rhs.p_symbol)) {
-      return (*lhs.p_symbol) > (*rhs.p_symbol);
-    }
-    if (lhs.bondType != rhs.bondType) {
-      return lhs.bondType > rhs.bondType;
-    }
-    if (lhs.bondStereo != rhs.bondStereo) {
-      return lhs.bondStereo > rhs.bondStereo;
-    }
-    return lhs.nbrSymClass > rhs.nbrSymClass;
+    return compare(lhs, rhs) > 0;
   }
 
   static int compare(const bondholder &x, const bondholder &y,
@@ -89,7 +83,17 @@ struct RDKIT_GRAPHMOL_EXPORT bondholder {
     } else if (x.bondStereo > y.bondStereo) {
       return 1;
     }
-    return x.nbrSymClass / div - y.nbrSymClass / div;
+    auto scdiv = x.nbrSymClass / div - y.nbrSymClass / div;
+    if (scdiv) {
+      return scdiv;
+    }
+    if (x.bondStereo && y.bondStereo) {
+      auto cs = x.compareStereo(y);
+      if (cs) {
+        return cs;
+      }
+    }
+    return 0;
   }
 };
 class RDKIT_GRAPHMOL_EXPORT canon_atom {
@@ -247,6 +251,37 @@ class RDKIT_GRAPHMOL_EXPORT SpecialSymmetryAtomCompareFunctor {
   }
 };
 
+namespace {
+unsigned int getChiralRank(const ROMol *dp_mol, canon_atom *dp_atoms,
+                           unsigned int i) {
+  unsigned int res = 0;
+  std::vector<unsigned int> perm;
+  perm.reserve(dp_atoms[i].atom->getDegree());
+  for (const auto nbr : dp_mol->atomNeighbors(dp_atoms[i].atom)) {
+    auto rnk = dp_atoms[nbr->getIdx()].index;
+    // make sure we don't have duplicate ranks
+    if (std::find(perm.begin(), perm.end(), rnk) != perm.end()) {
+      break;
+    } else {
+      perm.push_back(rnk);
+    }
+  }
+  if (perm.size() == dp_atoms[i].atom->getDegree()) {
+    auto ctag = dp_atoms[i].atom->getChiralTag();
+    if (ctag == Atom::ChiralType::CHI_TETRAHEDRAL_CW ||
+        ctag == Atom::ChiralType::CHI_TETRAHEDRAL_CCW) {
+      auto sortedPerm = perm;
+      std::sort(sortedPerm.begin(), sortedPerm.end());
+      auto nswaps = countSwapsToInterconvert(perm, sortedPerm);
+      res = ctag == Atom::ChiralType::CHI_TETRAHEDRAL_CW ? 2 : 1;
+      if (nswaps % 2) {
+        res = res == 2 ? 1 : 2;
+      }
+    }
+  }
+  return res;
+}
+}  // namespace
 class RDKIT_GRAPHMOL_EXPORT AtomCompareFunctor {
   unsigned int getAtomRingNbrCode(unsigned int i) const {
     if (!dp_atoms[i].hasRingNbr) {
@@ -264,7 +299,6 @@ class RDKIT_GRAPHMOL_EXPORT AtomCompareFunctor {
   }
 
   int basecomp(int i, int j) const {
-    PRECONDITION(dp_atoms, "no atoms");
     unsigned int ivi, ivj;
 
     // always start with the current class:
@@ -349,20 +383,6 @@ class RDKIT_GRAPHMOL_EXPORT AtomCompareFunctor {
       // first atom stereochem:
       ivi = 0;
       ivj = 0;
-      std::string cipCode;
-      if (dp_atoms[i].atom->getPropIfPresent(common_properties::_CIPCode,
-                                             cipCode)) {
-        ivi = cipCode == "R" ? 2 : 1;
-      }
-      if (dp_atoms[j].atom->getPropIfPresent(common_properties::_CIPCode,
-                                             cipCode)) {
-        ivj = cipCode == "R" ? 2 : 1;
-      }
-      if (ivi < ivj) {
-        return -1;
-      } else if (ivi > ivj) {
-        return 1;
-      }
       // can't actually use values here, because they are arbitrary
       ivi = dp_atoms[i].atom->getChiralTag() != 0;
       ivj = dp_atoms[j].atom->getChiralTag() != 0;
@@ -370,6 +390,20 @@ class RDKIT_GRAPHMOL_EXPORT AtomCompareFunctor {
         return -1;
       } else if (ivi > ivj) {
         return 1;
+      }
+      // stereo set
+      if (ivi && ivj) {
+        if (ivi) {
+          ivi = getChiralRank(dp_mol, dp_atoms, i);
+        }
+        if (ivj) {
+          ivj = getChiralRank(dp_mol, dp_atoms, j);
+        }
+        if (ivi < ivj) {
+          return -1;
+        } else if (ivi > ivj) {
+          return 1;
+        }
       }
     }
 
@@ -409,9 +443,6 @@ class RDKIT_GRAPHMOL_EXPORT AtomCompareFunctor {
         df_useChirality(true),
         df_useChiralityRings(true) {}
   int operator()(int i, int j) const {
-    PRECONDITION(dp_atoms, "no atoms");
-    PRECONDITION(dp_mol, "no molecule");
-    PRECONDITION(i != j, "bad call");
     if (dp_atomsInPlay && !((*dp_atomsInPlay)[i] || (*dp_atomsInPlay)[j])) {
       return 0;
     }
@@ -767,6 +798,24 @@ RDKIT_GRAPHMOL_EXPORT void chiralRankMolAtoms(const ROMol &mol,
 RDKIT_GRAPHMOL_EXPORT void initCanonAtoms(const ROMol &mol,
                                           std::vector<Canon::canon_atom> &atoms,
                                           bool includeChirality = true);
+
+namespace detail {
+void initFragmentCanonAtoms(const ROMol &mol,
+                            std::vector<Canon::canon_atom> &atoms,
+                            bool includeChirality,
+                            const std::vector<std::string> *atomSymbols,
+                            const std::vector<std::string> *bondSymbols,
+                            const boost::dynamic_bitset<> &atomsInPlay,
+                            const boost::dynamic_bitset<> &bondsInPlay,
+                            bool needsInit);
+void freeCanonAtoms(std::vector<Canon::canon_atom> &atoms);
+template <typename T>
+void rankWithFunctor(T &ftor, bool breakTies, int *order,
+                     bool useSpecial = false, bool useChirality = false,
+                     const boost::dynamic_bitset<> *atomsInPlay = nullptr,
+                     const boost::dynamic_bitset<> *bondsInPlay = nullptr);
+
+}  // namespace detail
 
 }  // namespace Canon
 }  // namespace RDKit

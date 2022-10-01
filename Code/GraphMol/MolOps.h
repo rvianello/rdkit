@@ -245,7 +245,10 @@ struct RDKIT_GRAPHMOL_EXPORT RemoveHsParameters {
   bool removeWithWedgedBond = true; /**< hydrogens with wedged bonds to them */
   bool removeWithQuery = false;     /**< hydrogens with queries defined */
   bool removeMapped = true;         /**< mapped hydrogens */
-  bool removeInSGroups = false;     /**< part of a SubstanceGroup */
+  bool removeInSGroups = true;      /**< part of a SubstanceGroup.
+    An H atom will only be removed if it doesn't cause any SGroup to become empty,
+    and if it doesn't play a special role in the SGroup (XBOND, attach point
+    or a CState) */
   bool showWarnings = true; /**< display warnings for Hs that are not removed */
   bool removeNonimplicit = true; /**< DEPRECATED equivalent of !implicitOnly */
   bool updateExplicitCount =
@@ -298,11 +301,13 @@ RDKIT_GRAPHMOL_EXPORT ROMol *removeAllHs(const ROMol &mol,
 
 */
 RDKIT_GRAPHMOL_EXPORT ROMol *mergeQueryHs(const ROMol &mol,
-                                          bool mergeUnmappedOnly = false);
+                                          bool mergeUnmappedOnly = false,
+                                          bool mergeIsotopes = false);
 //! \overload
 /// modifies the molecule in place
 RDKIT_GRAPHMOL_EXPORT void mergeQueryHs(RWMol &mol,
-                                        bool mergeUnmappedOnly = false);
+                                        bool mergeUnmappedOnly = false,
+                                        bool mergeIsotopes = false);
 
 typedef enum {
   ADJUST_IGNORENONE = 0x0,
@@ -419,7 +424,7 @@ RDKIT_GRAPHMOL_EXPORT void adjustQueryProperties(
 RDKIT_GRAPHMOL_EXPORT ROMol *renumberAtoms(
     const ROMol &mol, const std::vector<unsigned int> &newOrder);
 
-//@}
+//! @}
 
 //! \name Sanitization
 /// {
@@ -612,8 +617,10 @@ RDKIT_GRAPHMOL_EXPORT void adjustHs(RWMol &mol);
    double bond if we hit a wall in the kekulization process
 
    <b>Notes:</b>
-     - even if \c markAtomsBonds is \c false the \c BondType for all aromatic
-       bonds will be changed from \c RDKit::Bond::AROMATIC to \c
+     - this does not modify query bonds which have bond type queries (like those
+       which come from SMARTS) or rings containing them.
+     - even if \c markAtomsBonds is \c false the \c BondType for all modified
+       aromatic bonds will be changed from \c RDKit::Bond::AROMATIC to \c
        RDKit::Bond::SINGLE or RDKit::Bond::DOUBLE during Kekulization.
 
 */
@@ -651,10 +658,10 @@ RDKIT_GRAPHMOL_EXPORT void setConjugation(ROMol &mol);
 //! calculates and sets the hybridization of all a molecule's Stoms
 RDKIT_GRAPHMOL_EXPORT void setHybridization(ROMol &mol);
 
-// @}
+//!  @}
 
 //! \name Ring finding and SSSR
-//@{
+//! @{
 
 //! finds a molecule's Smallest Set of Smallest Rings
 /*!
@@ -745,10 +752,10 @@ RDKIT_GRAPHMOL_EXPORT int symmetrizeSSSR(ROMol &mol,
 //! \overload
 RDKIT_GRAPHMOL_EXPORT int symmetrizeSSSR(ROMol &mol);
 
-//@}
+//! @}
 
 //! \name Shortest paths and other matrices
-//@{
+//! @{
 
 //! returns a molecule's adjacency matrix
 /*!
@@ -869,15 +876,15 @@ RDKIT_GRAPHMOL_EXPORT double *get3DDistanceMat(
 RDKIT_GRAPHMOL_EXPORT std::list<int> getShortestPath(const ROMol &mol, int aid1,
                                                      int aid2);
 
-//@}
+//! @}
 
 //! \name Stereochemistry
-//@{
+//! @{
 
 //! removes bogus chirality markers (those on non-sp3 centers):
 RDKIT_GRAPHMOL_EXPORT void cleanupChirality(RWMol &mol);
 
-//! \brief Uses a conformer to assign ChiralType to a molecule's atoms
+//! \brief Uses a conformer to assign ChiralTypes to a molecule's atoms
 /*!
   \param mol                  the molecule of interest
   \param confId               the conformer to use
@@ -885,6 +892,12 @@ RDKIT_GRAPHMOL_EXPORT void cleanupChirality(RWMol &mol);
                               tags will be replaced
 
   If the conformer provided is not a 3D conformer, nothing will be done.
+
+
+  NOTE that this does not check to see if atoms are chiral centers (i.e. all
+  substituents are different), it merely sets the chiral type flags based on the
+  coordinates and atom ordering. Use \c assignStereochemistryFrom3D() if you
+  want chiral flags only on actual stereocenters.
 */
 RDKIT_GRAPHMOL_EXPORT void assignChiralTypesFrom3D(
     ROMol &mol, int confId = -1, bool replaceExistingTags = true);
@@ -922,8 +935,12 @@ RDKIT_GRAPHMOL_EXPORT void detectBondStereochemistry(ROMol &mol,
 //! Sets bond directions based on double bond stereochemistry
 RDKIT_GRAPHMOL_EXPORT void setDoubleBondNeighborDirections(
     ROMol &mol, const Conformer *conf = nullptr);
+//! removes directions from single bonds. Wiggly bonds will have the property
+//! _UnknownStereo set on them
+RDKIT_GRAPHMOL_EXPORT void clearSingleBondDirFlags(ROMol &mol);
 
-//! Assign CIS/TRANS bond stereochemistry tags based on neighboring directions
+//! Assign CIS/TRANS bond stereochemistry tags based on neighboring
+//! directions
 RDKIT_GRAPHMOL_EXPORT void setBondStereoFromDirections(ROMol &mol);
 
 //! Assign stereochemistry tags to atoms (i.e. R/S) and bonds (i.e. Z/E)
@@ -996,7 +1013,7 @@ RDKIT_GRAPHMOL_EXPORT void findPotentialStereoBonds(ROMol &mol,
 RDKIT_GRAPHMOL_EXPORT void assignChiralTypesFromMolParity(
     ROMol &mol, bool replaceExistingTags = true);
 
-//@}
+//! @}
 
 //! returns the number of atoms which have a particular property set
 RDKIT_GRAPHMOL_EXPORT unsigned getNumAtomsWithDistinctProperty(
@@ -1009,7 +1026,7 @@ namespace details {
 //! not recommended for use in other code
 RDKIT_GRAPHMOL_EXPORT void KekulizeFragment(
     RWMol &mol, const boost::dynamic_bitset<> &atomsToUse,
-    const boost::dynamic_bitset<> &bondsToUse, bool markAtomsBonds = true,
+    boost::dynamic_bitset<> bondsToUse, bool markAtomsBonds = true,
     unsigned int maxBackTracks = 100);
 }  // namespace details
 

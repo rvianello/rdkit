@@ -650,8 +650,7 @@ bool adjustStereoAtomsIfRequired(RWMol &mol, const Atom *atom,
 void molRemoveH(RWMol &mol, unsigned int idx, bool updateExplicitCount) {
   auto atom = mol.getAtomWithIdx(idx);
   PRECONDITION(atom->getAtomicNum() == 1, "idx corresponds to a non-Hydrogen");
-  for (const auto &nbri : boost::make_iterator_range(mol.getAtomBonds(atom))) {
-    const Bond *bond = mol[nbri];
+  for (const auto bond : mol.atomBonds(atom)) {
     Atom *heavyAtom = bond->getOtherAtom(atom);
     int heavyAtomNum = heavyAtom->getAtomicNum();
 
@@ -751,7 +750,27 @@ void molRemoveH(RWMol &mol, unsigned int idx, bool updateExplicitCount) {
       // This was part of github #1810
       adjustStereoAtomsIfRequired(mol, atom, heavyAtom);
     }
+
+    // remove the bond from any SGroups that might include it.
+    for (auto &sg : getSubstanceGroups(mol)) {
+      sg.removeBondWithIdx(bond->getIdx());
+    }
   }
+
+  // Finally, remove the atom from any SGroups that might include it, so that
+  // the SGroups don't get removed in removeAtom(). Since we allow removing
+  // SGroup SAP lvidx H atoms, we need to check for those and update them.
+  for (auto &sg : getSubstanceGroups(mol)) {
+    sg.removeAtomWithIdx(idx);
+    sg.removeParentAtomWithIdx(idx);
+
+    for (auto &sap : sg.getAttachPoints()) {
+      if (sap.lvIdx == static_cast<int>(idx)) {
+        sap.lvIdx = -1;
+      }
+    }
+  }
+
   mol.removeAtom(atom);
 }
 
@@ -783,13 +802,46 @@ bool shouldRemoveH(const RWMol &mol, const Atom *atom,
   if (!ps.removeMapped && atom->getAtomMapNum()) {
     return false;
   }
-  if (!ps.removeInSGroups) {
+
+  if (ps.removeInSGroups) {
+    // If removing H in SGroups, do not remove H atoms in special
+    // roles in the SGroup
+    for (const auto &sg : getSubstanceGroups(mol)) {
+      // The H atom is one of the "caps" of the SGroup. Technically,
+      // it's not part of the group, but it defines its boundaries.
+      for (const auto &bond_idx : sg.getBonds()) {
+        if (sg.getBondType(bond_idx) == SubstanceGroup::BondType::XBOND) {
+          auto bond = mol.getBondWithIdx(bond_idx);
+          if (bond->getBeginAtom() == atom || bond->getEndAtom() == atom) {
+            return false;
+          }
+        }
+      }
+
+      for (const auto &sap : sg.getAttachPoints()) {
+        // The H atoms is an attach point. This would be weird, but is possible.
+        // (if it is a 'leaving atom' we don't care, though)
+        if (sap.aIdx == atom->getIdx()) {
+          return false;
+        }
+      }
+
+      for (const auto &cs : sg.getCStates()) {
+        // The bond to the H atom defines a CState
+        auto bond = mol.getBondWithIdx(cs.bondIdx);
+        if (bond->getBeginAtom() == atom || bond->getEndAtom() == atom) {
+          return false;
+        }
+      }
+    }
+  } else {
     for (const auto &sg : getSubstanceGroups(mol)) {
       if (sg.includesAtom(atom->getIdx())) {
         return false;
       }
     }
   }
+
   if (!ps.removeHydrides && atom->getFormalCharge() == -1) {
     return false;
   }
@@ -855,6 +907,40 @@ bool shouldRemoveH(const RWMol &mol, const Atom *atom,
   return removeIt;
 }
 
+// Do not remove H atoms that are part of SGroups that only contain H atoms.
+void filter_sgroup_emptying_hydrogens(const ROMol &mol,
+                                      boost::dynamic_bitset<> &atomsToRemove) {
+  for (const auto &sg : getSubstanceGroups(mol)) {
+    const auto &atoms = sg.getAtoms();
+    const auto &patoms = sg.getParentAtoms();
+
+    // If the SGroup already didn't have atoms, we don't care about it
+    if (atoms.empty() && patoms.empty()) {
+      continue;
+    }
+
+    auto would_remove_atom = [&atomsToRemove](const auto idx) {
+      return atomsToRemove[idx];
+    };
+
+    auto no_atoms = atoms.empty() ||
+                    std::all_of(atoms.begin(), atoms.end(), would_remove_atom);
+    if (no_atoms) {
+      auto no_patoms =
+          patoms.empty() ||
+          std::all_of(patoms.begin(), patoms.end(), would_remove_atom);
+      if (no_patoms) {
+        for (auto atom : atoms) {
+          atomsToRemove.set(atom, false);
+        }
+        for (auto patom : patoms) {
+          atomsToRemove.set(patom, false);
+        }
+      }
+    }
+  }
+}
+
 }  // end of anonymous namespace
 
 void removeHs(RWMol &mol, const RemoveHsParameters &ps, bool sanitize) {
@@ -885,11 +971,19 @@ void removeHs(RWMol &mol, const RemoveHsParameters &ps, bool sanitize) {
     }
   }
   boost::dynamic_bitset<> atomsToRemove{mol.getNumAtoms(), 0};
+
   for (auto atom : mol.atoms()) {
     if (shouldRemoveH(mol, atom, ps)) {
       atomsToRemove.set(atom->getIdx());
     }
   }  // end of the loop over atoms
+
+  // Once we know which H atoms would be removed, filter out those that
+  // would cause any SGroups to become empty
+  if (ps.removeInSGroups) {
+    filter_sgroup_emptying_hydrogens(mol, atomsToRemove);
+  }
+
   // now that we know which atoms need to be removed, go ahead and remove them
   // NOTE: there's too much complexity around stereochemistry here
   // to be able to safely use batch editing.
@@ -1043,7 +1137,7 @@ bool isQueryH(const Atom *atom) {
 //   - By default all hydrogens are removed, however if
 //     merge_unmapped_only is true, any hydrogen participating
 //     in an atom map will be retained
-void mergeQueryHs(RWMol &mol, bool mergeUnmappedOnly) {
+void mergeQueryHs(RWMol &mol, bool mergeUnmappedOnly, bool mergeIsotopes) {
   std::vector<unsigned int> atomsToRemove;
 
   boost::dynamic_bitset<> hatoms(mol.getNumAtoms());
@@ -1061,8 +1155,11 @@ void mergeQueryHs(RWMol &mol, bool mergeUnmappedOnly) {
       while (begin != end) {
         if (hatoms[*begin]) {
           Atom &bgn = *mol.getAtomWithIdx(*begin);
-          if (!mergeUnmappedOnly ||
-              !bgn.hasProp(common_properties::molAtomMapNumber)) {
+          bool checkUnmapped =
+              !mergeUnmappedOnly ||
+              !bgn.hasProp(common_properties::molAtomMapNumber);
+          bool checkIsotope = mergeIsotopes || bgn.getIsotope() == 0;
+          if (checkUnmapped && checkIsotope) {
             atomsToRemove.push_back(rdcast<unsigned int>(*begin));
             ++numHsToRemove;
           }
@@ -1107,7 +1204,7 @@ void mergeQueryHs(RWMol &mol, bool mergeUnmappedOnly) {
           auto *rsq = dynamic_cast<RecursiveStructureQuery *>(atom->getQuery());
           CHECK_INVARIANT(rsq, "could not convert recursive structure query");
           RWMol *rqm = new RWMol(*rsq->getQueryMol());
-          mergeQueryHs(*rqm, mergeUnmappedOnly);
+          mergeQueryHs(*rqm, mergeUnmappedOnly, mergeIsotopes);
           rsq->setQueryMol(rqm);
         }
 
@@ -1121,7 +1218,7 @@ void mergeQueryHs(RWMol &mol, bool mergeUnmappedOnly) {
             auto *rsq = dynamic_cast<RecursiveStructureQuery *>(qry.get());
             CHECK_INVARIANT(rsq, "could not convert recursive structure query");
             RWMol *rqm = new RWMol(*rsq->getQueryMol());
-            mergeQueryHs(*rqm, mergeUnmappedOnly);
+            mergeQueryHs(*rqm, mergeUnmappedOnly, mergeIsotopes);
             rsq->setQueryMol(rqm);
           } else if (qry->beginChildren() != qry->endChildren()) {
             childStack.insert(childStack.end(), qry->beginChildren(),
@@ -1138,9 +1235,9 @@ void mergeQueryHs(RWMol &mol, bool mergeUnmappedOnly) {
   }
   mol.commitBatchEdit();
 };
-ROMol *mergeQueryHs(const ROMol &mol, bool mergeUnmappedOnly) {
+ROMol *mergeQueryHs(const ROMol &mol, bool mergeUnmappedOnly, bool mergeIsotopes) {
   auto *res = new RWMol(mol);
-  mergeQueryHs(*res, mergeUnmappedOnly);
+  mergeQueryHs(*res, mergeUnmappedOnly, mergeIsotopes);
   return static_cast<ROMol *>(res);
 };
 

@@ -7,7 +7,7 @@
 //  which is included in the file license.txt, found at the root
 //  of the RDKit source tree.
 //
-#ifdef RDK_THREADSAFE_SSS
+#ifdef RDK_BUILD_THREADSAFE_SSS
 #ifndef CONCURRENT_QUEUE
 #define CONCURRENT_QUEUE
 #include <condition_variable>
@@ -26,11 +26,11 @@ class ConcurrentQueue {
   std::condition_variable d_notEmpty, d_notFull;
 
  private:
-  ConcurrentQueue<E>(const ConcurrentQueue<E>&);
-  ConcurrentQueue<E>& operator=(const ConcurrentQueue<E>&);
+  ConcurrentQueue(const ConcurrentQueue<E>&);
+  ConcurrentQueue& operator=(const ConcurrentQueue<E>&);
 
  public:
-  ConcurrentQueue<E>(unsigned int capacity)
+  ConcurrentQueue(unsigned int capacity)
       : d_capacity(capacity), d_done(false), d_head(0), d_tail(0) {
     std::vector<E> elements(capacity);
     d_elements = elements;

@@ -46,6 +46,10 @@ RDKIT_GRAPHMOL_EXPORT extern bool
     useLegacyStereoPerception;  //!< Toggle usage of the legacy stereo
                                 //!< perception code
 
+RDKIT_GRAPHMOL_EXPORT extern bool
+    useLegacyStereoPerception;  //!< Toggle usage of the legacy stereo
+                                //!< perception code
+
 /// @cond
 /*!
   \param mol the molecule to be altered
@@ -140,6 +144,10 @@ RDKIT_GRAPHMOL_EXPORT std::vector<StereoInfo> findPotentialStereo(
 //! removes atoms without specified chirality from stereo groups
 RDKIT_GRAPHMOL_EXPORT void cleanupStereoGroups(ROMol &mol);
 
+//! calls the approximate legacy code for assigning CIP labels
+RDKIT_GRAPHMOL_EXPORT void assignLegacyCIPLabels(
+    ROMol &mol, bool flagPossibleStereoCenters = false);
+
 /// @cond
 namespace detail {
 RDKIT_GRAPHMOL_EXPORT bool isAtomPotentialNontetrahedralCenter(
@@ -158,7 +166,7 @@ RDKIT_GRAPHMOL_EXPORT unsigned int getAtomNonzeroDegree(const Atom *atom);
 RDKIT_GRAPHMOL_EXPORT INT_VECT findStereoAtoms(const Bond *bond);
 
 //! \name Non-tetrahedral stereochemistry
-//@{
+//! @{
 RDKIT_GRAPHMOL_EXPORT bool hasNonTetrahedralStereo(const Atom *center);
 RDKIT_GRAPHMOL_EXPORT Bond *getChiralAcrossBond(const Atom *center,
                                                 const Bond *qry);
@@ -168,14 +176,14 @@ RDKIT_GRAPHMOL_EXPORT Atom *getChiralAcrossAtom(const Atom *center,
                                                 const Bond *qry);
 RDKIT_GRAPHMOL_EXPORT Atom *getChiralAcrossAtom(const Atom *center,
                                                 const Atom *qry);
-// \param which: if this is -1 then the second axial bond will be returned,
-// otherwise the first
+//! \param which: if this is -1 then the second axial bond will be returned,
+//! otherwise the first
 RDKIT_GRAPHMOL_EXPORT Bond *getTrigonalBipyramidalAxialBond(const Atom *center,
                                                             int which = 0);
 RDKIT_GRAPHMOL_EXPORT Atom *getTrigonalBipyramidalAxialAtom(const Atom *center,
                                                             int which = 0);
 
-// \returns 1 if it's the first axial atom, -1 if it's the second
+//! \returns 1 if it's the first axial atom, -1 if it's the second
 RDKIT_GRAPHMOL_EXPORT int isTrigonalBipyramidalAxialBond(const Atom *center,
                                                          const Bond *qry);
 RDKIT_GRAPHMOL_EXPORT int isTrigonalBipyramidalAxialAtom(const Atom *center,
@@ -187,7 +195,12 @@ RDKIT_GRAPHMOL_EXPORT double getIdealAngleBetweenLigands(const Atom *center,
 
 RDKIT_GRAPHMOL_EXPORT unsigned int getChiralPermutation(const Atom *center,
                                                         const INT_LIST &probe);
-//@}
+//! @}
+
+RDKIT_GRAPHMOL_EXPORT std::ostream &operator<<(std::ostream &oss,
+                                               const StereoSpecified &s);
+RDKIT_GRAPHMOL_EXPORT std::ostream &operator<<(std::ostream &oss,
+                                               const StereoType &s);
 
 }  // namespace Chirality
 }  // namespace RDKit

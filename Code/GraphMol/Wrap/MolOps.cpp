@@ -305,10 +305,11 @@ ROMol *addHs(const ROMol &orig, bool explicitOnly, bool addCoords,
                              addResidueInfo);
   return res;
 }
-int getSSSR(ROMol &mol) {
+
+VECT_INT_VECT getSSSR(ROMol &mol) {
   VECT_INT_VECT rings;
-  int nr = MolOps::findSSSR(mol, rings);
-  return nr;
+  MolOps::findSSSR(mol, rings);
+  return rings;
 }
 
 PyObject *replaceSubstructures(const ROMol &orig, const ROMol &query,
@@ -1236,8 +1237,9 @@ struct molops_wrapper {
                 "Returns a copy of the molecule with all Hs removed.",
                 python::return_value_policy<python::manage_new_object>());
     python::def("MergeQueryHs",
-                (ROMol * (*)(const ROMol &, bool)) & MolOps::mergeQueryHs,
-                (python::arg("mol"), python::arg("mergeUnmappedOnly") = false),
+                (ROMol * (*)(const ROMol &, bool, bool)) & MolOps::mergeQueryHs,
+                (python::arg("mol"), python::arg("mergeUnmappedOnly") = false, 
+                 python::arg("mergeIsotopes") = false),
                 "merges hydrogens into their neighboring atoms as queries",
                 python::return_value_policy<python::manage_new_object>());
 
@@ -1319,19 +1321,24 @@ struct molops_wrapper {
   NOTES:\n\
 \n\
     - The original molecule is *not* modified.\n\
+    - A bond is only formed to the remaining atoms, if any, that were bonded \n\
+      to the first atom in the substructure query. (For finer control over\n\
+      substructure replacement, consider using ChemicalReaction.)\n\
 \n\
   EXAMPLES:\n\
 \n\
    The following examples substitute SMILES/SMARTS strings for molecules, you'd have\n\
    to actually use molecules:\n\
 \n\
-    - ReplaceSubstructs('CCOC','OC','NC') -> ('CCNC',)\n\
+    - ReplaceSubstructs('CCOC','O[CH3]','NC') -> ('CCNC',)\n\
 \n\
-    - ReplaceSubstructs('COCCOC','OC','NC') -> ('COCCNC','CNCCOC')\n\
+    - ReplaceSubstructs('COCCOC','O[CH3]','NC') -> ('COCCNC','CNCCOC')\n\
 \n\
-    - ReplaceSubstructs('COCCOC','OC','NC',True) -> ('CNCCNC',)\n\
+    - ReplaceSubstructs('COCCOC','O[CH3]','NC',True) -> ('CNCCNC',)\n\
 \n\
-    - ReplaceSubstructs('COCCOC','OC','CN',True,1) -> ('CNCCNC',)\n\
+    - ReplaceSubstructs('COCCOC','O[CH3]','CN',True,1) -> ('CNCCNC',)\n\
+\n\
+    - ReplaceSubstructs('CCOC','[CH3]O','NC') -> ('CC.CN',)\n\
 \n";
     python::def("ReplaceSubstructs", replaceSubstructures,
                 (python::arg("mol"), python::arg("query"),
@@ -1489,20 +1496,28 @@ to the terminal dummy atoms.\n\
 
     // ------------------------------------------------------------------------
     docString =
-        "Kekulizes the molecule\n\
-\n\
-  ARGUMENTS:\n\
-\n\
-    - mol: the molecule to use\n\
-\n\
-    - clearAromaticFlags: (optional) if this toggle is set, all atoms and bonds in the \n\
-      molecule will be marked non-aromatic following the kekulization.\n\
-      Default value is False.\n\
-\n\
-  NOTES:\n\
-\n\
-    - The molecule is modified in place.\n\
-\n";
+        R"DOC(Kekulizes the molecule
+
+  ARGUMENTS:
+
+    - mol: the molecule to use
+
+    - clearAromaticFlags: (optional) if this toggle is set, all atoms and bonds in the
+      molecule will be marked non-aromatic following the kekulization.
+      Default value is False.
+
+  NOTES:
+
+    - The molecule is modified in place.
+
+    - this does not modify query bonds which have bond type queries (like those
+      which come from SMARTS) or rings containing them.
+
+    - even if clearAromaticFlags is False the BondType for all modified
+      aromatic bonds will be changed from AROMATIC to SINGLE or DOUBLE
+      Kekulization.
+
+)DOC";
     python::def("Kekulize", kekulizeMol,
                 (python::arg("mol"), python::arg("clearAromaticFlags") = false),
                 docString.c_str());
@@ -1941,6 +1956,10 @@ to the terminal dummy atoms.\n\
     docString =
         "Sets the chiral tags on a molecule's atoms based on\n\
   a 3D conformation.\n\
+  NOTE that this does not check to see if atoms are chiral centers (i.e. all\n\
+  substituents are different), it merely sets the chiral type flags based on the\n\
+  coordinates and atom ordering. Use AssignStereochemistryFrom3D() if you\n\
+  want chiral flags only on actual stereocenters.\n\
 \n\
   ARGUMENTS:\n\
 \n\
@@ -2221,6 +2240,17 @@ ARGUMENTS:\n\
 \n";
     python::def("WedgeMolBonds", WedgeMolBonds, docString.c_str());
 
+    docString =
+        "Set the wedging to that which was read from the original\n\
+     MolBlock, over-riding anything that was originally there.\n\
+\n\
+          ARGUMENTS:\n\
+        \n\
+            - molecule: the molecule to update\n\
+        \n\
+        \n";
+    python::def("ReapplyMolBlockWedging", reapplyMolBlockWedging,
+                docString.c_str());
     docString =
         R"DOC(Constants used to set the thresholds for which single bonds can be made wavy.)DOC";
     python::class_<StereoBondThresholds>("StereoBondThresholds",
