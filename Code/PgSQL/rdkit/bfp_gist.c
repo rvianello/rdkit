@@ -33,6 +33,7 @@
 #include <fmgr.h>
 #include <access/gist.h>
 #include <access/skey.h>
+#include <utils/sortsupport.h>
 #include <utils/memutils.h>
 
 #include <math.h>
@@ -684,6 +685,34 @@ gbfp_fetch(PG_FUNCTION_ARGS)
   PG_RETURN_POINTER(retval);
 }
 
+
+/*
+ * Sortsupport method
+ *
+ * Returns a comparator function to sort data in a way that preserves locality.
+ */
+static int
+gbfp_cmp(Datum x, Datum y, SortSupport ssup)
+{
+  /* establish order between x and y */
+  GBfp *gbfp1 = (GBfp *)DatumGetPointer(PG_DETOAST_DATUM(x));
+  GBfp *gbfp2 = (GBfp *)DatumGetPointer(PG_DETOAST_DATUM(y));
+
+  int siglen = GBFP_LEAF_SIGLEN(gbfp1);
+  Assert(siglen == GBFP_LEAF_SIGLEN(gbfp2));
+
+  return bitstringGrayCmp(siglen, GET_LEAF_DATA(gbfp1)->fp, GET_LEAF_DATA(gbfp2)->fp);
+}
+
+PGDLLEXPORT Datum  gbfp_sortsupport(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(gbfp_sortsupport);
+Datum
+gbfp_sortsupport(PG_FUNCTION_ARGS)
+{
+  SortSupport ssup = (SortSupport) PG_GETARG_POINTER(0);
+  ssup->comparator = gbfp_cmp;
+  PG_RETURN_VOID();
+}
 
 
 /* utility functions */

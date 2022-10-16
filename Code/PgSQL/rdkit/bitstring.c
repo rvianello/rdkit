@@ -504,3 +504,40 @@ void bitstringRandomSubset(int length,
   pfree(bits);
 }
 
+int bitstringGrayCmp(int length, uint8 *bstr1, uint8 *bstr2)
+{
+  // which digit represents a higher value, 0 or 1 ?
+  // 1 > 0 initially, it then changes depending on which
+  // values are encountered
+  uint8 higher = 1;
+
+  const uint8 *bstr1_end = bstr1 + length;
+
+  while (bstr1 < bstr1_end) {
+    const uint8 bytea = *bstr1++;
+    const uint8 byteb = *bstr2++;
+    if (bytea == byteb) {
+      // if the number of 1s in ba is odd, higher needs to be flipped
+      higher ^= (1 & number_of_ones[bytea]);
+    }
+    else {
+      uint8 mask = 0x80;
+      while (mask) {
+        uint8 bita = (bytea & mask) ? 1 : 0;
+        uint8 bitb = (byteb & mask) ? 1 : 0;
+        if (bita != bitb) {
+          return (bita == higher) ? 1 : -1;
+        }
+        else {
+          // flip higher if bita is 1
+          higher ^= bita;
+        }
+        mask >>= 1;
+      }
+      Assert(!"It should never get here if bytea != byteb");
+    }
+  }
+
+  // same bfp value
+  return 0;
+}

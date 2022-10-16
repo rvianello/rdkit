@@ -1655,6 +1655,11 @@ CREATE OR REPLACE FUNCTION gbfp_fetch(internal)
     AS 'MODULE_PATHNAME'
     LANGUAGE C IMMUTABLE STRICT;
 
+CREATE OR REPLACE FUNCTION gbfp_sortsupport(internal)
+    RETURNS void
+    AS 'MODULE_PATHNAME'
+    LANGUAGE C STRICT;
+
 -- Support functions for sfp gist
 
 CREATE OR REPLACE FUNCTION gsfp_consistent(bytea,internal,int4)
