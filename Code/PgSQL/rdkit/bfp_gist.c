@@ -696,7 +696,9 @@ gbfp_cmp(Datum x, Datum y, SortSupport ssup)
 {
   /* establish order between x and y */
   GBfp *gbfp1 = (GBfp *)DatumGetPointer(PG_DETOAST_DATUM(x));
+  Assert(IS_LEAF_KEY(gbfp1));
   GBfp *gbfp2 = (GBfp *)DatumGetPointer(PG_DETOAST_DATUM(y));
+  Assert(IS_LEAF_KEY(gbfp2));
 
   int siglen = GBFP_LEAF_SIGLEN(gbfp1);
   Assert(siglen == GBFP_LEAF_SIGLEN(gbfp2));
