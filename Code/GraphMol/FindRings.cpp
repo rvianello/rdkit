@@ -67,6 +67,15 @@ void convertToBonds(const VECT_INT_VECT &res, VECT_INT_VECT &brings,
 
 }  // end of namespace RingUtils
 
+namespace RDKit {
+namespace {
+bool bondIsDative(const RDKit::Bond &bond) {
+  auto bt = bond.getBondType();
+  return bt == Bond::BondType::DATIVE || bt == Bond::BondType::DATIVEL ||
+         bt == Bond::BondType::DATIVER || bt == Bond::BondType::DATIVEONE;
+}
+}  // namespace
+}  // namespace RDKit
 namespace FindRings {
 using namespace RDKit;
 
@@ -235,6 +244,9 @@ void removeExtraRings(VECT_INT_VECT &res, unsigned int, const ROMol &mol) {
   boost::dynamic_bitset<> keepRings(res.size());
   boost::dynamic_bitset<> munion(mol.getNumBonds());
 
+  // optimization - don't reallocate a new one each loop
+  boost::dynamic_bitset<> workspace(mol.getNumBonds());
+
   for (unsigned int i = 0; i < res.size(); ++i) {
     // skip this ring if we've already seen all of its bonds
     if (bitBrings[i].is_subset_of(munion)) {
@@ -258,20 +270,20 @@ void removeExtraRings(VECT_INT_VECT &res, unsigned int, const ROMol &mol) {
       }
     }
 
-    // std::cerr<<">>> "<<i<<" "<<consider.count()<<std::endl;
-    while (consider.count()) {
+    while (consider.any()) {
       unsigned int bestJ = i + 1;
       int bestOverlap = -1;
       // loop over the available other rings in consideration and pick the one
       // that has the most overlapping bonds with what we've done so far.
       // this is the fix to github #526
       for (unsigned int j = i + 1;
-           j < res.size() && bitBrings[j].count() == bitBrings[i].count();
-           ++j) {
+           j < res.size() && brings[j].size() == brings[i].size(); ++j) {
         if (!consider[j] || !availRings[j]) {
           continue;
         }
-        int overlap = rdcast<int>((bitBrings[j] & munion).count());
+        workspace = bitBrings[j];
+        workspace &= munion;
+        int overlap = rdcast<int>(workspace.count());
         if (overlap > bestOverlap) {
           bestOverlap = overlap;
           bestJ = j;
@@ -844,25 +856,21 @@ bool findRingConnectingAtoms(const ROMol &tMol, const Bond *bond,
 
 namespace RDKit {
 namespace MolOps {
-int findSSSR(const ROMol &mol, VECT_INT_VECT *res) {
+int findSSSR(const ROMol &mol, VECT_INT_VECT *res, bool includeDativeBonds) {
   if (!res) {
     VECT_INT_VECT rings;
-    return findSSSR(mol, rings);
+    return findSSSR(mol, rings, includeDativeBonds);
   } else {
-    return findSSSR(mol, (*res));
+    return findSSSR(mol, (*res), includeDativeBonds);
   }
 }
 
-int findSSSR(const ROMol &mol, VECT_INT_VECT &res) {
+int findSSSR(const ROMol &mol, VECT_INT_VECT &res, bool includeDativeBonds) {
   res.resize(0);
-  // check if SSSR's are already on the molecule
   if (mol.getRingInfo()->isInitialized()) {
-    res = mol.getRingInfo()->atomRings();
-    return rdcast<int>(res.size());
-  } else {
-    mol.getRingInfo()->initialize();
+    mol.getRingInfo()->reset();
   }
-
+  mol.getRingInfo()->initialize();
   RINGINVAR_SET invars;
 
   unsigned int nats = mol.getNumAtoms();
@@ -872,12 +880,14 @@ int findSSSR(const ROMol &mol, VECT_INT_VECT &res) {
   boost::dynamic_bitset<> activeBonds(nbnds);
   activeBonds.set();
 
-  // Zero-order bonds are not candidates for rings
+  // Zero-order bonds are not candidates for rings, and dative bonds may also be
+  // out
   ROMol::EDGE_ITER firstB, lastB;
   boost::tie(firstB, lastB) = mol.getEdges();
   while (firstB != lastB) {
     const Bond *bond = mol[*firstB];
-    if (bond->getBondType() == Bond::ZERO) {
+    if (bond->getBondType() == Bond::ZERO ||
+        (!includeDativeBonds && bondIsDative(*bond))) {
       activeBonds[bond->getIdx()] = 0;
     }
     ++firstB;
@@ -893,14 +903,11 @@ int findSSSR(const ROMol &mol, VECT_INT_VECT &res) {
     int deg = atom->getDegree();
     atomDegrees[i] = deg;
     atomDegreesWithZeroOrderBonds[i] = deg;
-    ROMol::OEDGE_ITER beg, end;
-    boost::tie(beg, end) = mol.getAtomBonds(atom);
-    while (beg != end) {
-      const Bond *bond = mol[*beg];
-      if (bond->getBondType() == Bond::ZERO) {
+    for (const auto bond : mol.atomBonds(atom)) {
+      if (bond->getBondType() == Bond::ZERO ||
+          (!includeDativeBonds && bondIsDative(*bond))) {
         atomDegrees[i]--;
       }
-      ++beg;
     }
   }
 
@@ -1118,22 +1125,18 @@ int findSSSR(const ROMol &mol, VECT_INT_VECT &res) {
   return rdcast<int>(res.size());
 }
 
-int symmetrizeSSSR(ROMol &mol) {
+int symmetrizeSSSR(ROMol &mol, bool includeDativeBonds) {
   VECT_INT_VECT tmp;
-  return symmetrizeSSSR(mol, tmp);
+  return symmetrizeSSSR(mol, tmp, includeDativeBonds);
 };
 
-int symmetrizeSSSR(ROMol &mol, VECT_INT_VECT &res) {
+int symmetrizeSSSR(ROMol &mol, VECT_INT_VECT &res, bool includeDativeBonds) {
   res.clear();
   VECT_INT_VECT sssrs;
 
   // FIX: need to set flag here the symmetrization has been done in order to
   // avoid repeating this work
-  if (!mol.getRingInfo()->isInitialized()) {
-    findSSSR(mol, sssrs);
-  } else {
-    sssrs = mol.getRingInfo()->atomRings();
-  }
+  findSSSR(mol, sssrs, includeDativeBonds);
 
   res.reserve(sssrs.size());
   for (const auto &r : sssrs) {
@@ -1262,13 +1265,12 @@ void _DFS(const ROMol &mol, const Atom *atom, INT_VECT &atomColors,
 }
 }  // end of anonymous namespace
 void fastFindRings(const ROMol &mol) {
-  // std::cerr<<"ffr"<<std::endl;
-  // check if SSSR's are already on the molecule
   if (mol.getRingInfo()->isInitialized()) {
-    return;
-  } else {
-    mol.getRingInfo()->initialize();
+    mol.getRingInfo()->reset();
   }
+
+  mol.getRingInfo()->initialize();
+
   VECT_INT_VECT res;
   res.resize(0);
 

@@ -44,7 +44,6 @@
 #include <memory>
 
 #include <boost/lexical_cast.hpp>
-#include <boost/tuple/tuple_comparison.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/format.hpp>
 
@@ -82,8 +81,14 @@ void MolDraw2D::drawMolecule(const ROMol &mol, const std::string &legend,
                              const std::map<int, double> *highlight_radii,
                              int confId) {
   setupTextDrawer();
+  // we need ring info for drawing, so copy the molecule
+  // in order to add it
+  ROMol lmol(mol);
+  if (!lmol.getRingInfo()->isInitialized()) {
+    MolOps::symmetrizeSSSR(lmol);
+  }
   drawMols_.emplace_back(new MolDraw2D_detail::DrawMol(
-      mol, legend, panelWidth(), panelHeight(), drawOptions(), *text_drawer_,
+      lmol, legend, panelWidth(), panelHeight(), drawOptions(), *text_drawer_,
       highlight_atoms, highlight_bonds, highlight_atom_map, highlight_bond_map,
       nullptr, highlight_radii, supportsAnnotations(), confId));
   drawMols_.back()->setOffsets(x_offset_, y_offset_);
@@ -448,23 +453,16 @@ void MolDraw2D::drawWavyLine(const Point2D &cds1, const Point2D &cds2,
 void MolDraw2D::drawArrow(const Point2D &arrowBegin, const Point2D &arrowEnd,
                           bool asPolygon, double frac, double angle,
                           const DrawColour &col, bool rawCoords) {
-  auto delta = arrowBegin - arrowEnd;
-  double cos_angle = std::cos(angle), sin_angle = std::sin(angle);
+  Point2D ae(arrowEnd), p1, p2;
+  MolDraw2D_detail::calcArrowHead(ae, p1, p2, arrowBegin, asPolygon, frac,
+                                  angle);
 
-  auto p1 = arrowEnd;
-  p1.x += frac * (delta.x * cos_angle + delta.y * sin_angle);
-  p1.y += frac * (delta.y * cos_angle - delta.x * sin_angle);
-
-  auto p2 = arrowEnd;
-  p2.x += frac * (delta.x * cos_angle - delta.y * sin_angle);
-  p2.y += frac * (delta.y * cos_angle + delta.x * sin_angle);
-
-  drawLine(arrowBegin, arrowEnd, col, col, rawCoords);
+  drawLine(arrowBegin, ae, col, col, rawCoords);
   if (!asPolygon) {
-    drawLine(arrowEnd, p1, col, col, rawCoords);
-    drawLine(arrowEnd, p2, col, col, rawCoords);
+    drawLine(ae, p1, col, col, rawCoords);
+    drawLine(ae, p2, col, col, rawCoords);
   } else {
-    std::vector<Point2D> pts = {p1, arrowEnd, p2};
+    std::vector<Point2D> pts = {p1, ae, p2};
     bool fps = fillPolys();
     auto dc = colour();
     setFillPolys(true);
@@ -782,10 +780,16 @@ void MolDraw2D::setActiveAtmIdx(int at_idx1, int at_idx2) {
 void MolDraw2D::fixVariableDimensions(
     const MolDraw2D_detail::DrawMol &drawMol) {
   if (panel_width_ == -1) {
-    width_ = panel_width_ = drawMol.width_;
+    width_ = drawMol.width_;
+    if (!flexiMode_) {
+      panel_width_ = width_;
+    }
   }
   if (panel_height_ == -1) {
-    height_ = panel_height_ = drawMol.height_;
+    height_ = drawMol.height_;
+    if (!flexiMode_) {
+      panel_height_ = height_;
+    }
   }
 }
 
@@ -899,12 +903,8 @@ void MolDraw2D::makeReactionDrawMol(
     std::vector<std::shared_ptr<MolDraw2D_detail::DrawMol>> &mols) {
   mol.updatePropertyCache(false);
   if (drawOptions().prepareMolsBeforeDrawing) {
-    try {
-      RDLog::LogStateSetter blocker;
-      MolOps::Kekulize(mol, false);  // kekulize, but keep the aromatic flags!
-    } catch (const MolSanitizeException &) {
-      // don't need to do anything
-    }
+    RDLog::LogStateSetter blocker;
+    MolOps::KekulizeIfPossible(mol, false);
     MolOps::setHybridization(mol);
   }
   if (!mol.getNumConformers()) {
@@ -1171,6 +1171,22 @@ void MolDraw2D::setupTextDrawer() {
     BOOST_LOG(rdWarningLog) << "Falling back to original font file "
                             << text_drawer_->getFontFile() << "." << std::endl;
   }
+}
+
+std::pair<int, int> MolDraw2D::getMolSize(
+    const ROMol &mol, const std::string &legend,
+    const std::vector<int> *highlight_atoms,
+    const std::vector<int> *highlight_bonds,
+    const std::map<int, DrawColour> *highlight_atom_map,
+    const std::map<int, DrawColour> *highlight_bond_map,
+    const std::map<int, double> *highlight_radii, int confId) {
+  setupTextDrawer();
+  MolDraw2D_detail::DrawMol dm(
+      mol, legend, panelWidth(), panelHeight(), drawOptions(), *text_drawer_,
+      highlight_atoms, highlight_bonds, highlight_atom_map, highlight_bond_map,
+      nullptr, highlight_radii, supportsAnnotations(), confId);
+  dm.createDrawObjects();
+  return std::make_pair(dm.width_, dm.height_);
 }
 
 }  // namespace RDKit

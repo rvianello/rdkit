@@ -125,7 +125,7 @@ public class Chemv2Tests extends GraphMolTest {
         ROMol m = RWMol.MolFromSmiles("C[C@H]1CO1");
         Atom a0 = m.getAtomWithIdx(0);
         Int_Point2D_Map coords = new Int_Point2D_Map();
-        coords.set((int) a0.getIdx(), new Point2D(1.0, 1.5));
+        coords.set((int)a0.getIdx(), new Point2D(1.0, 1.5));
         RDKFuncs.setPreferCoordGen(false);
         long confIdx = m.compute2DCoords(coords);
         Conformer c = m.getConformer((int) confIdx);
@@ -139,7 +139,13 @@ public class Chemv2Tests extends GraphMolTest {
         template.compute2DCoords();
         ROMol m = RWMol.MolFromSmiles("c1cccc2ncn3cccc3c21");
         ROMol patt = RWMol.MolFromSmarts("*1****2*1***2");
-        m.generateDepictionMatching2DStructure(template,-1,patt);
+        Match_Vect mv = m.generateDepictionMatching2DStructure(template,-1,patt);
+        assertTrue(mv.size() == 9);
+        int[] expected = new int[]{ 6, 5, 4, 12, 11, 7, 8, 9, 10 };
+        for (int i = 0; i < mv.size(); ++i) {
+            assertTrue(mv.get(i).getFirst() == i);
+            assertTrue(mv.get(i).getSecond() == expected[i]);
+        }
 
         // System.out.print(template.MolToMolBlock());
         // System.out.print(m.MolToMolBlock());
@@ -461,7 +467,9 @@ public class Chemv2Tests extends GraphMolTest {
         assertTrue(svg.indexOf("fill:#FF00FF;") > -1);
         assertTrue(svg.indexOf("fill:#00FFFF;") > -1);
         // default line color:
-        assertTrue(svg.indexOf("stroke:#FF7F7F;") > -1);
+        assertTrue(svg.indexOf("stroke:#FF7F7F;") == -1);
+        assertTrue(svg.indexOf("stroke:#FFFF00;") > -1);
+        assertTrue(svg.indexOf("stroke:#FF00FF;") > -1);
     }
 
     @Test
@@ -487,6 +495,204 @@ public class Chemv2Tests extends GraphMolTest {
         System.out.print(svg);
     }
 
+    @Test
+    public void testStrictParsing() {
+        String badMolBlock = "\n" +
+            "  MJ201100                      \n" +
+            "\n" +
+            "  3  2  0  0  0  0  0  0  0  0999 V2000\n" +
+            "   -0.3572   -0.2062    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n" +
+            "    0.3572    0.2062    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n" +
+            "    1.0717    0.6187    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0\n" +
+            "  1  2  1  0  0  0  0\n" +
+            "  2  3  3  0  0  0  0\n" +
+            "M  STY  1   1 SUP\n" +
+            "M  SAL   1  2   2   3\n" +
+            "M  SMT   1 CN\n" +
+            "M  SBL   1  1   1\n" +
+            "M  SAP   1  1   2\n" +
+            "M  END\n";
+        boolean exceptionThrown = false;
+        boolean molIsValid = false;
+        ROMol mol = null;
+        try {
+            mol = RWMol.MolFromMolBlock(badMolBlock);
+        } catch(Exception e) {
+            exceptionThrown = true;
+        } finally {
+            if (mol != null) {
+                molIsValid = true;
+                mol.delete();
+            }
+        }
+        assertTrue(exceptionThrown);
+        assertFalse(molIsValid);
+        exceptionThrown = false;
+        try {
+            mol = RWMol.MolFromMolBlock(badMolBlock, true, true, false);
+        } catch(Exception e) {
+            exceptionThrown = true;
+        } finally {
+            if (mol != null) {
+                molIsValid = true;
+                mol.delete();
+            }
+        }
+        assertFalse(exceptionThrown);
+        assertTrue(molIsValid);
+    }
+
+    @Test
+    public void testMostSubstitutedCoreMatch() {
+        RWMol core = RWMol.MolFromSmarts("[*:1]c1cc([*:2])ccc1[*:3]");
+        RWMol orthoMeta = RWMol.MolFromSmiles("c1ccc(-c2ccc(-c3ccccc3)c(-c3ccccc3)c2)cc1");
+        RWMol ortho = RWMol.MolFromSmiles("c1ccc(-c2ccccc2-c2ccccc2)cc1");
+        RWMol meta = RWMol.MolFromSmiles("c1ccc(-c2cccc(-c3ccccc3)c2)cc1");
+        RWMol biphenyl = RWMol.MolFromSmiles("c1ccccc1-c1ccccc1");
+        RWMol phenyl = RWMol.MolFromSmiles("c1ccccc1");
+
+        class NumHsMatchingDummies {
+            public int get(RWMol mol, RWMol core, Match_Vect match) {
+                int count = 0;
+                for (int i = 0; i < match.size(); ++i) {
+                    Int_Pair pair = match.get(i);
+                    if (core.getAtomWithIdx(pair.getFirst()).getAtomicNum() == 0 &&
+                        mol.getAtomWithIdx(pair.getSecond()).getAtomicNum() == 1) {
+                        ++count;
+                    }
+                }
+                return count;
+            }
+        };
+
+        NumHsMatchingDummies numHsMatchingDummies = new NumHsMatchingDummies();
+        RWMol_Vect mols = new RWMol_Vect(5);
+        mols.set(0, orthoMeta);
+        mols.set(1, ortho);
+        mols.set(2, meta);
+        mols.set(3, biphenyl);
+        mols.set(4, phenyl);
+        int[] expected = new int[]{ 0, 1, 1, 2, 3 };
+        assertTrue(mols.size() == expected.length);
+        for (int i = 0; i < expected.length; ++i) {
+            RWMol mol = mols.get(i);
+            int res = expected[i];
+            RDKFuncs.addHs(mol);
+            Match_Vect_Vect matches = mol.getSubstructMatches(core);
+            Match_Vect bestMatch = mol.getMostSubstitutedCoreMatch(core, matches);
+            assertTrue(numHsMatchingDummies.get(mol, core, bestMatch) == res);
+            int[] ctrlCounts = new int[(int)matches.size()];
+            for (int j = 0; j < ctrlCounts.length; ++j) {
+                ctrlCounts[j] = numHsMatchingDummies.get(mol, core, matches.get(j));
+            }
+            Arrays.sort(ctrlCounts);
+            int[] sortedCounts = new int[ctrlCounts.length];
+            Match_Vect_Vect sortedMatches = mol.sortMatchesByDegreeOfCoreSubstitution(core, matches);
+            for (int j = 0; j < sortedMatches.size(); ++j) {
+                sortedCounts[j] = numHsMatchingDummies.get(mol, core, sortedMatches.get(j));
+            }
+            assertTrue(Arrays.equals(ctrlCounts, sortedCounts));
+            matches.delete();
+            sortedMatches.delete();
+        }
+        Match_Vect_Vect emptyMatches = new Match_Vect_Vect();
+        boolean raised = false;
+        try {
+            orthoMeta.getMostSubstitutedCoreMatch(core, emptyMatches);
+        } catch (Exception e) {
+            raised = true;
+        }
+        assertTrue(raised);
+        raised = false;
+        try {
+            orthoMeta.sortMatchesByDegreeOfCoreSubstitution(core, emptyMatches);
+        } catch (Exception e) {
+            raised = true;
+        }
+        assertTrue(raised);
+        emptyMatches.delete();
+        mols.delete();
+        core.delete();
+        orthoMeta.delete();
+        ortho.delete();
+        meta.delete();
+        biphenyl.delete();
+        phenyl.delete();
+    }
+
+    @Test
+    public void testStereoChemFunctions() {
+        boolean useLegacyStereo = RDKFuncs.getUseLegacyStereoPerception();
+        boolean allowNonTetrahedralChirality = RDKFuncs.getAllowNontetrahedralChirality();
+        try {
+            RWMol m = RWMol.MolFromSmiles("CC(O)Cl |(-3.9163,5.4767,;-3.9163,3.9367,;-2.5826,3.1667,;-5.25,3.1667,),wU:1.0|");
+            assertTrue(m != null);
+            assertEquals(m.getBondWithIdx(0).getProp("_MolFileBondCfg"), "1");
+            assertEquals(m.getAtomWithIdx(1).getChiralTag(), Atom.ChiralType.CHI_TETRAHEDRAL_CW);
+            m.delete();
+            m = RWMol.MolFromSmiles("CC(O)Cl |(-3.9163,5.4767,;-3.9163,3.9367,;-2.5826,3.1667,;-5.25,3.1667,),wD:1.0|");
+            assertTrue(m != null);
+            assertEquals(m.getBondWithIdx(0).getProp("_MolFileBondCfg"), "3");
+            assertEquals(m.getAtomWithIdx(1).getChiralTag(), Atom.ChiralType.CHI_TETRAHEDRAL_CCW);
+            m.invertMolBlockWedgingInfo();
+            assertEquals(m.getBondWithIdx(0).getProp("_MolFileBondCfg"), "1");
+            m.reapplyMolBlockWedging();
+            RDKFuncs.assignChiralTypesFromBondDirs(m);
+            assertEquals(m.getAtomWithIdx(1).getChiralTag(), Atom.ChiralType.CHI_TETRAHEDRAL_CW);
+            m.invertMolBlockWedgingInfo();
+            assertEquals(m.getBondWithIdx(0).getProp("_MolFileBondCfg"), "3");
+            m.reapplyMolBlockWedging();
+            RDKFuncs.assignChiralTypesFromBondDirs(m);
+            assertEquals(m.getAtomWithIdx(1).getChiralTag(), Atom.ChiralType.CHI_TETRAHEDRAL_CCW);
+            m.clearMolBlockWedgingInfo();
+            m.getAtomWithIdx(1).setChiralTag(Atom.ChiralType.CHI_UNSPECIFIED);
+            assertFalse(m.getBondWithIdx(0).hasProp("_MolFileBondCfg"));
+            m.reapplyMolBlockWedging();
+            RDKFuncs.assignChiralTypesFromBondDirs(m);
+            assertEquals(m.getAtomWithIdx(1).getChiralTag(), Atom.ChiralType.CHI_UNSPECIFIED);
+            m.delete();
+            RDKFuncs.setUseLegacyStereoPerception(true);
+            m = RWMol.MolFromSmiles("O[C@@]1(C)C/C(/C1)=C(/C)\\CC");
+            assertTrue(m != null);
+            assertEquals(m.MolToSmiles(), "CCC(C)=C1CC(C)(O)C1");
+            m.delete();
+            RDKFuncs.setUseLegacyStereoPerception(false);
+            m = RWMol.MolFromSmiles("O[C@@]1(C)C/C(/C1)=C(/C)\\CC");
+            assertTrue(m != null);
+            assertEquals(m.MolToSmiles(), "CC/C(C)=C1\\C[C@](C)(O)C1");
+            m.delete();
+            RDKFuncs.setUseLegacyStereoPerception(useLegacyStereo);
+            String ctab = "\n" +
+                "  Mrv2108 09132105183D          \n" +
+                "\n" +
+                "  5  4  0  0  0  0            999 V2000\n" +
+                "   -1.2500    1.4518    0.0000 Pt  0  0  0  0  0  0  0  0  0  0  0  0\n" +
+                "   -1.2500    2.2768    0.0000 F   0  0  0  0  0  0  0  0  0  0  0  0\n" +
+                "   -0.4250    1.4518    0.0000 Cl  0  0  0  0  0  0  0  0  0  0  0  0\n" +
+                "   -2.0750    1.4518    0.0000 F   0  0  0  0  0  0  0  0  0  0  0  0\n" +
+                "   -1.2500    0.6268    0.0000 Cl  0  0  0  0  0  0  0  0  0  0  0  0\n" +
+                "  1  2  1  0  0  0  0\n" +
+                "  1  3  1  0  0  0  0\n" +
+                "  1  4  1  0  0  0  0\n" +
+                "  1  5  1  0  0  0  0\n" +
+                "M  END\n";
+            RDKFuncs.setAllowNontetrahedralChirality(true);
+            m = RWMol.MolFromMolBlock(ctab);
+            assertTrue(m != null);
+            assertEquals(m.MolToSmiles(), "F[Pt@SP3](F)(Cl)Cl");
+            m.delete();
+            RDKFuncs.setAllowNontetrahedralChirality(false);
+            m = RWMol.MolFromMolBlock(ctab);
+            assertTrue(m != null);
+            assertEquals(m.MolToSmiles(), "F[Pt](F)(Cl)Cl");
+            m.delete();
+            RDKFuncs.setAllowNontetrahedralChirality(allowNonTetrahedralChirality);
+        } finally {
+            RDKFuncs.setUseLegacyStereoPerception(useLegacyStereo);
+            RDKFuncs.setAllowNontetrahedralChirality(allowNonTetrahedralChirality);
+        }
+    }
+    
     public static void main(String args[]) {
         org.junit.runner.JUnitCore.main("org.RDKit.Chemv2Tests");
     }

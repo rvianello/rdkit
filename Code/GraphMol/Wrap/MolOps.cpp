@@ -306,9 +306,9 @@ ROMol *addHs(const ROMol &orig, bool explicitOnly, bool addCoords,
   return res;
 }
 
-VECT_INT_VECT getSSSR(ROMol &mol) {
+VECT_INT_VECT getSSSR(ROMol &mol, bool includeDativeBonds) {
   VECT_INT_VECT rings;
-  MolOps::findSSSR(mol, rings);
+  MolOps::findSSSR(mol, rings, includeDativeBonds);
   return rings;
 }
 
@@ -431,6 +431,11 @@ void cleanupMol(ROMol &mol) {
   MolOps::cleanUp(rwmol);
 }
 
+void cleanUpOrganometallicsMol(ROMol &mol) {
+  auto &rwmol = static_cast<RWMol &>(mol);
+  MolOps::cleanUpOrganometallics(rwmol);
+}
+
 void setAromaticityMol(ROMol &mol, MolOps::AromaticityModel model) {
   auto &wmol = static_cast<RWMol &>(mol);
   MolOps::setAromaticity(wmol, model);
@@ -445,15 +450,25 @@ void assignRadicalsMol(ROMol &mol) {
   auto &wmol = static_cast<RWMol &>(mol);
   MolOps::assignRadicals(wmol);
 }
+namespace {
+ROMol *hapticBondsToDativeHelper(const ROMol &mol) {
+  ROMol *res = MolOps::hapticBondsToDative(mol);
+  return res;
+}
+ROMol *dativeBondsToHapticHelper(const ROMol &mol) {
+  ROMol *res = MolOps::dativeBondsToHaptic(mol);
+  return res;
+}
+}  // namespace
 
 void setHybridizationMol(ROMol &mol) {
   auto &wmol = static_cast<RWMol &>(mol);
   MolOps::setHybridization(wmol);
 }
 
-VECT_INT_VECT getSymmSSSR(ROMol &mol) {
+VECT_INT_VECT getSymmSSSR(ROMol &mol, bool includeDativeBonds) {
   VECT_INT_VECT rings;
-  MolOps::symmetrizeSSSR(mol, rings);
+  MolOps::symmetrizeSSSR(mol, rings, includeDativeBonds);
   return rings;
 }
 PyObject *getDistanceMatrix(ROMol &mol, bool useBO = false,
@@ -932,12 +947,22 @@ ROMol *molzip_new(const ROMol &a, const MolzipParams &p) {
   return molzip(a, p).release();
 }
 
+ROMol *molzipHelper(python::object &pmols, const MolzipParams &p) {
+  auto mols = pythonObjectToVect<ROMOL_SPTR>(pmols);
+  if (mols == nullptr || mols->empty()) {
+    return nullptr;
+  }
+  return molzip(*mols, p).release();
+}
+
 struct molops_wrapper {
   static void wrap() {
     std::string docString;
     python::enum_<MolOps::SanitizeFlags>("SanitizeFlags")
         .value("SANITIZE_NONE", MolOps::SANITIZE_NONE)
         .value("SANITIZE_CLEANUP", MolOps::SANITIZE_CLEANUP)
+        .value("SANITIZE_CLEANUP_ORGANOMETALLICS",
+               MolOps::SANITIZE_CLEANUP_ORGANOMETALLICS)
         .value("SANITIZE_PROPERTIES", MolOps::SANITIZE_PROPERTIES)
         .value("SANITIZE_SYMMRINGS", MolOps::SANITIZE_SYMMRINGS)
         .value("SANITIZE_KEKULIZE", MolOps::SANITIZE_KEKULIZE)
@@ -1030,11 +1055,14 @@ struct molops_wrapper {
   ARGUMENTS:\n\
 \n\
     - mol: the molecule to use.\n\
+    - includeDativeBonds: whether or not dative bonds should be included in the ring finding.\n\
 \n\
   RETURNS: a sequence of sequences containing the rings found as atom ids\n\
          The length of this will be equal to NumBonds-NumAtoms+1 for single-fragment molecules.\n\
 \n";
-    python::def("GetSSSR", getSSSR, docString.c_str());
+    python::def("GetSSSR", getSSSR,
+                (python::arg("mol"), python::arg("includeDativeBonds") = false),
+                docString.c_str());
 
     // ------------------------------------------------------------------------
     docString =
@@ -1047,10 +1075,13 @@ struct molops_wrapper {
   ARGUMENTS:\n\
 \n\
     - mol: the molecule to use.\n\
+    - includeDativeBonds: whether or not dative bonds should be included in the ring finding.\n\
 \n\
   RETURNS: a sequence of sequences containing the rings found as atom ids\n\
 \n";
-    python::def("GetSymmSSSR", getSymmSSSR, docString.c_str());
+    python::def("GetSymmSSSR", getSymmSSSR,
+                (python::arg("mol"), python::arg("includeDativeBonds") = false),
+                docString.c_str());
 
     // ------------------------------------------------------------------------
     docString =
@@ -1238,7 +1269,7 @@ struct molops_wrapper {
                 python::return_value_policy<python::manage_new_object>());
     python::def("MergeQueryHs",
                 (ROMol * (*)(const ROMol &, bool, bool)) & MolOps::mergeQueryHs,
-                (python::arg("mol"), python::arg("mergeUnmappedOnly") = false, 
+                (python::arg("mol"), python::arg("mergeUnmappedOnly") = false,
                  python::arg("mergeIsotopes") = false),
                 "merges hydrogens into their neighboring atoms as queries",
                 python::return_value_policy<python::manage_new_object>());
@@ -1555,6 +1586,21 @@ to the terminal dummy atoms.\n\
 \n";
     python::def("Cleanup", cleanupMol, (python::arg("mol")), docString.c_str());
 
+    // ------------------------------------------------------------------------
+    docString =
+        "cleans up certain common bad functionalities in the organometallic molecule\n\
+\n\
+  ARGUMENTS:\n\
+\n\
+    - mol: the molecule to use\n\
+\n\
+  NOTES:\n\
+\n\
+    - The molecule is modified in place.\n\
+\n";
+    python::def("CleanupOrganometallics", cleanUpOrganometallicsMol,
+                (python::arg("mol")), docString.c_str());
+
     python::enum_<MolOps::AromaticityModel>("AromaticityModel")
         .value("AROMATICITY_DEFAULT", MolOps::AROMATICITY_DEFAULT)
         .value("AROMATICITY_RDKIT", MolOps::AROMATICITY_RDKIT)
@@ -1620,6 +1666,41 @@ to the terminal dummy atoms.\n\
 \n";
     python::def("AssignRadicals", assignRadicalsMol, (python::arg("mol")),
                 docString.c_str());
+
+    docString =
+        R"DOC(One way of showing haptic bonds (such as cyclopentadiene to
+iron in ferrocene) is to use a dummy atom with a dative bond to the
+iron atom with the bond labelled with the atoms involved in the
+organic end of the bond.  Another way is to have explicit dative
+bonds from the atoms of the haptic group to the metal atom.  This
+function converts the former representation to the latter.
+
+ARGUMENTS:
+
+  - mol: the molecule to use
+
+RETURNS:
+  a modified copy of the molecule)DOC";
+    python::def("HapticBondsToDative", hapticBondsToDativeHelper,
+                (python::arg("mol")), docString.c_str(),
+                python::return_value_policy<python::manage_new_object>());
+
+    docString =
+        R"DOC(Does the reverse of hapticBondsToDative.  If there are multiple
+contiguous atoms attached by dative bonds to an atom (probably a metal
+atom), the dative bonds will be replaced by a dummy atom in their
+centre attached to the (metal) atom by a dative bond, which is
+labelled with ENDPTS of the atoms that had the original dative bonds.
+
+ARGUMENTS:
+
+  - mol: the molecule to use
+
+RETURNS:
+  a modified copy of the molecule)DOC";
+    python::def("DativeBondsToHaptic", dativeBondsToHapticHelper,
+                (python::arg("mol")), docString.c_str(),
+                python::return_value_policy<python::manage_new_object>());
 
     // ------------------------------------------------------------------------
     docString =
@@ -1718,6 +1799,9 @@ to the terminal dummy atoms.\n\
     - rootedAtAtom: (optional) if nonzero, only paths from the specified\n\
       atom will be returned.\n\
 \n\
+    - onlyShortestPaths: (optional) if set then only paths which are <= the shortest\n\
+      path between the begin and end atoms will be included in the results\n\
+\n\
   RETURNS: a tuple of tuples with IDs for the bonds.\n\
 \n\
   NOTES: \n\
@@ -1739,7 +1823,8 @@ to the terminal dummy atoms.\n\
     python::def("FindAllPathsOfLengthN", &findAllPathsOfLengthN,
                 (python::arg("mol"), python::arg("length"),
                  python::arg("useBonds") = true, python::arg("useHs") = false,
-                 python::arg("rootedAtAtom") = -1),
+                 python::arg("rootedAtAtom") = -1,
+                 python::arg("onlyShortestPaths") = false),
                 docString.c_str());
 
     // ------------------------------------------------------------------------
@@ -2228,6 +2313,18 @@ ARGUMENTS:\n\
                 docString.c_str(),
                 python::return_value_policy<python::manage_new_object>());
 
+    python::class_<Chirality::BondWedgingParameters>(
+        "BondWedgingParameters",
+        "Parameters controlling how bond wedging is done.")
+        .def_readwrite(
+            "wedgeTwoBondsIfPossible",
+            &Chirality::BondWedgingParameters::wedgeTwoBondsIfPossible,
+            R"DOC(If this is enabled then two bonds will be wedged at chiral
+  centers subject to the following constraints:
+    1. ring bonds will not be wedged
+    2. bonds to chiral centers will not be wedged
+    3. bonds separated by more than 120 degrees will not be
+        wedged)DOC");
     docString =
         "Set the wedging on single bonds in a molecule.\n\
    The wedging scheme used is that from Mol files.\n\
@@ -2238,7 +2335,10 @@ ARGUMENTS:\n\
     - conformer: the conformer to use to determine wedge direction\n\
 \n\
 \n";
-    python::def("WedgeMolBonds", WedgeMolBonds, docString.c_str());
+    python::def("WedgeMolBonds", Chirality::wedgeMolBonds,
+                (python::arg("mol"), python::arg("conformer"),
+                 python::arg("params") = python::object()),
+                docString.c_str());
 
     docString =
         "Set the wedging to that which was read from the original\n\
@@ -2541,6 +2641,10 @@ EXAMPLES:\n\n\
                        &MolzipParams::enforceValenceRules,
                        "If true (default) enforce valences after zipping\n\
 Setting this to false allows assembling chemically incorrect fragments.")
+        .def_readwrite(
+            "generateCoordinates", &MolzipParams::generateCoordinates,
+            "If true will add depiction coordinates to input molecules and\n\
+zipped molecule (for molzipFragments only)")
         .def("setAtomSymbols", &RDKit::setAtomSymbols,
              "Set the atom symbols used to zip mols together when using "
              "AtomType labeling");
@@ -2582,6 +2686,15 @@ The atoms to zip can be specified with the MolzipParams class.\n\
         (ROMol * (*)(const ROMol &, const MolzipParams &)) & molzip_new,
         (python::arg("a"), python::arg("params") = MolzipParams()),
         "zip together two molecules using the given matching parameters",
+        python::return_value_policy<python::manage_new_object>());
+
+    python::def(
+        "molzipFragments",
+        (ROMol * (*)(python::object &, const MolzipParams &)) & molzipHelper,
+        (python::arg("mols"), python::arg("params") = MolzipParams()),
+        "zip together multiple molecules from an R group decomposition \n\
+using the given matching parameters.  The first molecule in the list\n\
+must be the core",
         python::return_value_policy<python::manage_new_object>());
 
     // ------------------------------------------------------------------------

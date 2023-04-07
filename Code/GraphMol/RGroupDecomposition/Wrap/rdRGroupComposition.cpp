@@ -242,11 +242,11 @@ struct rgroupdecomp_wrapper {
         "              labelled.\n"
         "    - RGroupLabelling: choose where the rlabels are stored on the "
         "decomposition\n"
-        "                        RGroupLabels.AtomMap - store rgroups as atom "
+        "                        RGroupLabelling.AtomMap - store rgroups as atom "
         "maps (for smiles)\n"
-        "                        RGroupLabels.Isotope - stroe rgroups on the "
+        "                        RGroupLabelling.Isotope - store rgroups on the "
         "isotope\n"
-        "                        RGroupLabels.MDLRGroup - store rgroups as mdl "
+        "                        RGroupLabelling.MDLRGroup - store rgroups as mdl "
         "rgroups (for molblocks)\n"
         "                       default: AtomMap | MDLRGroup\n"
         "    - onlyMatchAtRGroups: only allow rgroup decomposition at the "
@@ -306,6 +306,9 @@ struct rgroupdecomp_wrapper {
         .def_readwrite("removeAllHydrogenRGroupsAndLabels",
                        &RDKit::RGroupDecompositionParameters::
                            removeAllHydrogenRGroupsAndLabels)
+        .def_readwrite("allowMultipleRGroupsOnUnlabelled",
+                       &RDKit::RGroupDecompositionParameters::
+                           allowMultipleRGroupsOnUnlabelled)
         .def_readonly(
             "substructMatchParams",
             &RDKit::RGroupDecompositionParameters::substructmatchParams);

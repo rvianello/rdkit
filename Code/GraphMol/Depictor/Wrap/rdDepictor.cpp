@@ -36,7 +36,8 @@ unsigned int Compute2DCoords(RDKit::ROMol &mol, bool canonOrient,
                              unsigned int nSamples = 100, int sampleSeed = 100,
                              bool permuteDeg4Nodes = false,
                              double bondLength = -1.0,
-                             bool forceRDKit = false) {
+                             bool forceRDKit = false,
+                             bool useRingTemplates = false) {
   RDGeom::INT_POINT2D_MAP cMap;
   cMap.clear();
   python::list ks = coordMap.keys();
@@ -55,7 +56,7 @@ unsigned int Compute2DCoords(RDKit::ROMol &mol, bool canonOrient,
   unsigned int res;
   res = RDDepict::compute2DCoords(mol, &cMap, canonOrient, clearConfs,
                                   nFlipsPerSample, nSamples, sampleSeed,
-                                  permuteDeg4Nodes, forceRDKit);
+                                  permuteDeg4Nodes, forceRDKit, useRingTemplates);
   if (bondLength > 0) {
     RDDepict::BOND_LEN = oBondLen;
   }
@@ -142,11 +143,50 @@ void GenerateDepictionMatching3DStructure(RDKit::ROMol &mol,
   RDDepict::generateDepictionMatching3DStructure(
       mol, reference, confId, referencePattern, acceptFailure, forceRDKit);
 }
+
+bool isCoordGenSupportAvailable() {
+#ifdef RDK_BUILD_COORDGEN_SUPPORT
+  return true;
+#else
+  return false;
+#endif
+}
+
 void setPreferCoordGen(bool value) {
 #ifdef RDK_BUILD_COORDGEN_SUPPORT
   RDDepict::preferCoordGen = value;
 #endif
 }
+bool getPreferCoordGen() {
+#ifdef RDK_BUILD_COORDGEN_SUPPORT
+  return RDDepict::preferCoordGen;
+#else
+  return false;
+#endif
+}
+
+class UsingCoordGen : public boost::noncopyable {
+ public:
+  UsingCoordGen() = delete;
+  UsingCoordGen(bool temp_state)
+      : m_initial_state{getPreferCoordGen()}, m_temp_state(temp_state) {}
+  ~UsingCoordGen() = default;
+
+  void enter() { setPreferCoordGen(m_temp_state); }
+
+  void exit(python::object exc_type, python::object exc_val,
+            python::object traceback) {
+    RDUNUSED_PARAM(exc_type);
+    RDUNUSED_PARAM(exc_val);
+    RDUNUSED_PARAM(traceback);
+    setPreferCoordGen(m_initial_state);
+  }
+
+ private:
+  bool m_initial_state;
+  bool m_temp_state;
+};
+
 }  // namespace RDDepict
 
 BOOST_PYTHON_MODULE(rdDepictor) {
@@ -158,6 +198,9 @@ BOOST_PYTHON_MODULE(rdDepictor) {
 
   rdkit_import_array();
 
+  python::def("IsCoordGenSupportAvailable", isCoordGenSupportAvailable,
+              "Returns whether RDKit was built with CoordGen support.");
+
   python::def("SetPreferCoordGen", setPreferCoordGen, python::arg("val"),
 #ifdef RDK_BUILD_COORDGEN_SUPPORT
               "Sets whether or not the CoordGen library should be preferred to "
@@ -166,6 +209,23 @@ BOOST_PYTHON_MODULE(rdDepictor) {
               "Has no effect (CoordGen support not enabled)"
 #endif
   );
+  python::def(
+      "GetPreferCoordGen", getPreferCoordGen,
+#ifdef RDK_BUILD_COORDGEN_SUPPORT
+      "Return whether or not the CoordGen library is used for coordinate "
+      "generation in the RDKit depiction library."
+#else
+      "Always returns False (CoordGen support not enabled)"
+#endif
+  );
+
+  python::class_<UsingCoordGen, boost::noncopyable>(
+      "UsingCoordGen",
+      "Context manager to temporarily set CoordGen library preference in RDKit depiction.",
+      python::init<bool>("Constructor"))
+      .def("__enter__", &UsingCoordGen::enter)
+      .def("__exit__", &UsingCoordGen::exit);
+
   std::string docString;
   docString =
       "Compute 2D coordinates for a molecule. \n\
@@ -186,7 +246,9 @@ BOOST_PYTHON_MODULE(rdDepictor) {
                  node during the sampling process \n\
      bondLength - change the default bond length for depiction \n\
      forceRDKit - use RDKit to generate coordinates even if \n\
-                  preferCoordGen is set to true\n\n\
+                  preferCoordGen is set to true\n\
+     useRingTemplates - use templates to generate coordinates of complex\n\
+                  ring systems\n\n\
   RETURNS: \n\n\
      ID of the conformation added to the molecule\n";
   python::def(
@@ -196,7 +258,8 @@ BOOST_PYTHON_MODULE(rdDepictor) {
        python::arg("coordMap") = python::dict(),
        python::arg("nFlipsPerSample") = 0, python::arg("nSample") = 0,
        python::arg("sampleSeed") = 0, python::arg("permuteDeg4Nodes") = false,
-       python::arg("bondLength") = -1.0, python::arg("forceRDKit") = false),
+       python::arg("bondLength") = -1.0, python::arg("forceRDKit") = false,
+       python::arg("useRingTemplates") = false),
       docString.c_str());
 
   docString =

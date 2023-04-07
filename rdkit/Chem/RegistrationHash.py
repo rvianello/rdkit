@@ -30,12 +30,13 @@ from typing import Iterable
 from typing import Optional
 
 from rdkit import Chem
-from rdkit.Chem import EnumerateStereoisomers
 from rdkit.Chem import rdMolHash
 
 ATOM_PROP_MAP_NUMBER = 'molAtomMapNumber'
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_CXFLAG = Chem.CXSmilesFields.CX_ATOM_LABELS | Chem.CXSmilesFields.CX_ENHANCEDSTEREO
 
 ENHANCED_STEREO_GROUP_REGEX = re.compile(r'((?:a|[&o]\d+):\d+(?:,\d+)*)')
 
@@ -101,7 +102,7 @@ def GetMolHash(all_layers, hash_scheme: HashScheme = HashScheme.ALL_LAYERS) -> s
   """
     Generate a molecular hash using a specified set of layers.
 
-    :param mol: the molecule to generate the hash for
+    :param all_layers: a dictionary of layers
     :param hash_scheme: enum encoding information layers for the hash
     :return: hash for the given scheme constructed from the input layers
     """
@@ -113,7 +114,7 @@ def GetMolHash(all_layers, hash_scheme: HashScheme = HashScheme.ALL_LAYERS) -> s
 
 
 def GetMolLayers(original_molecule: Chem.rdchem.Mol, data_field_names: Optional[Iterable] = None,
-                 escape: Optional[str] = None) -> set(HashLayer):
+                 escape: Optional[str] = None, cxflag = DEFAULT_CXFLAG) -> set(HashLayer):
   """
     Generate layers of data about that could be used to identify a molecule
 
@@ -127,17 +128,22 @@ def GetMolLayers(original_molecule: Chem.rdchem.Mol, data_field_names: Optional[
   mol = _RemoveUnnecessaryHs(original_molecule, preserve_stereogenic_hs=True)
   _StripAtomMapLabels(mol)
 
+  Chem.CanonicalizeEnhancedStereo(mol)
+
   formula = rdMolHash.MolHash(mol, rdMolHash.HashFunction.MolFormula)
-  cxsmiles, canonical_mol = _CanonicalizeStereoGroups(mol)
-  tautomer_hash = GetStereoTautomerHash(canonical_mol)
 
-  canonical_smiles = GetCanonicalSmiles(cxsmiles)
-  sgroup_data = _CanonicalizeSGroups(canonical_mol, dataFieldNames=data_field_names)
+  ps = Chem.SmilesWriteParams()
+  cxsmiles = Chem.MolToCXSmiles(
+    mol, ps, cxflag)
 
-  no_stereo_tautomer_hash, no_stereo_smiles = GetNoStereoLayers(canonical_mol)
+  tautomer_hash = GetStereoTautomerHash(mol, cxflag=cxflag)
+
+  sgroup_data = _CanonicalizeSGroups(mol, dataFieldNames=data_field_names)
+
+  no_stereo_tautomer_hash, no_stereo_smiles = GetNoStereoLayers(mol)
 
   return {
-    HashLayer.CANONICAL_SMILES: canonical_smiles,
+    HashLayer.CANONICAL_SMILES: cxsmiles,
     HashLayer.ESCAPE: escape or "",
     HashLayer.FORMULA: formula,
     HashLayer.NO_STEREO_SMILES: no_stereo_smiles,
@@ -165,7 +171,7 @@ def _RemoveUnnecessaryHs(rdk_mol, preserve_stereogenic_hs=False):
   return edited_mol
 
 
-def GetStereoTautomerHash(molecule):
+def GetStereoTautomerHash(molecule, cxflag=DEFAULT_CXFLAG):
   if molecule.GetNumAtoms() == 0:
     return EMPTY_MOL_TAUTOMER_HASH
 
@@ -176,36 +182,11 @@ def GetStereoTautomerHash(molecule):
 
   # setting useCxSmiles param value to always include enhanced stereo info
   useCxSmiles = True
+  cx_flags_to_skip = Chem.CXSmilesFields.CX_ALL ^ cxflag
   hash_with_cxExtensions = rdMolHash.MolHash(no_h_mol, rdMolHash.HashFunction.HetAtomTautomer,
-                                             useCxSmiles)
+                                             useCxSmiles,cx_flags_to_skip)
 
-  # since the cxSmiles can include anything, we want to only include
-  # enhanced stereo information
-  canonical_smiles = GetCanonicalSmiles(hash_with_cxExtensions)
-  return canonical_smiles
-
-
-def GetCanonicalSmiles(cxsmiles):
-  smiles_parts = (p.strip() for p in cxsmiles.split('|'))
-  smiles_parts = [p for p in smiles_parts if p]
-  if not smiles_parts:
-    return '', ''
-  elif len(smiles_parts) > 2:
-    raise ValueError('Unexpected number of fragments in canonical CXSMILES')
-
-  canonical_smiles = smiles_parts[0]
-  stereo_groups = ''
-  if len(smiles_parts) == 2:
-    # note: as with many regex-based things, this is fragile
-    groups = ENHANCED_STEREO_GROUP_REGEX.findall(smiles_parts[1])
-    if groups:
-      # We might have other CXSMILES extensions that aren't stereo groups
-      stereo_groups = f"|{','.join(sorted(groups))}|"
-
-  if stereo_groups:
-    return canonical_smiles + " " + stereo_groups
-
-  return canonical_smiles
+  return hash_with_cxExtensions
 
 
 def GetNoStereoLayers(mol):
@@ -340,7 +321,7 @@ def _CanonicalizeSRUSGroup(mol, sg, atRanks, bndOrder, sortAtomAndBondOrder):
   return res
 
 
-def _CaonicalizeCOPSGroup(sg, atRanks, sortAtomAndBondOrder):
+def _CanonicalizeCOPSGroup(sg, atRanks, sortAtomAndBondOrder):
   """
     NOTES: if sortAtomAndBondOrder is true then the atom and bond lists will be sorted.
     This assumes that the ordering of those lists is not important
@@ -371,7 +352,7 @@ def _CanonicalizeSGroups(mol, dataFieldNames=None, sortAtomAndBondOrder=True):
     elif sg.GetProp("TYPE") == "SRU":
       lres = _CanonicalizeSRUSGroup(mol, sg, atRanks, bndOrder, sortAtomAndBondOrder)
     elif sg.GetProp("TYPE") == "COP":
-      lres = _CaonicalizeCOPSGroup(sg, atRanks, sortAtomAndBondOrder)
+      lres = _CanonicalizeCOPSGroup(sg, atRanks, sortAtomAndBondOrder)
 
     if lres is not None:
       res.append(lres)
@@ -397,82 +378,3 @@ class EnhancedStereoUpdateMode(enum.Enum):
   REMOVE_WEIGHTS = enum.auto()
 
 
-def _UpdateEnhancedStereoGroupWeights(mol, mode):
-  if mode == EnhancedStereoUpdateMode.ADD_WEIGHTS:
-    factor = 1
-  elif mode == EnhancedStereoUpdateMode.REMOVE_WEIGHTS:
-    factor = -1
-  else:
-    raise ValueError('Invalid Enhanced Stereo weight update mode')
-
-  isotopesModified = False
-  stgs = mol.GetStereoGroups()
-  for stg in stgs:
-    stgt = stg.GetGroupType()
-    weight = factor * ENHANCED_STEREO_GROUP_WEIGHTS[stgt]
-    for at in stg.GetAtoms():
-
-      # Make sure the isotope is reasonable and is not present in more than
-      # one stereo group, and we are not messing it up
-      isotope = at.GetIsotope()
-      if mode == EnhancedStereoUpdateMode.ADD_WEIGHTS and isotope > 999:
-        raise ValueError(
-          f'Enhanced stereo group canonicalization does not support isotopes above 999. Atom {at.GetIdx()} is {isotope}'
-        )
-
-      at.SetIsotope(isotope + weight)
-      isotopesModified = True
-
-  return mol, isotopesModified
-
-
-def _CanonicalizeStereoGroups(mol):
-  """
-    Returns canonical CXSmiles and the corresponding molecule with the
-    stereo groups canonicalized.
-
-    The RDKit canonicalization code does not currently take stereo groups into
-    account. We work around that by using EnumerateStereoisomers() to generate
-    all possible instances of the molecule's stereogroups and then lexically
-    compare the CXSMILES of those.
-    """
-
-  if not len(mol.GetStereoGroups()):
-    return Chem.MolToCXSmiles(mol), mol
-
-  mol = Chem.Mol(mol)
-
-  # add ring info if not initialized yet
-  Chem.FastFindRings(mol)
-
-  # To solve the problem we add isotope tags to the atoms involved in stereo
-  # groups. These allow the canonicalization to tell the difference between
-  # AND and OR (and have the happy side effect of allowing the
-  # presence/absence of a stereo group to affect the canonicalization)
-  mol, isotopesModified = _UpdateEnhancedStereoGroupWeights(mol,
-                                                            EnhancedStereoUpdateMode.ADD_WEIGHTS)
-
-  # We're going to be generating canonical SMILES here anyway, so skip the
-  # "unique" option for the sake of efficiency
-  opts = EnumerateStereoisomers.StereoEnumerationOptions()
-  opts.onlyStereoGroups = True
-  opts.unique = False
-
-  resultMol = None
-  resultCXSmiles = ''
-  for isomer in EnumerateStereoisomers.EnumerateStereoisomers(mol, opts):
-    # We need to generate the canonical CXSMILES for the molecule with
-    # the isotope tags.
-    cxSmiles = Chem.MolToCXSmiles(isomer)
-    if resultMol is None or cxSmiles < resultCXSmiles:
-      resultMol = isomer
-      resultCXSmiles = cxSmiles
-
-  extraIsotopeRemovalRegex = re.compile(r'\[[1-3]0*([1-9]?[0-9]*[A-Z][a-z]?)@')
-  resultCXSmiles = extraIsotopeRemovalRegex.sub(r'[\1@', resultCXSmiles)
-
-  if isotopesModified:
-    resultMol, _ = _UpdateEnhancedStereoGroupWeights(resultMol,
-                                                     EnhancedStereoUpdateMode.REMOVE_WEIGHTS)
-
-  return resultCXSmiles, resultMol

@@ -186,7 +186,7 @@ M  END""")
     drawer.FinishDrawing()
     svg = drawer.GetDrawingText()
     # 4 molecules, 6 bonds each:
-    re_str = r"path class='bond-\d+ atom-\d+ atom-\d+' d='M \d+.\d+,\d+.\d+ L \d+.\d+,\d+.\d+ L \d+.\d+,\d+.\d+ L \d+.\d+,\d+.\d+ Z' style='fill:#FF7F7F;"
+    re_str = r"path class='bond-\d+ atom-\d+ atom-\d+' d='M \d+.\d+,\d+.\d+ L \d+.\d+,\d+.\d+ L \d+.\d+,\d+.\d+ L \d+.\d+,\d+.\d+ Z' style='fill:"
     patt = re.compile(re_str)
     self.assertEqual(len(patt.findall(svg)), 24)
     # 4 molecules, one atom each:
@@ -782,6 +782,18 @@ M  END''')
       rdMolDraw2D.DrawMoleculeACS1996(drawer, m)
       drawer.FinishDrawing()
       drawer.WriteDrawingText('testACSMode_1.png')
+
+  def testMolSize(self):
+    m = Chem.MolFromSmiles("CS(=O)(=O)COC(=N)c1cc(Cl)cnc1[NH3+]")
+    AllChem.Compute2DCoords(m)
+    rdMolDraw2D.PrepareMolForDrawing(m)
+    d2d = rdMolDraw2D.MolDraw2DSVG(-1, -1)
+    d2d.DrawMolecule(m)
+    sz = d2d.Width(), d2d.Height()
+
+    d2d = rdMolDraw2D.MolDraw2DSVG(-1, -1)
+    sz2 = d2d.GetMolSize(m)
+    self.assertEqual(sz, sz2)
 
 
 if __name__ == "__main__":

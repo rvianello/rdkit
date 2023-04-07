@@ -70,15 +70,13 @@
     return RDKit::RWMOL_SPTR(RDKit::SmartsToMol(sma, debugParse, mergeHs,replacements));
   }
 static RDKit::RWMOL_SPTR MolFromMolBlock(const std::string &molB,
-                                  bool sanitize=true,bool removeHs=true){
-  RDKit::RWMol *mol=0;
-    mol=RDKit::MolBlockToMol(molB,sanitize,removeHs);
+                                  bool sanitize=true,bool removeHs=true,bool strictParsing=true){
+  RDKit::RWMol *mol=RDKit::MolBlockToMol(molB,sanitize,removeHs,strictParsing);
   return RDKit::RWMOL_SPTR(mol);
 }
 static RDKit::RWMOL_SPTR MolFromMolFile(const std::string &filename,
-                                 bool sanitize=true,bool removeHs=true){
-  RDKit::RWMol *mol=0;
-    mol=RDKit::MolFileToMol(filename,sanitize,removeHs);
+                                 bool sanitize=true,bool removeHs=true,bool strictParsing=true){
+  RDKit::RWMol *mol=RDKit::MolFileToMol(filename,sanitize,removeHs,strictParsing);
   return RDKit::RWMOL_SPTR(mol);
 }
 static RDKit::RWMOL_SPTR MolFromTPLFile(const std::string &fName,bool sanitize=true,
@@ -156,19 +154,37 @@ static std::vector<RDKit::RWMOL_SPTR> MolsFromCDXMLFile(const std::string &text,
 }
 
 
-  /* Methods from MolFileStereoChem.h */
-  void DetectAtomStereoChemistry(const RDKit::Conformer *conf) {
-	RDKit::DetectAtomStereoChemistry(*($self), conf);
-  };
+/* Methods from MolFileStereoChem.h */
+void DetectAtomStereoChemistry(const RDKit::Conformer *conf) {
+  RDKit::DetectAtomStereoChemistry(*($self), conf);
+}
+void DetectBondStereoChemistry(const RDKit::Conformer *conf) {
+  RDKit::DetectBondStereoChemistry(*($self), conf);
+}
+void ClearSingleBondDirFlags() {
+ RDKit::ClearSingleBondDirFlags(*($self));
+};
+void reapplyMolBlockWedging() {
+  RDKit::reapplyMolBlockWedging(*($self));
+}
+void clearMolBlockWedgingInfo() {
+  RDKit::clearMolBlockWedgingInfo(*($self));
+}
+void invertMolBlockWedgingInfo() {
+  RDKit::invertMolBlockWedgingInfo(*($self));
+}
+void markUnspecifiedStereoAsUnknown(int confId) {
+  RDKit::markUnspecifiedStereoAsUnknown(*($self), confId);
+}
 
-   /* From Kekulize.cpp, MolOps.h */
-    void Kekulize(bool markAtomsBonds=true, unsigned int maxBackTracks=100) {
-	RDKit::MolOps::Kekulize(*($self), markAtomsBonds, maxBackTracks);
-   }
+/* From Kekulize.cpp, MolOps.h */
+void Kekulize(bool markAtomsBonds=true, unsigned int maxBackTracks=100) {
+  RDKit::MolOps::Kekulize(*($self), markAtomsBonds, maxBackTracks);
+}
 
-  /* MolOps.h */
-  void sanitizeMol() {
-	RDKit::MolOps::sanitizeMol(*($self));
-  }
+/* MolOps.h */
+void sanitizeMol() {
+  RDKit::MolOps::sanitizeMol(*($self));
+}
 
 }

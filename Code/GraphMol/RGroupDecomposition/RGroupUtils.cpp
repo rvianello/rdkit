@@ -103,11 +103,27 @@ bool isUserRLabel(const Atom &atom) {
              Labelling::INDEX_LABELS;
 }
 
-bool isAtomWithMultipleNeighborsOrNotUserRLabel(const Atom &atom) {
+bool isDummyRGroupAttachment(const Atom &atom) {
+  if (atom.getAtomicNum() != 0 || atom.getDegree() != 1) {
+    return false;
+  }
+  if (isUserRLabel(atom)) {
+    return true;
+  }
+  bool unlabeled_core_attachment = false;
+  if (atom.getPropIfPresent(UNLABELED_CORE_ATTACHMENT,
+                            unlabeled_core_attachment) &&
+      unlabeled_core_attachment) {
+    return true;
+  }
+  return false;
+}
+
+bool isAtomWithMultipleNeighborsOrNotDummyRGroupAttachment(const Atom &atom) {
   if (atom.getDegree() > 1) {
     return true;
   }
-  return !isUserRLabel(atom);
+  return !isDummyRGroupAttachment(atom);
 }
 
 bool hasDummy(const RWMol &core) {
