@@ -703,7 +703,10 @@ gbfp_cmp(Datum x, Datum y, SortSupport ssup)
   int siglen = GBFP_LEAF_SIGLEN(gbfp1);
   Assert(siglen == GBFP_LEAF_SIGLEN(gbfp2));
 
-  return bitstringGrayCmp(siglen, GET_LEAF_DATA(gbfp1)->fp, GET_LEAF_DATA(gbfp2)->fp);
+  int retval = bitstringGrayCmp(siglen, GET_LEAF_DATA(gbfp1)->fp, GET_LEAF_DATA(gbfp2)->fp);
+  RDKIT_FREE_IF_COPY_P(gbfp1, x);
+  RDKIT_FREE_IF_COPY_P(gbfp2, y);
+  return retval;
 }
 
 PGDLLEXPORT Datum  gbfp_sortsupport(PG_FUNCTION_ARGS);

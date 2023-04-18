@@ -599,7 +599,10 @@ gmol_cmp(Datum x, Datum y, SortSupport ssup)
   int siglen = SIGLEN(a);
   Assert(siglen == SIGLEN(b));
 
-  return bitstringGrayCmp(siglen, VARDATA(a), VARDATA(b));
+  int retval = bitstringGrayCmp(siglen, VARDATA(a), VARDATA(b));
+  RDKIT_FREE_IF_COPY_P(a, x);
+  RDKIT_FREE_IF_COPY_P(b, y);
+  return retval;
 }
 
 PGDLLEXPORT Datum  gmol_sortsupport(PG_FUNCTION_ARGS);
