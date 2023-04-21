@@ -506,9 +506,31 @@ void bitstringRandomSubset(int length,
 
 int bitstringGrayCmp(int length, uint8 *bstr1, uint8 *bstr2)
 {
-  // which digit represents a higher value, 0 or 1 ?
-  // 1 > 0 initially, it then changes depending on which
-  // values are encountered
+  /*
+   * Compare two bistrings according to their ordering in a
+   * Binary Reflected Gray Code
+   *
+   * Which digit represents a higher value, 0 or 1 ?
+   *
+   * 000
+   * 001
+   * 011
+   * 010
+   * 110
+   * 111
+   * 101
+   * 100
+   *
+   * In contrast to the usual representation of binary numbers,
+   * the code is not just positional.
+   * 
+   * When we start from the leftmost position, 1 > 0. In moving
+   * to right, every time a pair of 1s is found, it means the
+   * remaining parts of the codes come from a reflection, and
+   * the digit with the highest value changes from 1 to 0 and
+   * viceversa.
+   */
+
   uint8 higher = 1;
 
   const uint8 *bstr1_end = bstr1 + length;
@@ -517,7 +539,7 @@ int bitstringGrayCmp(int length, uint8 *bstr1, uint8 *bstr2)
     const uint8 bytea = *bstr1++;
     const uint8 byteb = *bstr2++;
     if (bytea == byteb) {
-      // if the number of 1s in ba is odd, higher needs to be flipped
+      /* if the number of 1s is odd, higher is flipped */
       higher ^= (1 & number_of_ones[bytea]);
     }
     else {
@@ -529,7 +551,7 @@ int bitstringGrayCmp(int length, uint8 *bstr1, uint8 *bstr2)
           return (bita == higher) ? 1 : -1;
         }
         else {
-          // flip higher if bita is 1
+          /* flip higher if bita is 1 */
           higher ^= bita;
         }
         mask >>= 1;
@@ -538,6 +560,6 @@ int bitstringGrayCmp(int length, uint8 *bstr1, uint8 *bstr2)
     }
   }
 
-  // same bfp value
+  /* same bfp value */
   return 0;
 }
