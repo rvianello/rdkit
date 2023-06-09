@@ -19,6 +19,7 @@ rdkit_headers(AtomPairs.h
               RDKitFPGenerator.h
               TopologicalTorsionGenerator.h
               FingerprintUtil.h
+              Minhash.h
               DEST GraphMol/Fingerprints)
 
 rdkit_test(testFingerprints test1.cpp LINK_LIBRARIES 
@@ -28,6 +29,9 @@ rdkit_test(testMHFPFingerprint testMHFPFingerprint.cpp LINK_LIBRARIES
            Fingerprints FileParsers )
 
 rdkit_test(testFingerprintGenerators testFingerprintGenerators.cpp LINK_LIBRARIES 
+           Fingerprints FileParsers )
+
+rdkit_test(testMinhash testMinhash.cpp LINK_LIBRARIES
            Fingerprints FileParsers )
 
 rdkit_catch_test(fpTestCatch catch_tests.cpp LINK_LIBRARIES Fingerprints FileParsers)
