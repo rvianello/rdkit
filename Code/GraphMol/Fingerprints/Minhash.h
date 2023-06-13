@@ -81,7 +81,7 @@ struct Hash2 {
   uint8_t l;
 };
 
-template <typename OutputType, typename HashType=Hash1>
+template <typename OutputType, typename HashType>
 class MinhashSignatureGenerator {
 public:
   using MinhashSignature = std::vector<OutputType>;
@@ -128,7 +128,7 @@ private:
 };
 
 template <typename T>
-double similarity(const T & sign1, const T & sign2)
+double tanimotoSimilarity(const T & sign1, const T & sign2)
 {
   int result{};
   int count{};

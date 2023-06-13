@@ -12,74 +12,73 @@
 #include <GraphMol/RDKitBase.h>
 #include <RDGeneral/test.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
-#include <GraphMol/Fingerprints/Fingerprints.h>
-#include <GraphMol/Fingerprints/MorganFingerprints.h>
-#include <GraphMol/Fingerprints/FingerprintGenerator.h>
 #include <GraphMol/Fingerprints/MorganGenerator.h>
 #include <GraphMol/Fingerprints/Minhash.h>
 #include <DataStructs/BitOps.h>
 
-//#include <GraphMol/FileParsers/MolSupplier.h>
-//#include <GraphMol/FileParsers/FileParsers.h>
+#include <cmath>
+#include <memory>
 
 using namespace RDKit;
+
+template <typename OutputType, typename HashType>
+double signatureSimilarity(const SparseBitVect & fp1, const SparseBitVect & fp2, uint32_t l)
+{
+  using SignatureGenerator = Minhash::MinhashSignatureGenerator<OutputType, HashType>;
+  using Signature = typename SignatureGenerator::MinhashSignature;
+
+  SignatureGenerator signatureGenerator(l);
+  Signature signature1 = signatureGenerator(fp1.getBitSet()->begin(), fp1.getBitSet()->end());
+  Signature signature2 = signatureGenerator(fp2.getBitSet()->begin(), fp2.getBitSet()->end());
+
+  return Minhash::tanimotoSimilarity(signature1, signature2);
+}
+
 
 void testBasic()
 {
   BOOST_LOG(rdErrorLog) << "-------------------------------------" << std::endl;
-  BOOST_LOG(rdErrorLog) << "    Test Basic MinhashSignature" << std::endl;
+  BOOST_LOG(rdErrorLog) << "    Basic MinhashSignature Test" << std::endl;
   {
-    FingerprintGenerator<std::uint32_t> *radius2Generator =
-        MorganFingerprint::getMorganGenerator<std::uint32_t>(2, false);
+    auto pFpGenerator = std::unique_ptr<FingerprintGenerator<std::uint32_t>>(
+      MorganFingerprint::getMorganGenerator<std::uint32_t>(2, false)
+    );
 
-    ROMol *mol1 = SmilesToMol("O=C(O)CC1CC1");
-    ExplicitBitVect *fp1 = radius2Generator->getFingerprint(*mol1);
-    BOOST_LOG(rdErrorLog) << "    getNumBits: " << fp1->getNumBits() << std::endl;
-    BOOST_LOG(rdErrorLog) << "    getNumOnBits: " << fp1->getNumOnBits() << std::endl;
-    TEST_ASSERT(fp1->getNumOnBits() == 15);
-    IntVect onBits1;
-    fp1->getOnBits(onBits1);
-    TEST_ASSERT(onBits1.size() == 15);
+    auto pMol1 = std::unique_ptr<ROMol>(SmilesToMol("O=C(O)CC1CC1"));
+    auto pFp1 = std::unique_ptr<SparseBitVect>(pFpGenerator->getSparseFingerprint(*pMol1));
+    TEST_ASSERT(pFp1->getNumOnBits() == 16);
 
-    ROMol *mol2 = SmilesToMol("O=C(OC)CC1CCC1");
-    ExplicitBitVect *fp2 = radius2Generator->getFingerprint(*mol2);
-    BOOST_LOG(rdErrorLog) << "    getNumOnBits: " << fp2->getNumOnBits() << std::endl;
-    TEST_ASSERT(fp2->getNumOnBits() == 21);
-    IntVect onBits2;
-    fp2->getOnBits(onBits2);
-    TEST_ASSERT(onBits2.size() == 21);
+    auto pMol2 = std::unique_ptr<ROMol>(SmilesToMol("O=C(O)CC1CCC1"));
+    auto pFp2 = std::unique_ptr<SparseBitVect>(pFpGenerator->getSparseFingerprint(*pMol2));
+    TEST_ASSERT(pFp2->getNumOnBits() == 18);
 
     BOOST_LOG(rdErrorLog)
       << "    fingerprint similarity: "
-      << TanimotoSimilarity(*fp1, *fp2) << std::endl;
+      << TanimotoSimilarity(*pFp1, *pFp2) << std::endl;
 
-    using SignatureGenerator32 = Minhash::MinhashSignatureGenerator<uint32_t>;
-    using Signature32 = SignatureGenerator32::MinhashSignature;
+    auto sim32_h1 = signatureSimilarity<uint32_t, Minhash::Hash1>(*pFp1, *pFp2, 256);
+    BOOST_LOG(rdErrorLog) << "    signature similarity (32, Hash1):" << sim32_h1 << std::endl;
+    TEST_ASSERT(std::fabs(sim32_h1 - 0.8125) < 1e-4);
 
-    SignatureGenerator32 minhashSignatureGenerator32(64);
-    Signature32 signature32_1 = minhashSignatureGenerator32(onBits1.begin(), onBits1.end());
-    Signature32 signature32_2 = minhashSignatureGenerator32(onBits2.begin(), onBits2.end());
-
-    BOOST_LOG(rdErrorLog)
-      << "    signature32 similarity: "
-      << Minhash::similarity(signature32_1, signature32_2) << std::endl;
-    //TEST_ASSERT(Minhash::similarity(signature32_1, signature32_2) == 0.414062);
-
-    using SignatureGenerator8 = Minhash::MinhashSignatureGenerator<uint8_t>;
-    using Signature8 = SignatureGenerator8::MinhashSignature;
-
-    SignatureGenerator8 minhashSignatureGenerator8(256);
-    Signature8 signature8_1 = minhashSignatureGenerator8(onBits1.begin(), onBits1.end());
-    Signature8 signature8_2 = minhashSignatureGenerator8(onBits2.begin(), onBits2.end());
-
-    BOOST_LOG(rdErrorLog)
-      << "    signature8  similarity: "
-      << Minhash::similarity(signature8_1, signature8_2) << std::endl;
-    TEST_ASSERT(Minhash::similarity(signature8_1, signature8_2) == 0.359375);
-
-    delete fp1;
-    delete fp2;
-    delete radius2Generator;
+    auto sim16_h1 = signatureSimilarity<uint16_t, Minhash::Hash1>(*pFp1, *pFp2, 256);
+    BOOST_LOG(rdErrorLog) << "    signature similarity (16, Hash1):" << sim16_h1 << std::endl;
+    TEST_ASSERT(std::fabs(sim16_h1 - 0.8125) < 1e-4);
+    
+    auto sim8_h1 = signatureSimilarity<uint8_t, Minhash::Hash1>(*pFp1, *pFp2, 256);
+    BOOST_LOG(rdErrorLog) << "    signature similarity ( 8, Hash1):" << sim8_h1 << std::endl;
+    TEST_ASSERT(std::fabs(sim8_h1 - 0.816406) < 1e-6);
+    
+    auto sim32_h2 = signatureSimilarity<uint32_t, Minhash::Hash2>(*pFp1, *pFp2, 256);
+    BOOST_LOG(rdErrorLog) << "    signature similarity (32, Hash2):" << sim32_h2 << std::endl;
+    TEST_ASSERT(std::fabs(sim32_h2 - 0.800781) < 1e-6);
+    
+    auto sim16_h2 = signatureSimilarity<uint16_t, Minhash::Hash2>(*pFp1, *pFp2, 256);
+    BOOST_LOG(rdErrorLog) << "    signature similarity (16, Hash2):" << sim16_h2 << std::endl;
+    TEST_ASSERT(std::fabs(sim16_h2 - 0.800781) < 1e-6);
+    
+    auto sim8_h2 = signatureSimilarity<uint8_t, Minhash::Hash2>(*pFp1, *pFp2, 256);
+    BOOST_LOG(rdErrorLog) << "    signature similarity ( 8, Hash2):" << sim8_h2 << std::endl;
+    TEST_ASSERT(std::fabs(sim8_h2 - 0.804688) < 1e-6);
   }
 }
 
