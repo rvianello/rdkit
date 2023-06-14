@@ -22,7 +22,7 @@
 using namespace RDKit;
 
 template <typename OutputType, typename HashType>
-double signatureSimilarity(const SparseBitVect & fp1, const SparseBitVect & fp2, uint32_t l)
+double signatureSimilarity(const SparseBitVect & fp1, const SparseBitVect & fp2, std::uint32_t l)
 {
   using SignatureGenerator = Minhash::MinhashSignatureGenerator<OutputType, HashType>;
   using Signature = typename SignatureGenerator::MinhashSignature;
@@ -56,27 +56,27 @@ void testBasic()
       << "    fingerprint similarity: "
       << TanimotoSimilarity(*pFp1, *pFp2) << std::endl;
 
-    auto sim32_h1 = signatureSimilarity<uint32_t, Minhash::Hash1>(*pFp1, *pFp2, 256);
+    auto sim32_h1 = signatureSimilarity<std::uint32_t, Minhash::Hash1>(*pFp1, *pFp2, 256);
     BOOST_LOG(rdErrorLog) << "    signature similarity (32, Hash1):" << sim32_h1 << std::endl;
     TEST_ASSERT(std::fabs(sim32_h1 - 0.8125) < 1e-4);
 
-    auto sim16_h1 = signatureSimilarity<uint16_t, Minhash::Hash1>(*pFp1, *pFp2, 256);
+    auto sim16_h1 = signatureSimilarity<std::uint16_t, Minhash::Hash1>(*pFp1, *pFp2, 256);
     BOOST_LOG(rdErrorLog) << "    signature similarity (16, Hash1):" << sim16_h1 << std::endl;
     TEST_ASSERT(std::fabs(sim16_h1 - 0.8125) < 1e-4);
     
-    auto sim8_h1 = signatureSimilarity<uint8_t, Minhash::Hash1>(*pFp1, *pFp2, 256);
+    auto sim8_h1 = signatureSimilarity<std::uint8_t, Minhash::Hash1>(*pFp1, *pFp2, 256);
     BOOST_LOG(rdErrorLog) << "    signature similarity ( 8, Hash1):" << sim8_h1 << std::endl;
     TEST_ASSERT(std::fabs(sim8_h1 - 0.816406) < 1e-6);
     
-    auto sim32_h2 = signatureSimilarity<uint32_t, Minhash::Hash2>(*pFp1, *pFp2, 256);
+    auto sim32_h2 = signatureSimilarity<std::uint32_t, Minhash::Hash2>(*pFp1, *pFp2, 256);
     BOOST_LOG(rdErrorLog) << "    signature similarity (32, Hash2):" << sim32_h2 << std::endl;
     TEST_ASSERT(std::fabs(sim32_h2 - 0.800781) < 1e-6);
     
-    auto sim16_h2 = signatureSimilarity<uint16_t, Minhash::Hash2>(*pFp1, *pFp2, 256);
+    auto sim16_h2 = signatureSimilarity<std::uint16_t, Minhash::Hash2>(*pFp1, *pFp2, 256);
     BOOST_LOG(rdErrorLog) << "    signature similarity (16, Hash2):" << sim16_h2 << std::endl;
     TEST_ASSERT(std::fabs(sim16_h2 - 0.800781) < 1e-6);
     
-    auto sim8_h2 = signatureSimilarity<uint8_t, Minhash::Hash2>(*pFp1, *pFp2, 256);
+    auto sim8_h2 = signatureSimilarity<std::uint8_t, Minhash::Hash2>(*pFp1, *pFp2, 256);
     BOOST_LOG(rdErrorLog) << "    signature similarity ( 8, Hash2):" << sim8_h2 << std::endl;
     TEST_ASSERT(std::fabs(sim8_h2 - 0.804688) < 1e-6);
   }

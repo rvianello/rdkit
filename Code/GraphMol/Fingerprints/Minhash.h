@@ -28,13 +28,13 @@ namespace Minhash {
 // Families of universal hash functions
 // https://en.wikipedia.org/wiki/Universal_hashing
 
-inline uint64_t hash(uint64_t x, uint8_t l, uint64_t a) {
+inline std::uint64_t hash(std::uint64_t x, std::uint8_t l, std::uint64_t a) {
   // hashes x 2/m-almost-universally into l <= 64 bits
   // using random odd seed a
   return (a*x) >> (64-l);
 };
 
-inline uint32_t hash(uint32_t x, uint8_t l, uint64_t a, uint64_t b) {
+inline std::uint32_t hash(std::uint32_t x, std::uint8_t l, std::uint64_t a, std::uint64_t b) {
   // hashes x truly universally into l <= 32 bits
   // using random seeds a and b
   // 0 < a < 2**64
@@ -42,43 +42,43 @@ inline uint32_t hash(uint32_t x, uint8_t l, uint64_t a, uint64_t b) {
   return (a*x+b) >> (64-l);
 };
 
-using RandomFunction = std::function<uint64_t ()>;
+using RandomFunction = std::function<std::uint64_t ()>;
 
 struct Hash1 {
-  using InputType = uint64_t;
-  using OutputType = uint64_t;
-  using HashSeed = uint64_t;
+  using InputType = std::uint64_t;
+  using OutputType = std::uint64_t;
+  using HashSeed = std::uint64_t;
 
   static HashSeed generate_seed(RandomFunction random) 
   {
     return random() | 1;
   }
 
-  explicit Hash1(uint8_t l) : l{l} {}
+  explicit Hash1(std::uint8_t l) : l{l} {}
   OutputType operator()(InputType x, HashSeed seed) {
     return hash(x, l, seed);
   }
-  uint8_t l;
+  std::uint8_t l;
 };
 
 struct Hash2 {
-  using InputType = uint32_t;
-  using OutputType = uint32_t;
-  using HashSeed = std::pair<uint64_t, uint64_t>;
+  using InputType = std::uint32_t;
+  using OutputType = std::uint32_t;
+  using HashSeed = std::pair<std::uint64_t, std::uint64_t>;
 
   static HashSeed generate_seed(RandomFunction random) 
   {
-    uint64_t b{random()};
-    uint64_t a{random()};
+    std::uint64_t b{random()};
+    std::uint64_t a{random()};
     while (a == 0) {a = random();}
     return {a, b};
   }
 
-  explicit Hash2(uint8_t l) : l{l} {}
+  explicit Hash2(std::uint8_t l) : l{l} {}
   OutputType operator()(InputType x, HashSeed seed) {
     return hash(x, l, seed.first, seed.second);
   }
-  uint8_t l;
+  std::uint8_t l;
 };
 
 template <typename OutputType, typename HashType>
@@ -86,10 +86,10 @@ class MinhashSignatureGenerator {
 public:
   using MinhashSignature = std::vector<OutputType>;
 
-  MinhashSignatureGenerator(uint32_t size, int rng_seed=42)
+  MinhashSignatureGenerator(std::uint32_t size, int rng_seed=42)
     : seeds{} {
     std::mt19937_64 rng(rng_seed);
-    std::uniform_int_distribution<uint64_t> distribution;
+    std::uniform_int_distribution<std::uint64_t> distribution;
     auto random = [&rng, &distribution]() {return distribution(rng);};
 
     // generate a collection of "size" unique seed parameters for the
@@ -103,7 +103,7 @@ public:
   }
 
   template <typename InputIt>
-  MinhashSignature operator()(InputIt initial, InputIt final)
+  MinhashSignature operator()(InputIt initial, InputIt final) const
   {
     HashType hash{l};
     MinhashSignature signature;
@@ -124,7 +124,7 @@ public:
 private:
   using HashSeeds = std::vector<typename HashType::HashSeed>;
   HashSeeds seeds;
-  static constexpr uint8_t l = sizeof(OutputType)*8;
+  static constexpr std::uint8_t l = sizeof(OutputType)*8;
 };
 
 template <typename T>
