@@ -25,7 +25,7 @@ template <typename OutputType, typename HashType>
 double signatureSimilarity(const SparseBitVect & fp1, const SparseBitVect & fp2, std::uint32_t l)
 {
   using SignatureGenerator = Minhash::MinhashSignatureGenerator<OutputType, HashType>;
-  using Signature = typename SignatureGenerator::MinhashSignature;
+  using Signature = Minhash::MinhashSignature<OutputType>;
 
   SignatureGenerator signatureGenerator(l);
   Signature signature1 = signatureGenerator(fp1.getBitSet()->begin(), fp1.getBitSet()->end());

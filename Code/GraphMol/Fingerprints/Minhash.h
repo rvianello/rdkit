@@ -81,10 +81,12 @@ struct Hash2 {
   std::uint8_t l;
 };
 
+template <typename T> class MinhashSignature : public std::vector<T> {};
+
 template <typename OutputType, typename HashType>
 class MinhashSignatureGenerator {
 public:
-  using MinhashSignature = std::vector<OutputType>;
+  using SignatureType = MinhashSignature<OutputType>;
 
   MinhashSignatureGenerator(std::uint32_t size, int rng_seed=42)
     : seeds{} {
@@ -103,10 +105,10 @@ public:
   }
 
   template <typename InputIt>
-  MinhashSignature operator()(InputIt initial, InputIt final) const
+  SignatureType operator()(InputIt initial, InputIt final) const
   {
     HashType hash{l};
-    MinhashSignature signature;
+    SignatureType signature;
     signature.reserve(seeds.size());
     // loop over the hash functions, for each function compute a minhash
     // append the minhash to the signature

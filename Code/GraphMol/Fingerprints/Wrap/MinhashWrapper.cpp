@@ -21,10 +21,22 @@ namespace RDKit {
 namespace Minhash {
 
 namespace {
+  template <typename OutputType>
+  double similarity(const MinhashSignature<OutputType> *s1, const MinhashSignature<OutputType> *s2) {
+    return tanimotoSimilarity(*s1, *s2);
+  }
+
   template <typename OutputType, typename HashType>
-  typename MinhashSignatureGenerator<OutputType, HashType>::MinhashSignature
-  call(const MinhashSignatureGenerator<OutputType, HashType> *gen, const SparseBitVect *fp) {
-    return (*gen)(fp->getBitSet()->begin(), fp->getBitSet()->end());
+  MinhashSignature<OutputType> *
+  callGenerator(const MinhashSignatureGenerator<OutputType, HashType> *gen, const SparseBitVect *fp) {
+    MinhashSignature<OutputType> signature = (*gen)(fp->getBitSet()->begin(), fp->getBitSet()->end());
+    return new MinhashSignature<OutputType>(std::move(signature));
+  }
+
+  template <typename OutputType>
+  void wrapSignature(const std::string & nm) {
+    python::class_<MinhashSignature<OutputType>>(nm.c_str(), python::no_init)
+      ;
   }
 
   template <typename OutputType, typename HashType>
@@ -32,13 +44,18 @@ namespace {
     python::class_<MinhashSignatureGenerator<OutputType, HashType>>(
       nm.c_str(), python::init<std::uint32_t, python::optional<int>>()
       )
-      .def("__call__", call<OutputType, HashType>, python::arg("bfp"))
+      .def("__call__", callGenerator<OutputType, HashType>,
+           (python::arg("bfp"), python::return_value_policy<python::manage_new_object>()))
       ;
   }
   
 }
 
 BOOST_PYTHON_MODULE(rdMinhash) {
+  wrapSignature<std::uint32_t>("MinhashSignature32");
+  wrapSignature<std::uint16_t>("MinhashSignature16");
+  wrapSignature<std::uint8_t>("MinhashSignature8");
+
   wrapGenerator<std::uint32_t, Hash1>("MinhashSignatureGenerator32H1");
   wrapGenerator<std::uint16_t, Hash1>("MinhashSignatureGenerator16H1");
   wrapGenerator<std::uint8_t, Hash1>("MinhashSignatureGenerator8H1");
@@ -46,6 +63,10 @@ BOOST_PYTHON_MODULE(rdMinhash) {
   wrapGenerator<std::uint32_t, Hash2>("MinhashSignatureGenerator32H2");
   wrapGenerator<std::uint16_t, Hash2>("MinhashSignatureGenerator16H2");
   wrapGenerator<std::uint8_t, Hash2>("MinhashSignatureGenerator8H2");
+
+  python::def("tanimotoSimilarity", similarity<std::uint32_t>, (python::arg("s1"), python::arg("s2")));
+  python::def("tanimotoSimilarity", similarity<std::uint16_t>, (python::arg("s1"), python::arg("s2")));
+  python::def("tanimotoSimilarity", similarity<std::uint8_t>, (python::arg("s1"), python::arg("s2")));
 }
 
 } // namespace Minhash
