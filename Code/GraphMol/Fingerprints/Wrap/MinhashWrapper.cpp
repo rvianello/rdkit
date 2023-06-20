@@ -34,8 +34,25 @@ namespace {
   }
 
   template <typename OutputType>
+  OutputType signatureGetItem(const MinhashSignature<OutputType> & sig, int pos) {
+    int size = static_cast<int>(sig.size());
+    if (pos < 0) {
+      pos += size;
+      if (pos < 0) {
+        throw IndexErrorException(pos);
+      }
+    }
+    if (pos >= size) {
+      throw IndexErrorException(pos);
+    }
+    return sig[pos];
+  }
+
+  template <typename OutputType>
   void wrapSignature(const std::string & nm) {
     python::class_<MinhashSignature<OutputType>>(nm.c_str(), python::no_init)
+      .def("__len__", &MinhashSignature<OutputType>::size)
+      .def("__getitem__", signatureGetItem<OutputType>, python::arg("pos"))
       ;
   }
 
