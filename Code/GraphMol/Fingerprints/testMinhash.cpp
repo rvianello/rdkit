@@ -31,7 +31,7 @@ double signatureSimilarity(const SparseBitVect & fp1, const SparseBitVect & fp2,
   Signature signature1 = signatureGenerator(fp1.getBitSet()->begin(), fp1.getBitSet()->end());
   Signature signature2 = signatureGenerator(fp2.getBitSet()->begin(), fp2.getBitSet()->end());
 
-  return Minhash::tanimotoSimilarity(signature1, signature2);
+  return Minhash::TanimotoSimilarity(signature1, signature2);
 }
 
 

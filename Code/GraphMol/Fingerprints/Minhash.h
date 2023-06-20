@@ -130,7 +130,7 @@ private:
 };
 
 template <typename T>
-double tanimotoSimilarity(const T & sign1, const T & sign2)
+double TanimotoSimilarity(const T & sign1, const T & sign2)
 {
   int result{};
   int count{};

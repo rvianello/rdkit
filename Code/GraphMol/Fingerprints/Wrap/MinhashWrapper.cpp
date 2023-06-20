@@ -23,7 +23,7 @@ namespace Minhash {
 namespace {
   template <typename OutputType>
   double similarity(const MinhashSignature<OutputType> *s1, const MinhashSignature<OutputType> *s2) {
-    return tanimotoSimilarity(*s1, *s2);
+    return TanimotoSimilarity(*s1, *s2);
   }
 
   template <typename OutputType, typename HashType>
@@ -81,9 +81,9 @@ BOOST_PYTHON_MODULE(rdMinhash) {
   wrapGenerator<std::uint16_t, Hash2>("MinhashSignatureGenerator16H2");
   wrapGenerator<std::uint8_t, Hash2>("MinhashSignatureGenerator8H2");
 
-  python::def("tanimotoSimilarity", similarity<std::uint32_t>, (python::arg("s1"), python::arg("s2")));
-  python::def("tanimotoSimilarity", similarity<std::uint16_t>, (python::arg("s1"), python::arg("s2")));
-  python::def("tanimotoSimilarity", similarity<std::uint8_t>, (python::arg("s1"), python::arg("s2")));
+  python::def("TanimotoSimilarity", similarity<std::uint32_t>, (python::arg("s1"), python::arg("s2")));
+  python::def("TanimotoSimilarity", similarity<std::uint16_t>, (python::arg("s1"), python::arg("s2")));
+  python::def("TanimotoSimilarity", similarity<std::uint8_t>, (python::arg("s1"), python::arg("s2")));
 }
 
 } // namespace Minhash

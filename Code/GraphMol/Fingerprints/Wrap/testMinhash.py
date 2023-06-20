@@ -17,33 +17,33 @@ class TestCase(unittest.TestCase):
     # Hash1
     siggen = rdMinhash.MinhashSignatureGenerator32H1(256)
     sig1, sig2 = (siggen(bfp) for bfp in (bfp1, bfp2))
-    similarity = rdMinhash.tanimotoSimilarity(sig1, sig2)
+    similarity = rdMinhash.TanimotoSimilarity(sig1, sig2)
     self.assertAlmostEqual(similarity, 0.7578125)
 
     siggen = rdMinhash.MinhashSignatureGenerator16H1(256)
     sig1, sig2 = (siggen(bfp) for bfp in (bfp1, bfp2))
-    similarity = rdMinhash.tanimotoSimilarity(sig1, sig2)
+    similarity = rdMinhash.TanimotoSimilarity(sig1, sig2)
     self.assertAlmostEqual(similarity, 0.7578125)
 
     siggen = rdMinhash.MinhashSignatureGenerator8H1(256)
     sig1, sig2 = (siggen(bfp) for bfp in (bfp1, bfp2))
-    similarity = rdMinhash.tanimotoSimilarity(sig1, sig2)
+    similarity = rdMinhash.TanimotoSimilarity(sig1, sig2)
     self.assertAlmostEqual(similarity, 0.765625)
 
     # Hash2
     siggen = rdMinhash.MinhashSignatureGenerator32H2(256)
     sig1, sig2 = (siggen(bfp) for bfp in (bfp1, bfp2))
-    similarity = rdMinhash.tanimotoSimilarity(sig1, sig2)
+    similarity = rdMinhash.TanimotoSimilarity(sig1, sig2)
     self.assertAlmostEqual(similarity, 0.73046875)
 
     siggen = rdMinhash.MinhashSignatureGenerator16H2(256)
     sig1, sig2 = (siggen(bfp) for bfp in (bfp1, bfp2))
-    similarity = rdMinhash.tanimotoSimilarity(sig1, sig2)
+    similarity = rdMinhash.TanimotoSimilarity(sig1, sig2)
     self.assertAlmostEqual(similarity, 0.73046875)
 
     siggen = rdMinhash.MinhashSignatureGenerator8H2(256)
     sig1, sig2 = (siggen(bfp) for bfp in (bfp1, bfp2))
-    similarity = rdMinhash.tanimotoSimilarity(sig1, sig2)
+    similarity = rdMinhash.TanimotoSimilarity(sig1, sig2)
     self.assertAlmostEqual(similarity, 0.73828125)
 
 
