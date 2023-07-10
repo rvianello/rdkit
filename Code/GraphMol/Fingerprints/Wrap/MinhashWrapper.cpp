@@ -12,6 +12,7 @@
 #include <boost/python.hpp>
 #include <GraphMol/Fingerprints/Minhash.h>
 #include <DataStructs/SparseBitVect.h>
+#include <DataStructs/ExplicitBitVect.h>
 
 #include <string>
 
@@ -28,8 +29,17 @@ namespace {
 
   template <typename OutputType, typename HashType>
   MinhashSignature<OutputType> *
-  callGenerator(const MinhashSignatureGenerator<OutputType, HashType> *gen, const SparseBitVect *fp) {
+  callSparseBitVect(const MinhashSignatureGenerator<OutputType, HashType> *gen, const SparseBitVect *fp) {
     MinhashSignature<OutputType> signature = (*gen)(fp->getBitSet()->begin(), fp->getBitSet()->end());
+    return new MinhashSignature<OutputType>(std::move(signature));
+  }
+
+  template <typename OutputType, typename HashType>
+  MinhashSignature<OutputType> *
+  callExplicitBitVect(const MinhashSignatureGenerator<OutputType, HashType> *gen, const ExplicitBitVect *fp) {
+    IntVect v;
+    fp->getOnBits(v);
+    MinhashSignature<OutputType> signature = (*gen)(v.begin(), v.end());
     return new MinhashSignature<OutputType>(std::move(signature));
   }
 
@@ -61,7 +71,9 @@ namespace {
     python::class_<MinhashSignatureGenerator<OutputType, HashType>>(
       nm.c_str(), python::init<std::uint32_t, python::optional<int>>()
       )
-      .def("__call__", callGenerator<OutputType, HashType>,
+      .def("__call__", callSparseBitVect<OutputType, HashType>,
+           (python::arg("bfp"), python::return_value_policy<python::manage_new_object>()))
+      .def("__call__", callExplicitBitVect<OutputType, HashType>,
            (python::arg("bfp"), python::return_value_policy<python::manage_new_object>()))
       ;
   }
