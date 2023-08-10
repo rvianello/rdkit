@@ -780,6 +780,12 @@ PARALLEL SAFE
 AS 'MODULE_PATHNAME', 'bfp_size'
 LANGUAGE C STRICT IMMUTABLE;
 
+CREATE OR REPLACE FUNCTION popcount(bfp)
+RETURNS int4
+PARALLEL SAFE
+AS 'MODULE_PATHNAME', 'bfp_popcount'
+LANGUAGE C STRICT IMMUTABLE;
+
 
 -- Sfp manipulation
 
@@ -1910,18 +1916,28 @@ RETURNS bool
 AS 'MODULE_PATHNAME'
 LANGUAGE C STABLE STRICT;
 
+CREATE FUNCTION gin_bfp_compare(int4, int4)
+RETURNS int4
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION gin_bfp_options(internal)
+RETURNS void
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
 -- Operator classes for gin
 
 CREATE OPERATOR CLASS gin_bfp_ops
 DEFAULT FOR TYPE bfp USING gin
 AS
     OPERATOR    1   % (bfp, bfp),
-    OPERATOR    2   # (bfp, bfp),
-    FUNCTION    1   btint4cmp (int4, int4),
+    FUNCTION    1   gin_bfp_compare(int4, int4),
     FUNCTION    2   gin_bfp_extract_value(bfp, internal),
     FUNCTION    3   gin_bfp_extract_query(bfp, internal, int2, internal, internal, internal, internal),
     FUNCTION    4   gin_bfp_consistent(internal, int2, bfp, int4, internal, internal, internal, internal),
     FUNCTION    6   gin_bfp_triconsistent(internal, int2, bfp, int4, internal, internal, internal),
+    FUNCTION    7   gin_bfp_options(internal),
     STORAGE     int4;
 
 --

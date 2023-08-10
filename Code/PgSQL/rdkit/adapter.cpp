@@ -60,6 +60,7 @@
 #include <GraphMol/Depictor/RDDepictor.h>
 #include <GraphMol/Fingerprints/AtomPairs.h>
 #include <GraphMol/Fingerprints/MorganFingerprints.h>
+#include <GraphMol/Fingerprints/Minhash.h>
 #include <GraphMol/Fingerprints/MACCS.h>
 #include <GraphMol/Substruct/SubstructMatch.h>
 #include <GraphMol/Descriptors/MolDescriptors.h>
@@ -895,6 +896,13 @@ extern "C" int CBfpSize(CBfp a) {
   return numBits;
 }
 
+extern "C" int CBfpPopcount(CBfp a) {
+  auto *ebv = (std::string *)a;
+  const auto *efp = (const unsigned char *)ebv->c_str();
+  int popcount = CalcBitmapPopcount(efp, ebv->size());
+  return popcount;
+}
+
 extern "C" double calcBitmapTanimotoSml(CBfp a, CBfp b) {
   auto *abv = (std::string *)a;
   auto *bbv = (std::string *)b;
@@ -918,6 +926,93 @@ double calcBitmapTverskySml(CBfp a, CBfp b, float ca, float cb) {
   const auto *afp = (const unsigned char *)abv->c_str();
   const auto *bfp = (const unsigned char *)bbv->c_str();
   return CalcBitmapTversky(afp, bfp, abv->size(), ca, cb);
+}
+
+extern "C" void calcBfpLSHKeys(uint8 *fp, int fplen, int bands, int rows, uint32 *lshkeys) {
+
+  using MinhashType = uint32_t;
+  using Generator = Minhash::MinhashSignatureGenerator<MinhashType, Minhash::Hash2>;
+  using GeneratorCache = std::map<uint32_t, Generator>;
+
+  static GeneratorCache cache;
+
+  IntVect onBits;
+  for (int i=0; i < fplen; ++i) {
+    uint8 byte = fp[i];
+    for (int j = 0; j < 8; ++j) {
+      if (byte & 0x01) {
+        onBits.push_back(8*i+j);
+      }
+      byte >>= 1;
+    }
+  }
+
+  uint32_t signatureSize = bands*rows;
+  GeneratorCache::const_iterator cacheIterator = cache.find(signatureSize);
+  if (cacheIterator == cache.end()) {
+    cacheIterator = cache.emplace(signatureSize, signatureSize).first;
+  }
+  const Generator & signatureGenerator = cacheIterator->second;
+
+  auto signature = signatureGenerator(onBits.begin(), onBits.end());
+
+  /*
+  // http://isthe.com/chongo/tech/comp/fnv/
+  constexpr uint32_t FNV_PRIME = 16777619;
+  constexpr uint32_t FNV_OFFSET_BASIS = 2166136261;
+  constexpr int OCTECTS = sizeof(MinhashType);
+
+  auto it = signature.begin();
+  for (int band=0; band < bands; ++band) {
+    uint32 key = FNV_OFFSET_BASIS;
+    key ^= band;
+    key *= FNV_PRIME;
+    for (int row=0; row < rows; ++row) {
+      MinhashType minhash = *it++;
+      for (int octet=0; octet < OCTECTS; ++octet) {
+        key ^= (minhash | 0xFF);
+        key *= FNV_PRIME;
+        minhash >>= 8;
+      }
+    }
+    *lshkeys++ = key;
+  }*/
+
+  auto it = signature.begin();
+  for (int band=0; band < bands; ++band) {
+    uint32_t key = band * 53;
+    for (int row=0; row < rows; ++row) {
+      uint32_t x = *it++;
+      x = ((x >> 16) ^ x) * 0x45d9f3b;
+      x = ((x >> 16) ^ x) * 0x45d9f3b;
+      x = (x >> 16) ^ x;
+      key ^= x + 0x9e3779b9 + (key << 6) + (key >> 2);
+    }
+    // fold to 24 bits
+    key = (key >> 24) ^ (key & (uint32_t)0xffffff);
+    // put the band number in the most significant byte
+    key |= (uint32_t)band << 24;
+    *lshkeys++ = key;
+  }
+
+ /*
+  auto it = signature.begin();
+  for (int band=0; band < bands; ++band) {
+    uint32_t key = band * 53;
+    for (int row=0; row < rows; ++row) {
+      uint16_t x = *it++;
+      x += x << 7; x ^= x >> 8;
+      x += x << 3; x ^= x >> 2;
+      x += x << 4; x ^= x >> 8;
+      key ^= x + 0x79b9 + (key << 3) + (key >> 1);
+    }
+    // fold to 24 bits
+    key = (key >> 24) ^ (key & (uint32_t)0xffffff);
+    // put the band number in the most significant byte
+    key |= (uint32_t)band << 24;
+
+    *lshkeys++ = key;
+  }*/
 }
 
 /*******************************************

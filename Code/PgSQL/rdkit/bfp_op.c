@@ -214,6 +214,18 @@ Datum bfp_size(PG_FUNCTION_ARGS) {
   PG_RETURN_INT32(CBfpSize(bfp));
 }
 
+PGDLLEXPORT Datum bfp_popcount(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(bfp_popcount);
+Datum bfp_popcount(PG_FUNCTION_ARGS) {
+  CBfp bfp;
+
+  fcinfo->flinfo->fn_extra =
+      searchBfpCache(fcinfo->flinfo->fn_extra, fcinfo->flinfo->fn_mcxt,
+                     PG_GETARG_DATUM(0), NULL, &bfp, NULL);
+
+  PG_RETURN_INT32(CBfpPopcount(bfp));
+}
+
 PGDLLEXPORT Datum layered_fp(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(layered_fp);
 Datum layered_fp(PG_FUNCTION_ARGS) {

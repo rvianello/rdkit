@@ -2,7 +2,6 @@ CREATE INDEX fpidx ON pgbfp USING gin (f);
 CREATE INDEX maccsfpidx ON pgbfp USING gin (maccsf);
 
 SET rdkit.tanimoto_threshold = 0.5;
-SET rdkit.dice_threshold = 0.6;
 
 
 SET enable_indexscan=off;
@@ -14,13 +13,6 @@ SELECT
 FROM
 	pgbfp
 WHERE rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol) % f
-ORDER BY sml DESC, id limit 10;
-
-SELECT
-    id, dice_sml(rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol), f) AS sml
-FROM
-	pgbfp
-WHERE rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol) # f
 ORDER BY sml DESC, id limit 10;
 
 SELECT
@@ -40,13 +32,6 @@ SELECT
 FROM
 	pgbfp
 WHERE rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol) % f
-ORDER BY sml DESC, id limit 10;
-
-SELECT
-    id, dice_sml(rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol), f) AS sml
-FROM
-	pgbfp
-WHERE rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol) # f
 ORDER BY sml DESC, id limit 10;
 
 SELECT

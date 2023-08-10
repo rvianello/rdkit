@@ -193,10 +193,13 @@ Bfp *deconstructCBfp(CBfp data);
 BfpSignature *makeBfpSignature(CBfp data);
 
 int CBfpSize(CBfp a);
+int CBfpPopcount(CBfp a);
 
 double calcBitmapTanimotoSml(CBfp a, CBfp b);
 double calcBitmapDiceSml(CBfp a, CBfp b);
 double calcBitmapTverskySml(CBfp a, CBfp b, float ca, float cb);
+
+void calcBfpLSHKeys(uint8 *fp, int fplen, int bands, int rows, uint32 *lshkeys);
 
 /* SparseIntVect<std::int32_t> */
 typedef void *CSfp;
