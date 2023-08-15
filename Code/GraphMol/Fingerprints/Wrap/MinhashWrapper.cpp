@@ -26,6 +26,7 @@ namespace {
   double similarity(const MinhashSignature<OutputType> *s1, const MinhashSignature<OutputType> *s2) {
     return TanimotoSimilarity(*s1, *s2);
   }
+  const char * similarity_docstring = "Estimate the Tanimoto similarity of two fingerprints from their Minhash signatures";
 
   template <typename OutputType, typename HashType>
   MinhashSignature<OutputType> *
@@ -60,7 +61,10 @@ namespace {
 
   template <typename OutputType>
   void wrapSignature(const std::string & nm) {
-    python::class_<MinhashSignature<OutputType>>(nm.c_str(), python::no_init)
+    python::class_<MinhashSignature<OutputType>>(
+      nm.c_str(),
+      (std::to_string(8*sizeof(OutputType)) + "-bits Minhash signature").c_str(),
+      python::no_init)
       .def("__len__", &MinhashSignature<OutputType>::size)
       .def("__getitem__", signatureGetItem<OutputType>, python::arg("pos"))
       ;
@@ -69,12 +73,18 @@ namespace {
   template <typename OutputType, typename HashType>
   void wrapGenerator(const std::string & nm) {
     python::class_<MinhashSignatureGenerator<OutputType, HashType>>(
-      nm.c_str(), python::init<std::uint32_t, python::optional<int>>()
+      nm.c_str(),
+      ("Generator of " + std::to_string(8*sizeof(OutputType)) + "-bits Minhash signatures").c_str(),
+      python::init<std::uint32_t, python::optional<int>>()
       )
       .def("__call__", callSparseBitVect<OutputType, HashType>,
-           (python::arg("bfp"), python::return_value_policy<python::manage_new_object>()))
+            python::arg("bfp"),
+            "Generates the Minhash signature of a sparse fingerprint",
+            python::return_value_policy<python::manage_new_object>())
       .def("__call__", callExplicitBitVect<OutputType, HashType>,
-           (python::arg("bfp"), python::return_value_policy<python::manage_new_object>()))
+            python::arg("bfp"),
+            "Generates the Minhash signature of a folded fingerprint",
+            python::return_value_policy<python::manage_new_object>())
       ;
   }
   
@@ -93,9 +103,9 @@ BOOST_PYTHON_MODULE(rdMinhash) {
   wrapGenerator<std::uint16_t, Hash2>("MinhashSignatureGenerator16H2");
   wrapGenerator<std::uint8_t, Hash2>("MinhashSignatureGenerator8H2");
 
-  python::def("TanimotoSimilarity", similarity<std::uint32_t>, (python::arg("s1"), python::arg("s2")));
-  python::def("TanimotoSimilarity", similarity<std::uint16_t>, (python::arg("s1"), python::arg("s2")));
-  python::def("TanimotoSimilarity", similarity<std::uint8_t>, (python::arg("s1"), python::arg("s2")));
+  python::def("TanimotoSimilarity", similarity<std::uint32_t>, similarity_docstring, (python::arg("s1"), python::arg("s2")));
+  python::def("TanimotoSimilarity", similarity<std::uint16_t>, similarity_docstring, (python::arg("s1"), python::arg("s2")));
+  python::def("TanimotoSimilarity", similarity<std::uint8_t>, similarity_docstring, (python::arg("s1"), python::arg("s2")));
 }
 
 } // namespace Minhash
