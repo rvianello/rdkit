@@ -90,6 +90,8 @@ public:
 
   MinhashSignatureGenerator(std::uint32_t size, int rng_seed=42)
     : seeds{} {
+    PRECONDITION(size, "The signature size must be larger than zero");
+  
     std::mt19937_64 rng(rng_seed);
     std::uniform_int_distribution<std::uint64_t> distribution;
     auto random = [&rng, &distribution]() {return distribution(rng);};
@@ -132,6 +134,9 @@ private:
 template <typename T>
 double TanimotoSimilarity(const T & sign1, const T & sign2)
 {
+  PRECONDITION(sign1.size() == sign2.size(), "The input signatures must have the same length");
+  PRECONDITION(sign1.size(), "The input signatures can't be empty");
+
   int result{};
   int count{};
 
