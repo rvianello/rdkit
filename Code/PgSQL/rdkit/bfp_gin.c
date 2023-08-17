@@ -40,25 +40,56 @@
 #include "bitstring.h"
 #include "guc.h"
 
+/*
+ * The implementation is based on indexing the binary fingerprints under locality-sensitive
+ * hash keys that are computed from a minhash signature of the original bitstrings.
+ *
+ * The approach is based on chapter 3 of "The Mining of Massive Datasets" (http://mmds.org/).
+ *
+ * Given two binary fingerprints, the probability s that their minhash signatures have the
+ * same value at any given position, equals their tanimoto similarity. If the signature is
+ * divided into b bands or r rows each, the probability p that the signature values match on
+ * every row of a given band is s**r. The probability that the two signatures have matching
+ * values on each row of k bands then follows a binomial distribution of parameters b (the
+ * number of bands) and p = s**r.
+ *
+ * Searching the index for items that share at least a required number of hash keys with the
+ * query is therefore subject an S-shaped probability distribution of selecting the indexed
+ * fingerprints based on their increasing tanimoto similarity to the query (the behavior
+ * is similar to that of a partial index, including with probability ~1 only the items that are
+ * sufficiently similar to the query and excluding those that are too dissimilar).
+ *
+ * The configured parameters (bands, rows, and min # of matching hash keys) affect the shape
+ * of this probability distribution and consequently the selectivity of the index.
+ */
+
 /* gin_bfp_ops opclass options */
 typedef struct
 {
-  int32 vl_len_;		/* varlena header (do not touch directly!) */
-  int bands;			  /* number of bands in the minhash signature */
-  int rows;			    /* number of rows in each band */
+  int32 vl_len_;		     /* varlena header (do not touch directly!) */
+  int bands;			       /* number of bands in the minhash signature */
+  int rows;			         /* number of rows in each band */
+  int required_matching; /* minimum number of matching hash keys (bands) of candidate similar records */
 } GinBfpOptions;
 
-#define BANDS_DEFAULT 10
+#define BANDS_DEFAULT 20
 #define BANDS_MIN 8
-#define BANDS_MAX 64
+#define BANDS_MAX 32
 #define GET_BANDS()	(PG_HAS_OPCLASS_OPTIONS() ? \
   ((GinBfpOptions *) PG_GET_OPCLASS_OPTIONS())->bands : BANDS_DEFAULT)
 
-#define ROWS_DEFAULT 3
+#define ROWS_DEFAULT 5
 #define ROWS_MIN 1
 #define ROWS_MAX 10
 #define GET_ROWS()	(PG_HAS_OPCLASS_OPTIONS() ? \
   ((GinBfpOptions *) PG_GET_OPCLASS_OPTIONS())->rows : ROWS_DEFAULT)
+
+#define REQUIRED_MATCHING_DEFAULT 1
+#define REQUIRED_MATCHING_MIN 1
+#define REQUIRED_MATCHING_MAX 32
+#define GET_REQUIRED_MATCHING()	(PG_HAS_OPCLASS_OPTIONS() ? \
+  ((GinBfpOptions *) PG_GET_OPCLASS_OPTIONS())->required_matching : REQUIRED_MATCHING_DEFAULT)
+
 
 static Datum *gin_bfp_extract(Bfp *bfp, int bands, int rows, int32 *nkeys) {
 
@@ -120,8 +151,14 @@ Datum gin_bfp_consistent(PG_FUNCTION_ARGS) {
 
   *recheck = true;
 
+  int required_matching = GET_REQUIRED_MATCHING();
+  int match_count = 0;
+
   for (int32 i = 0; i < nkeys; ++i) {
     if (check[i] == true) {
+      ++match_count;
+    }
+    if (match_count == required_matching) {
       PG_RETURN_BOOL(true);
     }
   }
@@ -143,10 +180,14 @@ Datum gin_bfp_triconsistent(PG_FUNCTION_ARGS) {
   /* Datum * queryKeys = PG_GETARG_POINTER(5); */
   /* bool *nullFlags = (bool *) PG_GETARG_POINTER(6); */
 
-  GinTernaryValue result = GIN_MAYBE;
+  int required_matching = GET_REQUIRED_MATCHING();
+  int match_count = 0;
 
   for (int32 i = 0; i < nkeys; ++i) {
     if ((check[i] == GIN_TRUE) || (check[i] == GIN_MAYBE)) {
+      ++match_count;
+    }
+    if (match_count == required_matching) {
       PG_RETURN_GIN_TERNARY_VALUE(GIN_MAYBE);
     }
   }
@@ -186,6 +227,10 @@ Datum gin_bfp_options(PG_FUNCTION_ARGS)
               "number of rows in the minhash signature bands",
               ROWS_DEFAULT, ROWS_MIN, ROWS_MAX,
               offsetof(GinBfpOptions, rows));
+  add_local_int_reloption(relopts, "required_matching",
+              "number of band hash keys that are required to match the query for a record to be considered a candidate similar",
+              REQUIRED_MATCHING_DEFAULT, REQUIRED_MATCHING_MIN, REQUIRED_MATCHING_MAX,
+              offsetof(GinBfpOptions, required_matching));
 
   PG_RETURN_VOID();
 }

@@ -5,84 +5,130 @@ SET enable_indexscan=off;
 SET enable_bitmapscan=off;
 SET enable_seqscan=on;
 SELECT
-    id, tanimoto_sml(rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol), f) AS sml
+    id, tanimoto_sml(rdkit_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol), f) AS sml
 FROM
 	pgbfp
-WHERE rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol) % f
+WHERE rdkit_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol) % f
 ORDER BY sml DESC, id limit 10;
- id | sml 
-----+-----
-(0 rows)
+   id    |        sml         
+---------+--------------------
+ 5206420 |                  1
+ 3955259 | 0.7902097902097902
+ 2841607 | 0.7530562347188264
+  571783 | 0.7463414634146341
+  771595 | 0.7427293064876958
+  872813 | 0.7251184834123223
+  872878 | 0.7221006564551422
+ 1219325 | 0.7206572769953051
+  872831 | 0.7126436781609196
+  770089 | 0.7116704805491991
+(10 rows)
 
 SELECT
-    id, tanimoto_sml(maccs_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol), maccsf) AS sml
+    id, tanimoto_sml(maccs_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol), maccsf) AS sml
 FROM
 	pgbfp
-WHERE maccs_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol) % maccsf
+WHERE maccs_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol) % maccsf
 ORDER BY sml DESC, id limit 10;
-    id    |        sml        
-----------+-------------------
-  2055076 | 0.740740740740741
-  5281628 |           0.65625
- 10560368 | 0.571428571428571
-   755497 | 0.527777777777778
-   718644 | 0.526315789473684
-   902176 | 0.516129032258065
-   687554 |               0.5
-  1380883 |               0.5
-(8 rows)
+   id    |        sml         
+---------+--------------------
+ 5206420 |                  1
+  840468 | 0.8604651162790697
+ 1954933 |               0.84
+ 3955259 | 0.7916666666666666
+ 5224323 | 0.7647058823529411
+  498250 |               0.75
+  771595 |               0.74
+ 5718132 | 0.7346938775510204
+ 5638671 | 0.7142857142857143
+  872878 | 0.7115384615384616
+(10 rows)
 
 SET enable_indexscan=on;
 SET enable_bitmapscan=on;
 SET enable_seqscan=off;
 SELECT
-    id, tanimoto_sml(rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol), f) AS sml
+    id, tanimoto_sml(rdkit_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol), f) AS sml
 FROM
 	pgbfp
-WHERE rdkit_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol) % f
+WHERE rdkit_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol) % f
 ORDER BY sml DESC, id limit 10;
- id | sml 
-----+-----
-(0 rows)
+   id    |        sml         
+---------+--------------------
+ 5206420 |                  1
+ 3955259 | 0.7902097902097902
+ 2841607 | 0.7530562347188264
+  571783 | 0.7463414634146341
+  771595 | 0.7427293064876958
+  872813 | 0.7251184834123223
+  872878 | 0.7221006564551422
+ 1219325 | 0.7206572769953051
+  872831 | 0.7126436781609196
+  770089 | 0.7116704805491991
+(10 rows)
 
 SELECT
-    id, tanimoto_sml(maccs_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol), maccsf) AS sml
+    id, tanimoto_sml(maccs_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol), maccsf) AS sml
 FROM
 	pgbfp
-WHERE maccs_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol) % maccsf
+WHERE maccs_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol) % maccsf
 ORDER BY sml DESC, id limit 10;
-    id    |        sml        
-----------+-------------------
-  2055076 | 0.740740740740741
-  5281628 |           0.65625
- 10560368 | 0.571428571428571
-   755497 | 0.527777777777778
-   718644 | 0.526315789473684
-   902176 | 0.516129032258065
-   687554 |               0.5
-  1380883 |               0.5
-(8 rows)
+   id    |        sml         
+---------+--------------------
+ 5206420 |                  1
+  840468 | 0.8604651162790697
+ 1954933 |               0.84
+ 3955259 | 0.7916666666666666
+ 5224323 | 0.7647058823529411
+  498250 |               0.75
+  771595 |               0.74
+ 5718132 | 0.7346938775510204
+ 5638671 | 0.7142857142857143
+  872878 | 0.7115384615384616
+(10 rows)
 
 SET enable_indexscan=on;
 SET enable_bitmapscan=on;
 SET enable_seqscan=on;
 SELECT
-    id, tanimoto_sml(maccs_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol), maccsf) AS sml
+    id, tanimoto_sml(rdkit_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol), f) AS sml
 FROM
 	pgbfp
-WHERE maccs_fp('O=C1CC(OC2=CC=CC=C12)C1=CC=CC=C1'::mol) % maccsf
+WHERE rdkit_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol) % f
 ORDER BY sml DESC, id limit 10;
-    id    |        sml        
-----------+-------------------
-  2055076 | 0.740740740740741
-  5281628 |           0.65625
- 10560368 | 0.571428571428571
-   755497 | 0.527777777777778
-   718644 | 0.526315789473684
-   902176 | 0.516129032258065
-   687554 |               0.5
-  1380883 |               0.5
-(8 rows)
+   id    |        sml         
+---------+--------------------
+ 5206420 |                  1
+ 3955259 | 0.7902097902097902
+ 2841607 | 0.7530562347188264
+  571783 | 0.7463414634146341
+  771595 | 0.7427293064876958
+  872813 | 0.7251184834123223
+  872878 | 0.7221006564551422
+ 1219325 | 0.7206572769953051
+  872831 | 0.7126436781609196
+  770089 | 0.7116704805491991
+(10 rows)
+
+SELECT
+    id, tanimoto_sml(maccs_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol), maccsf) AS sml
+FROM
+	pgbfp
+WHERE maccs_fp('CC(=NNC(=O)C1=CC(=C(C=C1)OC)OC)C2=CC=CC=N2'::mol) % maccsf
+ORDER BY sml DESC, id limit 10;
+   id    |        sml         
+---------+--------------------
+ 5206420 |                  1
+  840468 | 0.8604651162790697
+ 1954933 |               0.84
+ 3955259 | 0.7916666666666666
+ 5224323 | 0.7647058823529411
+  498250 |               0.75
+  771595 |               0.74
+ 5718132 | 0.7346938775510204
+ 5638671 | 0.7142857142857143
+  872878 | 0.7115384615384616
+(10 rows)
 
 DROP INDEX fpidx;
 DROP INDEX maccsfpidx;
