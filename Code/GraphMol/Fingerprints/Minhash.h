@@ -137,8 +137,7 @@ double TanimotoSimilarity(const T & sign1, const T & sign2)
   PRECONDITION(sign1.size() == sign2.size(), "The input signatures must have the same length");
   PRECONDITION(sign1.size(), "The input signatures can't be empty");
 
-  int result{};
-  int count{};
+  int same{};
 
   for (auto it1 = sign1.begin(), it2 = sign2.begin();
        it1 != sign1.end() && it2 != sign2.end();
@@ -146,16 +145,11 @@ double TanimotoSimilarity(const T & sign1, const T & sign2)
       )
   {
     if (*it1 == *it2) {
-      result += 1;
+      same += 1;
     }
-    count += 1;
   }
 
-  if (count) {
-    return static_cast<double>(result)/count;
-  }
-
-  return -1.;
+  return static_cast<double>(same)/sign1.size();
 }
 
 } // namespace Minhash
