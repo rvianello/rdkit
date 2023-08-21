@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <random>
 #include <set>
 #include <vector>
@@ -107,7 +108,7 @@ public:
   }
 
   template <typename InputIt>
-  SignatureType operator()(InputIt initial, InputIt final) const
+  SignatureType operator()(InputIt beginIt, InputIt endIt) const
   {
     HashType hash{l};
     SignatureType signature;
@@ -115,9 +116,9 @@ public:
     // loop over the hash functions, for each function compute a minhash
     // append the minhash to the signature
     for (const auto & seed : seeds) {
-      InputIt it{initial};
+      InputIt it{beginIt};
       OutputType minhash = hash(*it, seed);
-      while (++it != final) {
+      while (++it != endIt) {
         minhash = std::min(minhash, static_cast<OutputType>(hash(*it, seed)));
       }
       signature.push_back(minhash);
@@ -150,6 +151,45 @@ double TanimotoSimilarity(const T & sign1, const T & sign2)
   }
 
   return static_cast<double>(same)/sign1.size();
+}
+
+template <typename T>
+std::vector<std::uint32_t> LocalitySensitiveHashKeys(int bands, int rows, const T & signature)
+{
+  PRECONDITION(bands > 0, "The number of bands must > 0");
+  PRECONDITION(rows > 0, "The number of rows must > 0");
+  PRECONDITION(
+    int(signature.size()) == bands*rows, "The length of the input signature must equal bands*rows");
+
+  std::vector<std::uint32_t> keys;
+  keys.reserve(bands);
+
+  /*
+   * compute the hash keys.
+   * the rows from each band are first hashed together and then
+   * prefixed with the band number to make sure that only the keys
+   * from corresponding bands can match.
+   */
+  auto it = signature.begin();
+  for (int band=0; band < bands; ++band) {
+    // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector/72073933#72073933
+    uint32_t key = band * 53;
+    for (int row=0; row < rows; ++row) {
+      uint32_t x = *it++;
+      x = ((x >> 16) ^ x) * 0x45d9f3b;
+      x = ((x >> 16) ^ x) * 0x45d9f3b;
+      x = (x >> 16) ^ x;
+      key ^= x + 0x9e3779b9 + (key << 6) + (key >> 2);
+    }
+    // fold to 24 bits (http://isthe.com/chongo/tech/comp/fnv/#xor-fold)
+    key = (key >> 24) ^ (key & (uint32_t)0xffffff);
+    // put the band number in the most significant byte
+    key |= (uint32_t)band << 24;
+
+    keys.push_back(key);
+  }
+
+  return keys;
 }
 
 } // namespace Minhash

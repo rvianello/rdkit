@@ -16,6 +16,7 @@
 #include <GraphMol/Fingerprints/Minhash.h>
 #include <DataStructs/BitOps.h>
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 
@@ -35,7 +36,7 @@ double signatureSimilarity(const SparseBitVect & fp1, const SparseBitVect & fp2,
 }
 
 
-void testBasic()
+void testMinhashSignatures()
 {
   BOOST_LOG(rdErrorLog) << "-------------------------------------" << std::endl;
   BOOST_LOG(rdErrorLog) << "    Basic MinhashSignature Test" << std::endl;
@@ -82,11 +83,65 @@ void testBasic()
   }
 }
 
+void testLocalitySensitiveHashKeys()
+{
+  BOOST_LOG(rdErrorLog) << "----------------------------------------" << std::endl;
+  BOOST_LOG(rdErrorLog) << "    Basic LocalitySensitiveHashKeys Test" << std::endl;
+  {
+    auto pFpGenerator = std::unique_ptr<FingerprintGenerator<std::uint32_t>>(
+      MorganFingerprint::getMorganGenerator<std::uint32_t>(2, false)
+    );
+
+    auto pMol1 = std::unique_ptr<ROMol>(SmilesToMol("O=C(O)CC1CC1"));
+    auto pFp1 = std::unique_ptr<SparseBitVect>(pFpGenerator->getSparseFingerprint(*pMol1));
+
+    auto pMol2 = std::unique_ptr<ROMol>(SmilesToMol("O=C(O)CC1CCC1"));
+    auto pFp2 = std::unique_ptr<SparseBitVect>(pFpGenerator->getSparseFingerprint(*pMol2));
+
+    auto bands = 20;
+    auto rows = 5;
+    auto signatureGenerator = Minhash::MinhashSignatureGenerator<std::uint32_t, Minhash::Hash2>(bands*rows);
+
+    auto signature1 = signatureGenerator(pFp1->getBitSet()->begin(), pFp1->getBitSet()->end());
+    auto keys1 = Minhash::LocalitySensitiveHashKeys(bands, rows, signature1);
+    TEST_ASSERT(int(keys1.size()) == bands);
+
+    auto signature2 = signatureGenerator(pFp2->getBitSet()->begin(), pFp2->getBitSet()->end());
+    auto keys2 = Minhash::LocalitySensitiveHashKeys(bands, rows, signature2);
+    TEST_ASSERT(int(keys2.size()) == bands);
+
+    // count the number of matching hash keys between signature1 and signature2
+    auto matching = 0;
+
+    std::sort(keys1.begin(), keys1.end());
+    std::sort(keys2.begin(), keys2.end());
+
+    auto it1 = keys1.begin();
+    auto it2 = keys2.begin();
+    while (it1 != keys1.end() && it2 != keys2.end()) {
+      if (*it1 < *it2) {
+        ++it1;
+      }
+      else if (*it1 > *it2) {
+        ++it2;
+      }
+      else {
+        ++matching; ++it1; ++it2;
+      }
+    }
+
+    BOOST_LOG(rdErrorLog) << "Number of matching LSH keys:" << matching << std::endl;
+    TEST_ASSERT(matching == 7);
+  }
+}
+
+
 int main(int, char *[])
 {
   RDLog::InitLogs();
 
-  testBasic();
+  testMinhashSignatures();
+  testLocalitySensitiveHashKeys();
 
   return 0;
 }
