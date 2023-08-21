@@ -41,34 +41,44 @@
 #include "guc.h"
 
 /*
- * The implementation is based on indexing the binary fingerprints under locality-sensitive
- * hash keys that are computed from a minhash signature of the original bitstrings.
- *
- * The approach is based on chapter 3 of "The Mining of Massive Datasets" (http://mmds.org/).
+ * The implementation is based on listing the binary fingerprints under locality-sensitive
+ * hash keys that are computed from a minhash signature of the original bitstrings. The
+ * rows in the minhash signature is grouped into bands, and a hash key is computed from
+ * each band.
  *
  * Given two binary fingerprints, the probability s that their minhash signatures have the
  * same value at any given position, equals their tanimoto similarity. If the signature is
  * divided into b bands or r rows each, the probability p that the signature values match on
  * every row of a given band is s**r. The probability that the two signatures have matching
- * values on each row of k bands then follows a binomial distribution of parameters b (the
- * number of bands) and p = s**r.
+ * values on each row of k bands (and therefore produce k matching hash keys) then follows
+ * a binomial distribution of parameters n = (the number of bands) and p = s**r.
  *
  * Searching the index for items that share at least a required number of hash keys with the
- * query is therefore subject an S-shaped probability distribution of selecting the indexed
- * fingerprints based on their increasing tanimoto similarity to the query (the behavior
- * is similar to that of a partial index, including with probability ~1 only the items that are
- * sufficiently similar to the query and excluding those that are too dissimilar).
+ * query results in the selection of candidate similar records. The configured index options
+ * (bands, rows, and min # of matching hash keys) determine the probability of selecting a
+ * candidate record based on its similarity to the query.
  *
- * The configured parameters (bands, rows, and min # of matching hash keys) affect the shape
- * of this probability distribution and consequently the selectivity of the index.
+ * For example, in the case of 20 bands of 5 rows each, requiring the hash keys to match for
+ * at least one band (the current default settings) the probability of selecting a candidate
+ * similar record is an S-shaped function of its similarity s to the query, which is ~1 for
+ * s >= 0.75, and ~1/2 for s close to 0.5.
+ *
+ * Note: the records selected by the index do not therefore depend from the configured
+ * tanimoto_threshold even though this value is used to re-check and return the final results
+ * from the query. If the configured tanimoto_threshold is set lower than the value where the
+ * index is selecting the candidate records with high probability, the query may not results all
+ * possible results, but only the subset most similar to the query. Conversely, if the configured
+ * tanimoto_threshold is higher than where the S-shaped probability of selecting the candidate
+ * records approaches 1, the index may consider a lot of candidate records that would be later
+ * discarded by re-checking. 
  */
 
 /* gin_bfp_ops opclass options */
 typedef struct
 {
-  int32 vl_len_;		     /* varlena header (do not touch directly!) */
-  int bands;			       /* number of bands in the minhash signature */
-  int rows;			         /* number of rows in each band */
+  int32 vl_len_;         /* varlena header (do not touch directly!) */
+  int bands;             /* number of bands in the minhash signature */
+  int rows;              /* number of rows in each band */
   int required_matching; /* minimum number of matching hash keys (bands) of candidate similar records */
 } GinBfpOptions;
 

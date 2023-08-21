@@ -956,12 +956,30 @@ double calcBitmapTverskySml(CBfp a, CBfp b, float ca, float cb) {
 
 extern "C" void calcBfpLSHKeys(uint8 *fp, int fplen, int bands, int rows, uint32 *lshkeys) {
 
+  /*
+   * given the input fingerprint, compute locality-sensitive hash keys for the bfpgin index
+   * output values are written into the preallocated array of length `bands` pointed to by
+   * lshkeys
+   */
+
   using MinhashType = uint32_t;
   using Generator = Minhash::MinhashSignatureGenerator<MinhashType, Minhash::Hash2>;
-  using GeneratorCache = std::map<uint32_t, Generator>;
 
+  /*
+   * cache the signature generators to avoid instantiating them again when the same
+   * signature length is needed
+   */
+  using GeneratorCache = std::map<uint32_t, Generator>;
   static GeneratorCache cache;
 
+  uint32_t signatureSize = bands*rows;
+  GeneratorCache::const_iterator cacheIterator = cache.find(signatureSize);
+  if (cacheIterator == cache.end()) {
+    cacheIterator = cache.emplace(signatureSize, signatureSize).first;
+  }
+  const Generator & signatureGenerator = cacheIterator->second;
+
+  /* collect the on bits from the fingerprint and compute the minhash signature*/
   IntVect onBits;
   for (int i=0; i < fplen; ++i) {
     uint8 byte = fp[i];
@@ -972,40 +990,17 @@ extern "C" void calcBfpLSHKeys(uint8 *fp, int fplen, int bands, int rows, uint32
       byte >>= 1;
     }
   }
-
-  uint32_t signatureSize = bands*rows;
-  GeneratorCache::const_iterator cacheIterator = cache.find(signatureSize);
-  if (cacheIterator == cache.end()) {
-    cacheIterator = cache.emplace(signatureSize, signatureSize).first;
-  }
-  const Generator & signatureGenerator = cacheIterator->second;
-
   auto signature = signatureGenerator(onBits.begin(), onBits.end());
 
   /*
-  // http://isthe.com/chongo/tech/comp/fnv/
-  constexpr uint32_t FNV_PRIME = 16777619;
-  constexpr uint32_t FNV_OFFSET_BASIS = 2166136261;
-  constexpr int OCTECTS = sizeof(MinhashType);
-
+   * compute the hash keys.
+   * the rows from each band are first hashed together and then
+   * prefixed with the band number to make sure that only the keys
+   * from corresponding bands can match.
+   */
   auto it = signature.begin();
   for (int band=0; band < bands; ++band) {
-    uint32 key = FNV_OFFSET_BASIS;
-    key ^= band;
-    key *= FNV_PRIME;
-    for (int row=0; row < rows; ++row) {
-      MinhashType minhash = *it++;
-      for (int octet=0; octet < OCTECTS; ++octet) {
-        key ^= (minhash | 0xFF);
-        key *= FNV_PRIME;
-        minhash >>= 8;
-      }
-    }
-    *lshkeys++ = key;
-  }*/
-
-  auto it = signature.begin();
-  for (int band=0; band < bands; ++band) {
+    https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector/72073933#72073933
     uint32_t key = band * 53;
     for (int row=0; row < rows; ++row) {
       uint32_t x = *it++;
@@ -1014,31 +1009,13 @@ extern "C" void calcBfpLSHKeys(uint8 *fp, int fplen, int bands, int rows, uint32
       x = (x >> 16) ^ x;
       key ^= x + 0x9e3779b9 + (key << 6) + (key >> 2);
     }
-    // fold to 24 bits
+    // fold to 24 bits (http://isthe.com/chongo/tech/comp/fnv/#xor-fold)
     key = (key >> 24) ^ (key & (uint32_t)0xffffff);
     // put the band number in the most significant byte
     key |= (uint32_t)band << 24;
     *lshkeys++ = key;
   }
 
- /*
-  auto it = signature.begin();
-  for (int band=0; band < bands; ++band) {
-    uint32_t key = band * 53;
-    for (int row=0; row < rows; ++row) {
-      uint16_t x = *it++;
-      x += x << 7; x ^= x >> 8;
-      x += x << 3; x ^= x >> 2;
-      x += x << 4; x ^= x >> 8;
-      key ^= x + 0x79b9 + (key << 3) + (key >> 1);
-    }
-    // fold to 24 bits
-    key = (key >> 24) ^ (key & (uint32_t)0xffffff);
-    // put the band number in the most significant byte
-    key |= (uint32_t)band << 24;
-
-    *lshkeys++ = key;
-  }*/
 }
 
 /*******************************************
