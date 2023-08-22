@@ -28,6 +28,13 @@ namespace {
   }
   const char * similarity_docstring = "Estimate the Tanimoto similarity of two fingerprints from their Minhash signatures";
 
+  template <typename OutputType>
+  std::vector<std::uint32_t> * lshKeys(int bands, int rows, const MinhashSignature<OutputType> *s) {
+    std::vector<std::uint32_t> keys = LocalitySensitiveHashKeys(bands, rows, *s);
+    return new std::vector<std::uint32_t>(std::move(keys));
+  }
+  const char * lshKeys_docstring = "Compute locality-sensitive hash keys from a Minhash signature";
+
   template <typename OutputType, typename HashType>
   MinhashSignature<OutputType> *
   callSparseBitVect(const MinhashSignatureGenerator<OutputType, HashType> *gen, const SparseBitVect *fp) {
@@ -103,9 +110,22 @@ BOOST_PYTHON_MODULE(rdMinhash) {
   wrapGenerator<std::uint16_t, Hash2>("MinhashSignatureGenerator16H2");
   wrapGenerator<std::uint8_t, Hash2>("MinhashSignatureGenerator8H2");
 
-  python::def("TanimotoSimilarity", similarity<std::uint32_t>, similarity_docstring, (python::arg("s1"), python::arg("s2")));
-  python::def("TanimotoSimilarity", similarity<std::uint16_t>, similarity_docstring, (python::arg("s1"), python::arg("s2")));
-  python::def("TanimotoSimilarity", similarity<std::uint8_t>, similarity_docstring, (python::arg("s1"), python::arg("s2")));
+  python::def("TanimotoSimilarity", similarity<std::uint32_t>,
+    similarity_docstring, (python::arg("s1"), python::arg("s2")));
+  python::def("TanimotoSimilarity", similarity<std::uint16_t>,
+    similarity_docstring, (python::arg("s1"), python::arg("s2")));
+  python::def("TanimotoSimilarity", similarity<std::uint8_t>,
+    similarity_docstring, (python::arg("s1"), python::arg("s2")));
+
+  python::def("LocalitySensitiveHashKeys", lshKeys<std::uint32_t>,
+    lshKeys_docstring, (python::arg("boards"), python::arg("rows"), python::arg("s")),
+    python::return_value_policy<python::manage_new_object>());
+  python::def("LocalitySensitiveHashKeys", lshKeys<std::uint16_t>,
+    lshKeys_docstring, (python::arg("boards"), python::arg("rows"), python::arg("s")),
+    python::return_value_policy<python::manage_new_object>());
+  python::def("LocalitySensitiveHashKeys", lshKeys<std::uint8_t>,
+    lshKeys_docstring, (python::arg("boards"), python::arg("rows"), python::arg("s")),
+    python::return_value_policy<python::manage_new_object>());
 }
 
 } // namespace Minhash

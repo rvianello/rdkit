@@ -85,6 +85,28 @@ class TestCase(unittest.TestCase):
     similarity = rdMinhash.TanimotoSimilarity(sig1, sig2)
     self.assertAlmostEqual(similarity, 0.7109375)
 
+  def testLocalitySensitiveHashKeys(self):
+    mol1 = Chem.MolFromSmiles('O=C(O)CC1CC1')
+    mol2 = Chem.MolFromSmiles('O=C(O)CC1CCC1')
+
+    fpgen = rdFingerprintGenerator.GetMorganGenerator(2, False)
+    bfp1, bfp2 = (fpgen.GetSparseFingerprint(mol) for mol in (mol1, mol2))
+
+    bands = 20
+    rows = 5
+    siggen = rdMinhash.MinhashSignatureGenerator32H2(bands*rows)
+    sig1, sig2 = (siggen(bfp) for bfp in (bfp1, bfp2))
+
+    keys1, keys2 = [
+      rdMinhash.LocalitySensitiveHashKeys(bands, rows, sig)
+      for sig in (sig1, sig2)
+    ]
+    self.assertEqual(len(keys1), bands)
+    self.assertEqual(len(keys2), bands)
+
+    matching = set(keys1) & set(keys2)
+    self.assertEqual(len(matching), 7)
+
 
 if __name__ == '__main__':
 
