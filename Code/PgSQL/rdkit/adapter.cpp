@@ -94,6 +94,8 @@
 #include <GraphMol/MolInterchange/MolInterchange.h>
 #endif
 
+#include <algorithm>
+
 // see above comment on the PostgreSQL hack
 #ifdef _WIN32
 #undef fstat
@@ -979,7 +981,7 @@ extern "C" void calcBfpLSHKeys(uint8 *fp, int fplen, int bands, int rows, uint32
   }
   const Generator & signatureGenerator = cacheIterator->second;
 
-  /* collect the on bits from the fingerprint and compute the minhash signature*/
+  /* collect the on bits from the fingerprint and compute the minhash signature */
   IntVect onBits;
   for (int i=0; i < fplen; ++i) {
     uint8 byte = fp[i];
@@ -992,30 +994,10 @@ extern "C" void calcBfpLSHKeys(uint8 *fp, int fplen, int bands, int rows, uint32
   }
   auto signature = signatureGenerator(onBits.begin(), onBits.end());
 
-  /*
-   * compute the hash keys.
-   * the rows from each band are first hashed together and then
-   * prefixed with the band number to make sure that only the keys
-   * from corresponding bands can match.
-   */
-  auto it = signature.begin();
-  for (int band=0; band < bands; ++band) {
-    https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector/72073933#72073933
-    uint32_t key = band * 53;
-    for (int row=0; row < rows; ++row) {
-      uint32_t x = *it++;
-      x = ((x >> 16) ^ x) * 0x45d9f3b;
-      x = ((x >> 16) ^ x) * 0x45d9f3b;
-      x = (x >> 16) ^ x;
-      key ^= x + 0x9e3779b9 + (key << 6) + (key >> 2);
-    }
-    // fold to 24 bits (http://isthe.com/chongo/tech/comp/fnv/#xor-fold)
-    key = (key >> 24) ^ (key & (uint32_t)0xffffff);
-    // put the band number in the most significant byte
-    key |= (uint32_t)band << 24;
-    *lshkeys++ = key;
-  }
+  /* compute the hash keys */
+  auto keys = Minhash::LocalitySensitiveHashKeys(bands, rows, signature);
 
+  std::copy(keys.begin(), keys.end(), lshkeys);
 }
 
 /*******************************************

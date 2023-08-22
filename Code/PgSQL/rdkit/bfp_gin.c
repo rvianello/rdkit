@@ -43,7 +43,7 @@
 /*
  * The implementation is based on listing the binary fingerprints under locality-sensitive
  * hash keys that are computed from a minhash signature of the original bitstrings. The
- * rows in the minhash signature is grouped into bands, and a hash key is computed from
+ * rows in the minhash signature are grouped into bands, and a hash key is computed from
  * each band.
  *
  * Given two binary fingerprints, the probability s that their minhash signatures have the
@@ -59,9 +59,15 @@
  * candidate record based on its similarity to the query.
  *
  * For example, in the case of 20 bands of 5 rows each, requiring the hash keys to match for
- * at least one band (the current default settings) the probability of selecting a candidate
- * similar record is an S-shaped function of its similarity s to the query, which is ~1 for
- * s >= 0.75, and ~1/2 for s close to 0.5.
+ * at least one band, the probability of selecting a candidate similar record is an S-shaped
+ * function of its similarity s to the query, which is ~1 for s >= 0.75, and ~1/2 for s close
+ * to 0.5. With 22 bands of 3 rows each, requiring the candidate similar records to have
+ * matching keys for at least 4 bands (the current default settings), the probability of 
+ * selection is similarly ~1 for a tanimoto similarity s >= .75, but it then falls a bit faster
+ * to zero for smaller similarity values, resulting in a better selectivity (fewer candidate
+ * records discarded by re-checking) even though the storage space for the index is a bit larger
+ * (the size of the index grows with the number of keys, and it's therefore determined by the
+ * configured number of bands).
  *
  * Note: the records selected by the index do not therefore depend from the configured
  * tanimoto_threshold even though this value is used to re-check and return the final results
@@ -71,6 +77,9 @@
  * tanimoto_threshold is higher than where the S-shaped probability of selecting the candidate
  * records approaches 1, the index may consider a lot of candidate records that would be later
  * discarded by re-checking. 
+ * 
+ * The syntax for specifying different index options is exemplified below:
+ * # create index idx on tab using gin (col gin_bfp_ops(bands=10, rows=3, required_matching=2));
  */
 
 /* gin_bfp_ops opclass options */
@@ -82,19 +91,19 @@ typedef struct
   int required_matching; /* minimum number of matching hash keys (bands) of candidate similar records */
 } GinBfpOptions;
 
-#define BANDS_DEFAULT 20
+#define BANDS_DEFAULT 22
 #define BANDS_MIN 8
 #define BANDS_MAX 32
 #define GET_BANDS()	(PG_HAS_OPCLASS_OPTIONS() ? \
   ((GinBfpOptions *) PG_GET_OPCLASS_OPTIONS())->bands : BANDS_DEFAULT)
 
-#define ROWS_DEFAULT 5
+#define ROWS_DEFAULT 3
 #define ROWS_MIN 1
 #define ROWS_MAX 10
 #define GET_ROWS()	(PG_HAS_OPCLASS_OPTIONS() ? \
   ((GinBfpOptions *) PG_GET_OPCLASS_OPTIONS())->rows : ROWS_DEFAULT)
 
-#define REQUIRED_MATCHING_DEFAULT 1
+#define REQUIRED_MATCHING_DEFAULT 4
 #define REQUIRED_MATCHING_MIN 1
 #define REQUIRED_MATCHING_MAX 32
 #define GET_REQUIRED_MATCHING()	(PG_HAS_OPCLASS_OPTIONS() ? \
