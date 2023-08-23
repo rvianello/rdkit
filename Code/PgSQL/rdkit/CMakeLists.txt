@@ -245,6 +245,12 @@ if(MSVC)
   endif(${CMAKE_GENERATOR} STREQUAL "NMake Makefiles")
 endif(MSVC)
 
+if(${PostgreSQL_VERSION_STRING} VERSION_GREATER_EQUAL 13.0)
+  set(RDKIT_PG_BFP_GIN_OPTIONS "FUNCTION    7   gin_bfp_options(internal),")
+else()
+  set(RDKIT_PG_BFP_GIN_OPTIONS "")
+endif()
+
 if(RDK_PGSQL_MOL_GIST_SORTSUPPORT AND ${PostgreSQL_VERSION_STRING} VERSION_GREATER_EQUAL 14.0)
   set(RDKIT_PG_MOL_GIST_SORTSUPPORT "FUNCTION    11   gmol_sortsupport (internal),")
 else()

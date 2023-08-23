@@ -72,13 +72,13 @@
  * Note: the records selected by the index do not therefore depend from the configured
  * tanimoto_threshold even though this value is used to re-check and return the final results
  * from the query. If the configured tanimoto_threshold is set lower than the value where the
- * index is selecting the candidate records with high probability, the query may not results all
+ * index is selecting the candidate records with high probability, the query may not return all
  * possible results, but only the subset most similar to the query. Conversely, if the configured
  * tanimoto_threshold is higher than where the S-shaped probability of selecting the candidate
  * records approaches 1, the index may consider a lot of candidate records that would be later
  * discarded by re-checking. 
  * 
- * The syntax for specifying different index options is exemplified below:
+ * The syntax for specifying different index options (postgres 13 or later) is exemplified below:
  * # create index idx on tab using gin (col gin_bfp_ops(bands=10, rows=3, required_matching=2));
  */
 
@@ -94,20 +94,32 @@ typedef struct
 #define BANDS_DEFAULT 22
 #define BANDS_MIN 8
 #define BANDS_MAX 32
+#if PG_MAJORVERSION_NUM > 12
 #define GET_BANDS()	(PG_HAS_OPCLASS_OPTIONS() ? \
   ((GinBfpOptions *) PG_GET_OPCLASS_OPTIONS())->bands : BANDS_DEFAULT)
+#else
+#define GET_BANDS() (BANDS_DEFAULT)
+#endif
 
 #define ROWS_DEFAULT 3
 #define ROWS_MIN 1
 #define ROWS_MAX 10
+#if PG_MAJORVERSION_NUM > 12
 #define GET_ROWS()	(PG_HAS_OPCLASS_OPTIONS() ? \
   ((GinBfpOptions *) PG_GET_OPCLASS_OPTIONS())->rows : ROWS_DEFAULT)
+#else
+#define GET_ROWS() (ROWS_DEFAULT)
+#endif
 
 #define REQUIRED_MATCHING_DEFAULT 4
 #define REQUIRED_MATCHING_MIN 1
 #define REQUIRED_MATCHING_MAX 32
+#if PG_MAJORVERSION_NUM > 12
 #define GET_REQUIRED_MATCHING()	(PG_HAS_OPCLASS_OPTIONS() ? \
   ((GinBfpOptions *) PG_GET_OPCLASS_OPTIONS())->required_matching : REQUIRED_MATCHING_DEFAULT)
+#else
+#define GET_REQUIRED_MATCHING() (REQUIRED_MATCHING_DEFAULT)
+#endif
 
 
 static Datum *gin_bfp_extract(Bfp *bfp, int bands, int rows, int32 *nkeys) {
@@ -235,6 +247,7 @@ PGDLLEXPORT Datum gin_bfp_options(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(gin_bfp_options);
 Datum gin_bfp_options(PG_FUNCTION_ARGS)
 {
+#if PG_MAJORVERSION_NUM > 12
   local_relopts *relopts = (local_relopts *)PG_GETARG_POINTER(0);
 
   init_local_reloptions(relopts, sizeof(GinBfpOptions));
@@ -250,6 +263,6 @@ Datum gin_bfp_options(PG_FUNCTION_ARGS)
               "number of band hash keys that are required to match the query for a record to be considered a candidate similar",
               REQUIRED_MATCHING_DEFAULT, REQUIRED_MATCHING_MIN, REQUIRED_MATCHING_MAX,
               offsetof(GinBfpOptions, required_matching));
-
+#endif
   PG_RETURN_VOID();
 }

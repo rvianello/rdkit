@@ -2046,7 +2046,7 @@ AS
     FUNCTION    3   gin_bfp_extract_query(bfp, internal, int2, internal, internal, internal, internal),
     FUNCTION    4   gin_bfp_consistent(internal, int2, bfp, int4, internal, internal, internal, internal),
     FUNCTION    6   gin_bfp_triconsistent(internal, int2, bfp, int4, internal, internal, internal),
-    FUNCTION    7   gin_bfp_options(internal),
+    @RDKIT_PG_BFP_GIN_OPTIONS@
     STORAGE     int4;
 
 --
