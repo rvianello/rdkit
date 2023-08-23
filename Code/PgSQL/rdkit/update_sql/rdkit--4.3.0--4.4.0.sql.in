@@ -164,3 +164,33 @@ CREATE OPERATOR <<@ (
 	RESTRICT = contsel,
 	JOIN = contjoinsel
 );
+
+CREATE OR REPLACE FUNCTION gin_bfp_compare(int4, int4)
+RETURNS int4
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE OR REPLACE FUNCTION gin_bfp_options(internal)
+RETURNS void
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+DROP OPERATOR CLASS IF EXISTS gin_bfp_ops USING gin;
+
+CREATE OPERATOR CLASS gin_bfp_ops
+DEFAULT FOR TYPE bfp USING gin
+AS
+    OPERATOR    1   % (bfp, bfp),
+    FUNCTION    1   gin_bfp_compare(int4, int4),
+    FUNCTION    2   gin_bfp_extract_value(bfp, internal),
+    FUNCTION    3   gin_bfp_extract_query(bfp, internal, int2, internal, internal, internal, internal),
+    FUNCTION    4   gin_bfp_consistent(internal, int2, bfp, int4, internal, internal, internal, internal),
+    FUNCTION    6   gin_bfp_triconsistent(internal, int2, bfp, int4, internal, internal, internal),
+    @RDKIT_PG_BFP_GIN_OPTIONS@
+    STORAGE     int4;
+
+CREATE OR REPLACE FUNCTION popcount(bfp)
+RETURNS int4
+PARALLEL SAFE
+AS 'MODULE_PATHNAME', 'bfp_popcount'
+LANGUAGE C STRICT IMMUTABLE;
