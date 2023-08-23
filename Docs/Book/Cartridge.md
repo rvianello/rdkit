@@ -609,6 +609,7 @@ There are additional operators defined in the cartridge, but these are used for 
 -   tanimoto\_sml(fp,fp) : returns the Tanimoto similarity between two fingerprints of the same type (either two sfp or two bfp values).
 -   dice\_sml(fp,fp) : returns the Dice similarity between two fingerprints of the same type (either two sfp or two bfp values).
 -   size(bfp) : returns the length of (number of bits in) a bfp.
+-   popcount(bfp): returns the number of 1s in a bfp.
 -   add(sfp,sfp) : returns an sfp formed by the element-wise addition of the two sfp arguments.
 -   subtract(sfp,sfp) : returns an sfp formed by the element-wise subtraction of the two sfp arguments.
 -   all\_values\_lt(sfp,int) : returns a boolean indicating whether or not all elements of the sfp argument are less than the int argument.
