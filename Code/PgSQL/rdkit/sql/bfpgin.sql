@@ -1,3 +1,4 @@
+SET extra_float_digits=0;
 CREATE INDEX fpidx ON pgbfp USING gin (f);
 CREATE INDEX maccsfpidx ON pgbfp USING gin (maccsf);
 
