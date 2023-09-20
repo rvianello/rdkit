@@ -155,7 +155,7 @@ Datum gbfp_decompress(PG_FUNCTION_ARGS) {
   GISTENTRY *retval;
   GBfp *key;
 
-  key = (GBfp *)DatumGetPointer(PG_DETOAST_DATUM(entry->key));
+  key = (GBfp *)PG_DETOAST_DATUM(entry->key);
 
   if (key != (GBfp *)DatumGetPointer(entry->key)) {
     retval = (GISTENTRY *)palloc(sizeof(GISTENTRY));
@@ -617,7 +617,7 @@ PGDLLEXPORT Datum gbfp_fetch(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(gbfp_fetch);
 Datum gbfp_fetch(PG_FUNCTION_ARGS) {
   GISTENTRY *entry = (GISTENTRY *)PG_GETARG_POINTER(0);
-  GBfp *gbfp = (GBfp *)DatumGetPointer(PG_DETOAST_DATUM(entry->key));
+  GBfp *gbfp = (GBfp *)PG_DETOAST_DATUM(entry->key);
 
   GBfpLeafData *data;
 

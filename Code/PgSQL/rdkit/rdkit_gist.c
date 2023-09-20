@@ -119,7 +119,7 @@ PGDLLEXPORT Datum gmol_decompress(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(gmol_decompress);
 Datum gmol_decompress(PG_FUNCTION_ARGS) {
   GISTENTRY *entry = (GISTENTRY *)PG_GETARG_POINTER(0);
-  bytea *key = (bytea *)DatumGetPointer(PG_DETOAST_DATUM(entry->key));
+  bytea *key = (bytea *)PG_DETOAST_DATUM(entry->key);
 
   if (key != (bytea *)DatumGetPointer(entry->key)) {
     GISTENTRY *retval = (GISTENTRY *)palloc(sizeof(GISTENTRY));
