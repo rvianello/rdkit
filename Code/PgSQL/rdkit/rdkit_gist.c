@@ -546,8 +546,8 @@ static int
 gmol_cmp(Datum x, Datum y, SortSupport ssup)
 {
   /* establish order between x and y */
-  bytea *a = (bytea*)DatumGetPointer(PG_DETOAST_DATUM(x));
-  bytea *b = (bytea*)DatumGetPointer(PG_DETOAST_DATUM(y));
+  bytea *a = (bytea*)PG_DETOAST_DATUM(x);
+  bytea *b = (bytea*)PG_DETOAST_DATUM(y);
 
   Assert(!ISALLTRUE(a));
   Assert(!ISALLTRUE(b));
