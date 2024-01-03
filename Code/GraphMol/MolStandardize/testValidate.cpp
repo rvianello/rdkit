@@ -14,6 +14,7 @@
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
 #include <GraphMol/FileParsers/FileParsers.h>
+#include <GraphMol/Chirality.h>
 
 #include <iostream>
 
@@ -306,6 +307,442 @@ void testFragment() {
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
 
+void testIs2DValidation() {
+  BOOST_LOG(rdInfoLog) << "-----------------------\n Testing Is2DValidation"
+                       << std::endl;
+
+  Is2DValidation is2D;
+
+  string mblock1 = R"(
+                    2D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C 0.8753 4.9367 0 0
+M  V30 2 C -0.4583 4.1667 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m1 {MolBlockToMol(mblock1, false, false)};
+  vector<ValidationErrorInfo> errout1 = is2D.validate(*m1, true);
+  TEST_ASSERT(errout1.empty());
+
+  string mblock2 = R"(
+                    2D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C 0.8753 4.9367 0 0
+M  V30 2 C -0.4583 4.1667 0.2 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m2 {MolBlockToMol(mblock2, false, false)};
+  vector<ValidationErrorInfo> errout2 = is2D.validate(*m2, true);
+  TEST_ASSERT(errout2.size() == 1);
+  string errmsg2 {errout2[0].what()};
+  TEST_ASSERT(errmsg2 == "ERROR: [Is2DValidation] Molecule is 3D");
+
+  string mblock3 = R"(
+                    2D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C 0 0 0 0
+M  V30 2 C 0 0 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m3 {MolBlockToMol(mblock3, false, false)};
+  vector<ValidationErrorInfo> errout3 = is2D.validate(*m3, true);
+  TEST_ASSERT(errout3.size() == 1);
+  string errmsg3 {errout3[0].what()};
+  TEST_ASSERT(errmsg3 == "ERROR: [Is2DValidation] All atoms have the same (x,y) coordinates");
+
+  BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
+}
+
+void testAtomClashValidation() {
+  BOOST_LOG(rdInfoLog) << "-----------------------\n Testing AtomClashValidation"
+                       << std::endl;
+  AtomClashValidation atomClash;
+
+  string mblock1 = R"(
+                    2D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C 0.8753 4.9367 0 0
+M  V30 2 C -0.4583 4.1667 0 0
+M  V30 3 C -0.2691 5.9671 0 0
+M  V30 4 C -1.7337 5.4912 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 1 3
+M  V30 3 1 3 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m1 {MolBlockToMol(mblock1, false, false)};
+  vector<ValidationErrorInfo> errout1 = atomClash.validate(*m1, true);
+  TEST_ASSERT(errout1.empty());
+
+  string mblock2 = R"(
+                    2D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 6 5 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -1.6667 6.2067 0 0
+M  V30 2 C -3.0004 5.4367 0 0
+M  V30 3 C -3.0004 3.8965 0 0
+M  V30 4 C -1.6667 3.1267 0 0
+M  V30 5 C -0.3329 4.6000 0 0
+M  V30 6 C -0.3329 4.7000 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 1 6
+M  V30 3 1 2 3
+M  V30 4 1 3 4
+M  V30 5 1 4 5
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m2 {MolBlockToMol(mblock2, false, false)};
+  vector<ValidationErrorInfo> errout2 = atomClash.validate(*m2, true);
+  TEST_ASSERT(errout2.size() == 1);
+  string errmsg2 {errout2[0].what()};
+  TEST_ASSERT(errmsg2 == "ERROR: [AtomClashValidation] atom 5 too close to atom 6");
+
+  string mblock3 = R"(
+                    2D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 6 5 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -1.3333 4.8733 0 0
+M  V30 2 C -2.5837 4.7283 0 0
+M  V30 3 C -2.7087 3.4798 0 0
+M  V30 4 C -1.6667 3.1267 0 0
+M  V30 5 C -0.3329 3.8965 0 0
+M  V30 6 C -0.9913 3.495 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 1 6
+M  V30 3 1 2 3
+M  V30 4 1 3 4
+M  V30 5 1 4 5
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m3 {MolBlockToMol(mblock3, false, false)};
+  vector<ValidationErrorInfo> errout3 = atomClash.validate(*m3, true);
+  TEST_ASSERT(errout3.size() == 1);
+  string errmsg3 {errout3[0].what()};
+  TEST_ASSERT(errmsg3 == "ERROR: [AtomClashValidation] atom 6 too close to bond 5");
+
+  BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
+}
+
+void testValidateStereo() {
+  BOOST_LOG(rdInfoLog) << "-----------------------\n Testing ValidateStereo"
+                       << std::endl;
+
+  StereoValidation stereo;
+  string mblock, errmsg;
+  vector<ValidationErrorInfo> errout;
+
+  // 4 ligands - no issues
+  mblock = R"(
+          10052309532D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 Br 0.0003 7.27 0 0
+M  V30 2 C -1.3333 6.5 0 0 CFG=1
+M  V30 3 F -2.667 7.27 0 0
+M  V30 4 O -1.3333 4.96 0 0
+M  V30 5 C 0.0003 5.73 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 5 CFG=1
+M  V30 2 1 2 3
+M  V30 3 1 2 1
+M  V30 4 1 2 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m0 {MolBlockToMol(mblock, false, false)};
+  errout = stereo.validate(*m0, true);
+  TEST_ASSERT(errout.size() == 0);
+
+  // 4 ligands - too many stereo bonds with the same wedge/dash direction
+  mblock = R"(
+          10052310002D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 Br 0.0003 7.27 0 0
+M  V30 2 C -1.3333 6.5 0 0 CFG=1
+M  V30 3 F -2.667 7.27 0 0
+M  V30 4 O -1.3333 4.96 0 0
+M  V30 5 C 0.0003 5.73 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 5 CFG=1
+M  V30 2 1 2 3 CFG=1
+M  V30 3 1 2 1 CFG=1
+M  V30 4 1 2 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m1 {MolBlockToMol(mblock, false, false)};
+  Chirality::reapplyMolBlockWedging(*m1);
+  errout = stereo.validate(*m1, true);
+  TEST_ASSERT(errout.size() == 2);
+  errmsg = errout[0].what();
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] atom 2 has too many stereo bonds with like orientation");
+  errmsg = errout[1].what();
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] atom 2 has adjacent stereo bonds with like orientation");
+
+  // 4 ligands - mismatching opposed wedge/dash bonds
+  mblock = R"(
+          10052311582D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 Br 0.0003 7.27 0 0
+M  V30 2 C -1.3333 6.5 0 0
+M  V30 3 F -2.667 7.27 0 0
+M  V30 4 O -1.3333 4.96 0 0
+M  V30 5 C 0.0003 5.73 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 5 CFG=1
+M  V30 2 1 2 3 CFG=3
+M  V30 3 1 2 1
+M  V30 4 1 2 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  // 4 ligands - mismatching opposed wedge/dash bonds
+  unique_ptr<ROMol> m2 {MolBlockToMol(mblock, false, false)};
+  Chirality::reapplyMolBlockWedging(*m2);
+  errout = stereo.validate(*m2, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] atom 2 has opposing stereo bonds with different up/down orientation")
+
+  // 4 ligands - potentially ambiguous umbrella configuration
+  mblock = R"(
+          10052313232D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 Br 0.0003 7.27 0 0
+M  V30 2 C -1.3333 6.5 0 0
+M  V30 3 F -2.667 7.27 0 0
+M  V30 4 O -1.3333 4.96 0 0
+M  V30 5 C 0.0003 5.73 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 5
+M  V30 2 1 2 3 CFG=3
+M  V30 3 1 2 1
+M  V30 4 1 2 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m3 {MolBlockToMol(mblock, false, false)};
+  Chirality::reapplyMolBlockWedging(*m3);
+  errout = stereo.validate(*m3, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] atom 2 has a potentially ambiguous representation: all non-stereo bonds opposite to the only stereo bond")
+
+  // 4 ligands - colinearity / triangle rule violation
+  mblock = R"(
+          10052313312D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 F -1.083 6.5617 0 0
+M  V30 2 C -2.4167 5.7917 0 0
+M  V30 3 O -3.7503 6.5617 0 0
+M  V30 4 C -1.2083 5.0017 0 0
+M  V30 5 Cl -2.4167 6.5617 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 4 CFG=1
+M  V30 2 1 2 1
+M  V30 3 1 2 5
+M  V30 4 1 2 3
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m4 {MolBlockToMol(mblock, false, false)};
+  Chirality::reapplyMolBlockWedging(*m4);
+  errout = stereo.validate(*m4, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] colinearity or triangle rule violation of non-stereo bonds at atom 2")
+
+  // 3 Ligands - No issues
+  mblock = R"(
+          10052313452D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 Cl -0.9997 6.895 0 0
+M  V30 2 C -2.3333 6.125 0 0 CFG=2
+M  V30 3 F -3.667 6.895 0 0
+M  V30 4 C -2.3333 4.585 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 4 CFG=1
+M  V30 2 1 2 3
+M  V30 3 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m5 {MolBlockToMol(mblock, false, false)};
+  Chirality::reapplyMolBlockWedging(*m5);
+  errout = stereo.validate(*m5, true);
+  TEST_ASSERT(errout.size() == 0);
+
+  // 3 Ligands - multiple stereo bonds
+  mblock = R"(
+          10052313452D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 Cl -0.9997 6.895 0 0
+M  V30 2 C -2.3333 6.125 0 0 CFG=2
+M  V30 3 F -3.667 6.895 0 0
+M  V30 4 C -2.3333 4.585 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 4 CFG=1
+M  V30 2 1 2 3 CFG=1
+M  V30 3 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m6 {MolBlockToMol(mblock, false, false)};
+  Chirality::reapplyMolBlockWedging(*m6);
+  errout = stereo.validate(*m6, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] atom 2 has 3 explicit ligands and multiple stereo bonds")
+
+  // 3 Ligands - colinearity violation
+  mblock = R"(
+          10052313452D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 Cl -0.9997 6.125 0 0
+M  V30 2 C -2.3333 6.125 0 0 CFG=2
+M  V30 3 F -3.667 6.125 0 0
+M  V30 4 C -1.6667 4.71 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 4 CFG=1
+M  V30 2 1 2 3
+M  V30 3 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m7 {MolBlockToMol(mblock, false, false)};
+  Chirality::reapplyMolBlockWedging(*m7);
+  errout = stereo.validate(*m7, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] colinearity of non-stereo bonds at atom 2");
+
+  BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
+}
+
 void testValidateSmiles() {
   BOOST_LOG(rdInfoLog) << "-----------------------\n Testing ValidateSmiles"
                        << std::endl;
@@ -341,6 +778,9 @@ int main() {
   testAllowedAtomsValidation();
   testDisallowedAtomsValidation();
   testFragment();
+  testIs2DValidation();
+  testAtomClashValidation();
+  testValidateStereo();
   testValidateSmiles();
   return 0;
 }

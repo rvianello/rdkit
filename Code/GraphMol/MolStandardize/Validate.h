@@ -189,6 +189,36 @@ class RDKIT_MOLSTANDARDIZE_EXPORT DisallowedAtomsValidation
   std::vector<std::shared_ptr<Atom>> d_disallowedList;
 };
 
+//! 
+class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation 
+    : public ValidationMethod {
+ public:
+  Is2DValidation(double threshold=1.e-3) : threshold(threshold) {};
+  std::vector<ValidationErrorInfo> validate(
+      const ROMol &mol, bool reportAllFailures) const override;
+ private:
+  double threshold;
+};
+
+//! 
+class RDKIT_MOLSTANDARDIZE_EXPORT AtomClashValidation 
+    : public ValidationMethod {
+ public:
+  AtomClashValidation(double bondLengthFraction=0.15) : clash_limit(bondLengthFraction) {};
+  std::vector<ValidationErrorInfo> validate(
+      const ROMol &mol, bool reportAllFailures) const override;
+ private:
+  double clash_limit;
+};
+
+//! 
+class RDKIT_MOLSTANDARDIZE_EXPORT StereoValidation 
+    : public ValidationMethod {
+ public:
+  std::vector<ValidationErrorInfo> validate(
+      const ROMol &mol, bool reportAllFailures) const override;
+};
+
 //! A convenience function for quickly validating a single SMILES string.
 RDKIT_MOLSTANDARDIZE_EXPORT std::vector<ValidationErrorInfo> validateSmiles(
     const std::string &smiles);
