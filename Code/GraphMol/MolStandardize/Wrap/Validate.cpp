@@ -191,10 +191,11 @@ struct validate_wrapper {
       ;
 
     python::class_<
-      MolStandardize::AtomClashValidation,
+      MolStandardize::Layout2DValidation,
       python::bases<MolStandardize::ValidationMethod>,
-      boost::noncopyable>("AtomClashValidation")
+      boost::noncopyable>("Layout2DValidation")
         .def(python::init<double>())
+        .def(python::init<double, double>())
       ;
 
     python::class_<

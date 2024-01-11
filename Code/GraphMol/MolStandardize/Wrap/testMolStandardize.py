@@ -1232,12 +1232,12 @@ M  V30 END CTAB
 M  END
 ''', sanitize=False)
 
-    validator = rdMolStandardize.AtomClashValidation()
+    validator = rdMolStandardize.Layout2DValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [AtomClashValidation] atom 5 too close to atom 6")
+    self.assertEqual(errinfo[0], "ERROR: [Layout2DValidation] atom 5 too close to atom 6")
 
-    validator = rdMolStandardize.AtomClashValidation(1e-3)
+    validator = rdMolStandardize.Layout2DValidation(1e-3)
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 0)
 
@@ -1377,7 +1377,7 @@ M  END
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
     self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
-    self.assertTrue(result.status & rdMolStandardize.PipelineStatus.ATOM_CLASH_VALIDATION_ERROR)
+    self.assertTrue(result.status & rdMolStandardize.PipelineStatus.LAYOUT2D_VALIDATION_ERROR)
 
     molblock = '''
                     2D          

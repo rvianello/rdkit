@@ -339,30 +339,26 @@ namespace {
         auto dx = p2.x - p1.x;
         auto dy = p2.y - p1.y;
         auto value = dx*dx + dy*dy;
-        if (conf.is3D()) {
-          auto dz = p2.z - p1.z;
-          value += dz*dz;
-        }
         values.push_back(value);
       }
       std::sort(values.begin(), values.end());
       if (numBonds % 2) {
-        median = values[1+numBonds/2];
+        median = values[numBonds/2];
       }
       else {
-        median = 0.5*(values[numBonds/2]+values[1+numBonds/2]);
+        median = 0.5*(values[numBonds/2-1]+values[numBonds/2]);
       }
     }
     return median;
   }
 }
 
-std::vector<ValidationErrorInfo> AtomClashValidation::validate(
+std::vector<ValidationErrorInfo> Layout2DValidation::validate(
       const ROMol &mol, bool reportAllFailures) const {
   std::vector<ValidationErrorInfo> errors;
 
   if (!mol.getNumConformers()) {
-    errors.emplace_back("ERROR: [AtomClashValidation] Molecule has no conformer");
+    errors.emplace_back("ERROR: [Layout2DValidation] Molecule has no conformer");
     return errors;
   }
 
@@ -374,9 +370,12 @@ std::vector<ValidationErrorInfo> AtomClashValidation::validate(
     return errors;
   }
 
-  // compute a threshold value for the squared atom-atom or atom-bond
-  // distance
-  auto threshold = clash_limit*clash_limit*medianSquaredBondLength(mol, conf);
+  // compute threshold values for the squared atom-atom or atom-bond
+  // distance and for the maximum bond length using the median squared
+  // bond length as reference. 
+  auto reference = medianSquaredBondLength(mol, conf);
+  auto atomClashThreshold = clashLimit*clashLimit*reference;
+  auto bondLengthThreshold = bondLengthLimit*bondLengthLimit*reference;
 
   for (unsigned int i = 0; i < natoms - 1; ++i) {
     const auto & pi = conf.getAtomPos(i);
@@ -385,9 +384,9 @@ std::vector<ValidationErrorInfo> AtomClashValidation::validate(
       auto dx = pj.x - pi.x;
       auto dy = pj.y - pi.y;
       auto d2 = dx*dx + dy*dy;
-      if (d2 < threshold) {
+      if (d2 < atomClashThreshold) {
         errors.emplace_back(
-          "ERROR: [AtomClashValidation] atom " + std::to_string(i+1)
+          "ERROR: [Layout2DValidation] atom " + std::to_string(i+1)
           + " too close to atom " + std::to_string(j+1));
         if (!reportAllFailures) {
           return errors;
@@ -401,6 +400,18 @@ std::vector<ValidationErrorInfo> AtomClashValidation::validate(
     const auto & pi = conf.getAtomPos(i);
     unsigned int j = bond->getEndAtomIdx();
     const auto & pj = conf.getAtomPos(j);
+
+    auto ll = (pi.x - pj.x)*(pi.x - pj.x) + (pi.y - pj.y)*(pi.y - pj.y);
+    if (ll > bondLengthThreshold) {
+      errors.emplace_back(
+        "ERROR: [Layout2DValidation] length of bond " + std::to_string(bond->getIdx()+1)
+        + " between atoms " + std::to_string(i+1) + " and " + std::to_string(j+1)
+        + " exceeds a configured limit");
+      if (!reportAllFailures) {
+        return errors;
+      }
+    }
+
     for (unsigned int k = 0; k < natoms; ++k) {
       if (k == i || k ==j) {
         continue;
@@ -423,10 +434,10 @@ std::vector<ValidationErrorInfo> AtomClashValidation::validate(
       if (
         rb >= 0. &&   /* cos alpha > 0 */
         rb <= bb  &&  /* projection of r onto b does not exceed b */
-        kb < threshold /* distance from bond < limit */
+        kb < atomClashThreshold /* distance from bond < limit */
         ) {
         errors.emplace_back(
-          "ERROR: [AtomClashValidation] atom " + std::to_string(k+1)
+          "ERROR: [Layout2DValidation] atom " + std::to_string(k+1)
           + " too close to bond " + std::to_string(bond->getIdx()+1));
         if (!reportAllFailures) {
           return errors;

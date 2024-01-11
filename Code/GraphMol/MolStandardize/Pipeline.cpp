@@ -129,8 +129,8 @@ void Pipeline::validate(const ROMol & mol, PipelineResult & result)
   }
 
   // validate the 2D layout (check for clashing atoms)
-  AtomClashValidation atomClashValidation(options.atomClashBondLengthFraction);
-  if (!applyValidation(atomClashValidation, ATOM_CLASH_VALIDATION_ERROR) && !options.reportAllFailures) {
+  Layout2DValidation layout2DValidation(options.atomClashLimit, options.bondLengthLimit);
+  if (!applyValidation(layout2DValidation, LAYOUT2D_VALIDATION_ERROR) && !options.reportAllFailures) {
     return;
   }
 

@@ -383,10 +383,10 @@ M  END
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
 
-void testAtomClashValidation() {
-  BOOST_LOG(rdInfoLog) << "-----------------------\n Testing AtomClashValidation"
+void testLayout2DValidation() {
+  BOOST_LOG(rdInfoLog) << "-----------------------\n Testing Layout2DValidation"
                        << std::endl;
-  AtomClashValidation atomClash;
+  Layout2DValidation layout2D;
 
   string mblock1 = R"(
                     2D          
@@ -410,7 +410,7 @@ M  END
 )";
 
   unique_ptr<ROMol> m1 {MolBlockToMol(mblock1, false, false)};
-  vector<ValidationErrorInfo> errout1 = atomClash.validate(*m1, true);
+  vector<ValidationErrorInfo> errout1 = layout2D.validate(*m1, true);
   TEST_ASSERT(errout1.empty());
 
   string mblock2 = R"(
@@ -439,10 +439,10 @@ M  END
 )";
 
   unique_ptr<ROMol> m2 {MolBlockToMol(mblock2, false, false)};
-  vector<ValidationErrorInfo> errout2 = atomClash.validate(*m2, true);
+  vector<ValidationErrorInfo> errout2 = layout2D.validate(*m2, true);
   TEST_ASSERT(errout2.size() == 1);
   string errmsg2 {errout2[0].what()};
-  TEST_ASSERT(errmsg2 == "ERROR: [AtomClashValidation] atom 5 too close to atom 6");
+  TEST_ASSERT(errmsg2 == "ERROR: [Layout2DValidation] atom 5 too close to atom 6");
 
   string mblock3 = R"(
                     2D          
@@ -470,10 +470,38 @@ M  END
 )";
 
   unique_ptr<ROMol> m3 {MolBlockToMol(mblock3, false, false)};
-  vector<ValidationErrorInfo> errout3 = atomClash.validate(*m3, true);
+  vector<ValidationErrorInfo> errout3 = layout2D.validate(*m3, true);
   TEST_ASSERT(errout3.size() == 1);
   string errmsg3 {errout3[0].what()};
-  TEST_ASSERT(errmsg3 == "ERROR: [AtomClashValidation] atom 6 too close to bond 5");
+  TEST_ASSERT(errmsg3 == "ERROR: [Layout2DValidation] atom 6 too close to bond 5");
+
+  string mblock4 = R"(
+          01112413352D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -28.1663 10.4367 0 0
+M  V30 2 C -29.5 9.6667 0 0
+M  V30 3 C -29.5 11.2067 0 0
+M  V30 4 F 0.0 10.4367 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 2 3
+M  V30 3 1 3 1
+M  V30 4 1 1 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  unique_ptr<ROMol> m4 {MolBlockToMol(mblock4, false, false)};
+  vector<ValidationErrorInfo> errout4 = layout2D.validate(*m4, true);
+  TEST_ASSERT(errout4.size() == 1);
+  string errmsg4 {errout4[0].what()};
+  TEST_ASSERT(errmsg4 == "ERROR: [Layout2DValidation] length of bond 4 between atoms 1 and 4 exceeds a configured limit");
 
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
@@ -779,7 +807,7 @@ int main() {
   testDisallowedAtomsValidation();
   testFragment();
   testIs2DValidation();
-  testAtomClashValidation();
+  testLayout2DValidation();
   testValidateStereo();
   testValidateSmiles();
   return 0;

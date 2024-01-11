@@ -160,7 +160,7 @@ M  END
     REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE(result.status != MolStandardize::NO_ERROR);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
-    REQUIRE(result.status & MolStandardize::ATOM_CLASH_VALIDATION_ERROR);
+    REQUIRE(result.status & MolStandardize::LAYOUT2D_VALIDATION_ERROR);
   }
 
   SECTION("failing stereo validation, too many stereo bonds (3 subst. case)") {

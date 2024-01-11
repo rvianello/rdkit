@@ -32,7 +32,8 @@ void wrap_pipeline() {
         .def_readwrite("strictParsing", &MolStandardize::PipelineOptions::strictParsing)
         .def_readwrite("reportAllFailures", &MolStandardize::PipelineOptions::reportAllFailures)
         .def_readwrite("is2DZeroThreshold", &MolStandardize::PipelineOptions::is2DZeroThreshold)
-        .def_readwrite("atomClashBondLengthFraction", &MolStandardize::PipelineOptions::atomClashBondLengthFraction)
+        .def_readwrite("atomClashLimit", &MolStandardize::PipelineOptions::atomClashLimit)
+        .def_readwrite("bondLengthLimit", &MolStandardize::PipelineOptions::bondLengthLimit)
         .def_readwrite("ouputV2000", &MolStandardize::PipelineOptions::ouputV2000)
         ;
 
@@ -41,7 +42,7 @@ void wrap_pipeline() {
         .value("INPUT_ERROR", MolStandardize::INPUT_ERROR)
         .value("BASIC_VALIDATION_ERROR", MolStandardize::BASIC_VALIDATION_ERROR)
         .value("IS2D_VALIDATION_ERROR", MolStandardize::IS2D_VALIDATION_ERROR)
-        .value("ATOM_CLASH_VALIDATION_ERROR", MolStandardize::ATOM_CLASH_VALIDATION_ERROR)
+        .value("LAYOUT2D_VALIDATION_ERROR", MolStandardize::LAYOUT2D_VALIDATION_ERROR)
         .value("STEREO_VALIDATION_ERROR", MolStandardize::STEREO_VALIDATION_ERROR)
         .value("VALIDATION_ERROR", MolStandardize::VALIDATION_ERROR)
         .value("PREPARE_STANDARDIZATION_ERROR", MolStandardize::PREPARE_STANDARDIZATION_ERROR)

@@ -29,7 +29,8 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
   // validation
   bool reportAllFailures {true};
   double is2DZeroThreshold {1e-3};
-  double atomClashBondLengthFraction {0.3};
+  double atomClashLimit {0.3};
+  double bondLengthLimit {10.};
 
   // cleanup/standardization
 
@@ -42,12 +43,12 @@ enum RDKIT_MOLSTANDARDIZE_EXPORT PipelineStatus {
   INPUT_ERROR=(1<<0),
   BASIC_VALIDATION_ERROR=(1<<1),
   IS2D_VALIDATION_ERROR=(1<<2),
-  ATOM_CLASH_VALIDATION_ERROR=(1<<3),
+  LAYOUT2D_VALIDATION_ERROR=(1<<3),
   STEREO_VALIDATION_ERROR=(1<<4),
   VALIDATION_ERROR=(
     BASIC_VALIDATION_ERROR
     | IS2D_VALIDATION_ERROR
-    | ATOM_CLASH_VALIDATION_ERROR
+    | LAYOUT2D_VALIDATION_ERROR
     | STEREO_VALIDATION_ERROR
   ),
   PREPARE_STANDARDIZATION_ERROR=(1<<5),

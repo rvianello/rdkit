@@ -201,14 +201,16 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation
 };
 
 //! 
-class RDKIT_MOLSTANDARDIZE_EXPORT AtomClashValidation 
+class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation 
     : public ValidationMethod {
  public:
-  AtomClashValidation(double bondLengthFraction=0.15) : clash_limit(bondLengthFraction) {};
+  Layout2DValidation(double clashLimit=0.15, double bondLengthLimit=10)
+    : clashLimit(clashLimit), bondLengthLimit(bondLengthLimit) {};
   std::vector<ValidationErrorInfo> validate(
       const ROMol &mol, bool reportAllFailures) const override;
  private:
-  double clash_limit;
+  double clashLimit;
+  double bondLengthLimit;
 };
 
 //! 
