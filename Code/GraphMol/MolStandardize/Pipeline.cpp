@@ -119,16 +119,13 @@ void Pipeline::validate(const ROMol & mol, PipelineResult & result)
   // check for undesired features in the input molecule
   // TBD
 
-  // check for undesired atom types
-  // TBD
-
   // verify that the input is a 2D structure
   Is2DValidation is2DValidation(options.is2DZeroThreshold);
   if (!applyValidation(is2DValidation, IS2D_VALIDATION_ERROR) && !options.reportAllFailures) {
     return;
   }
 
-  // validate the 2D layout (check for clashing atoms)
+  // validate the 2D layout (check for clashing atoms and abnormally long bonds)
   Layout2DValidation layout2DValidation(options.atomClashLimit, options.bondLengthLimit);
   if (!applyValidation(layout2DValidation, LAYOUT2D_VALIDATION_ERROR) && !options.reportAllFailures) {
     return;
