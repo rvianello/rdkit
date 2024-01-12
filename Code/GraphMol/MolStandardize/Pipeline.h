@@ -33,6 +33,8 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
   double bondLengthLimit {10.};
 
   // cleanup/standardization
+  std::string metalNof {"[Li,Na,K,Rb,Cs,Fr,Be,Mg,Ca,Sr,Ba,Ra]~[#7,#8,F]"};
+  std::string metalNon {};
 
   // serialization
   bool ouputV2000 {false};

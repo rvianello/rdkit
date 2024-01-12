@@ -16,6 +16,7 @@
 #include "Fragment.h"
 #include <RDGeneral/FileParseException.h>
 #include <GraphMol/FileParsers/FileParsers.h>
+#include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/Chirality.h>
 
 namespace RDKit {
@@ -164,6 +165,8 @@ std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & 
   // bonding to metals
   try {
     MetalDisconnector metalDisconnector;
+    metalDisconnector.setMetalNof(*SmartsToMol(options.metalNof));
+    metalDisconnector.setMetalNon(*SmartsToMol(options.metalNon));
     metalDisconnector.disconnectInPlace(*mol);
   }
   catch (...) {
