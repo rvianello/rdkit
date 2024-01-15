@@ -165,8 +165,10 @@ std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & 
   // bonding to metals
   try {
     MetalDisconnector metalDisconnector;
-    metalDisconnector.setMetalNof(*SmartsToMol(options.metalNof));
-    metalDisconnector.setMetalNon(*SmartsToMol(options.metalNon));
+    std::unique_ptr<ROMol> metalNof {SmartsToMol(options.metalNof)};
+    metalDisconnector.setMetalNof(*metalNof);
+    std::unique_ptr<ROMol> metalNon {SmartsToMol(options.metalNon)};
+    metalDisconnector.setMetalNon(*metalNon);
     metalDisconnector.disconnectInPlace(*mol);
   }
   catch (...) {
