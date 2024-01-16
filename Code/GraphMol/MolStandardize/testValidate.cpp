@@ -307,13 +307,16 @@ void testFragment() {
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
 
-void testIs2DValidation() {
-  BOOST_LOG(rdInfoLog) << "-----------------------\n Testing Is2DValidation"
+void testFeaturesValidation() {
+  BOOST_LOG(rdInfoLog) << "-----------------------\n Testing FeaturesValidation"
                        << std::endl;
 
-  Is2DValidation is2D;
+  unique_ptr<ROMol> mol;
+  FeaturesValidation features;
+  string mblock, errmsg;
+  vector<ValidationErrorInfo> errout;
 
-  string mblock1 = R"(
+  mblock = R"(
                     2D          
 
   0  0  0     0  0            999 V3000
@@ -330,11 +333,130 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m1 {MolBlockToMol(mblock1, false, false)};
-  vector<ValidationErrorInfo> errout1 = is2D.validate(*m1, true);
-  TEST_ASSERT(errout1.empty());
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = features.validate(*mol, true);
+  TEST_ASSERT(errout.empty());
 
-  string mblock2 = R"(
+  mblock = R"(
+  Mrv2311 01162410492D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 A -20.708 9.9367 0 0
+M  V30 2 C -22.0417 9.1667 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = features.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  for (auto msg: errout) {
+    cerr << msg.what() << endl;
+  }
+  errmsg = errout[0].what();
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query atom 1 not allowed");
+
+  mblock = R"(
+  Mrv2311 01162411522D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -20.708 9.9367 0 0
+M  V30 2 C -22.0417 9.1667 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 8 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = features.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  for (auto msg: errout) {
+    cerr << msg.what() << endl;
+  }
+  errmsg = errout[0].what();
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query bond 1 not allowed");
+
+  mblock = R"(
+  Mrv2311 01162411552D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -18.208 8.52 0 0 CFG=2
+M  V30 2 F -19.5417 7.75 0 0
+M  V30 3 C -16.8743 7.75 0 0
+M  V30 4 Cl -18.208 10.06 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 3 CFG=1
+M  V30 2 1 2 1
+M  V30 3 1 1 4
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STERAC1 ATOMS=(1 1)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = features.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  for (auto msg: errout) {
+    cerr << msg.what() << endl;
+  }
+  errmsg = errout[0].what();
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Enhanced stereochemistry features are not allowed");
+
+  BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
+}
+
+void testIs2DValidation() {
+  BOOST_LOG(rdInfoLog) << "-----------------------\n Testing Is2DValidation"
+                       << std::endl;
+
+  unique_ptr<ROMol> mol;
+  Is2DValidation is2D;
+  string mblock, errmsg;
+  vector<ValidationErrorInfo> errout;
+
+
+  mblock = R"(
+                    2D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C 0.8753 4.9367 0 0
+M  V30 2 C -0.4583 4.1667 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = is2D.validate(*mol, true);
+  TEST_ASSERT(errout.empty());
+
+  mblock = R"(
                     2D          
 
   0  0  0     0  0            999 V3000
@@ -351,13 +473,13 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m2 {MolBlockToMol(mblock2, false, false)};
-  vector<ValidationErrorInfo> errout2 = is2D.validate(*m2, true);
-  TEST_ASSERT(errout2.size() == 1);
-  string errmsg2 {errout2[0].what()};
-  TEST_ASSERT(errmsg2 == "ERROR: [Is2DValidation] Molecule is 3D");
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = is2D.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(errmsg == "ERROR: [Is2DValidation] Molecule is 3D");
 
-  string mblock3 = R"(
+  mblock = R"(
                     2D          
 
   0  0  0     0  0            999 V3000
@@ -374,11 +496,11 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m3 {MolBlockToMol(mblock3, false, false)};
-  vector<ValidationErrorInfo> errout3 = is2D.validate(*m3, true);
-  TEST_ASSERT(errout3.size() == 1);
-  string errmsg3 {errout3[0].what()};
-  TEST_ASSERT(errmsg3 == "ERROR: [Is2DValidation] All atoms have the same (x,y) coordinates");
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = is2D.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(errmsg == "ERROR: [Is2DValidation] All atoms have the same (x,y) coordinates");
 
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
@@ -386,9 +508,13 @@ M  END
 void testLayout2DValidation() {
   BOOST_LOG(rdInfoLog) << "-----------------------\n Testing Layout2DValidation"
                        << std::endl;
-  Layout2DValidation layout2D;
 
-  string mblock1 = R"(
+  unique_ptr<ROMol> mol;
+  Layout2DValidation layout2D;
+  string mblock, errmsg;
+  vector<ValidationErrorInfo> errout;
+
+  mblock = R"(
                     2D          
 
   0  0  0     0  0            999 V3000
@@ -409,11 +535,11 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m1 {MolBlockToMol(mblock1, false, false)};
-  vector<ValidationErrorInfo> errout1 = layout2D.validate(*m1, true);
-  TEST_ASSERT(errout1.empty());
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = layout2D.validate(*mol, true);
+  TEST_ASSERT(errout.empty());
 
-  string mblock2 = R"(
+  mblock = R"(
                     2D          
 
   0  0  0     0  0            999 V3000
@@ -438,13 +564,13 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m2 {MolBlockToMol(mblock2, false, false)};
-  vector<ValidationErrorInfo> errout2 = layout2D.validate(*m2, true);
-  TEST_ASSERT(errout2.size() == 1);
-  string errmsg2 {errout2[0].what()};
-  TEST_ASSERT(errmsg2 == "ERROR: [Layout2DValidation] atom 5 too close to atom 6");
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = layout2D.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] atom 5 too close to atom 6");
 
-  string mblock3 = R"(
+  mblock = R"(
                     2D          
 
   0  0  0     0  0            999 V3000
@@ -469,13 +595,13 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m3 {MolBlockToMol(mblock3, false, false)};
-  vector<ValidationErrorInfo> errout3 = layout2D.validate(*m3, true);
-  TEST_ASSERT(errout3.size() == 1);
-  string errmsg3 {errout3[0].what()};
-  TEST_ASSERT(errmsg3 == "ERROR: [Layout2DValidation] atom 6 too close to bond 5");
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = layout2D.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] atom 6 too close to bond 5");
 
-  string mblock4 = R"(
+  mblock = R"(
           01112413352D          
 
   0  0  0     0  0            999 V3000
@@ -497,11 +623,11 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m4 {MolBlockToMol(mblock4, false, false)};
-  vector<ValidationErrorInfo> errout4 = layout2D.validate(*m4, true);
-  TEST_ASSERT(errout4.size() == 1);
-  string errmsg4 {errout4[0].what()};
-  TEST_ASSERT(errmsg4 == "ERROR: [Layout2DValidation] length of bond 4 between atoms 1 and 4 exceeds a configured limit");
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = layout2D.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0].what();
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] length of bond 4 between atoms 1 and 4 exceeds a configured limit");
 
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
@@ -510,6 +636,7 @@ void testValidateStereo() {
   BOOST_LOG(rdInfoLog) << "-----------------------\n Testing ValidateStereo"
                        << std::endl;
 
+  unique_ptr<ROMol> mol;
   StereoValidation stereo;
   string mblock, errmsg;
   vector<ValidationErrorInfo> errout;
@@ -538,8 +665,8 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m0 {MolBlockToMol(mblock, false, false)};
-  errout = stereo.validate(*m0, true);
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = stereo.validate(*mol, true);
   TEST_ASSERT(errout.size() == 0);
 
   // 4 ligands - too many stereo bonds with the same wedge/dash direction
@@ -566,9 +693,9 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m1 {MolBlockToMol(mblock, false, false)};
-  Chirality::reapplyMolBlockWedging(*m1);
-  errout = stereo.validate(*m1, true);
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
   TEST_ASSERT(errout.size() == 2);
   errmsg = errout[0].what();
   TEST_ASSERT(
@@ -604,9 +731,9 @@ M  END
 )";
 
   // 4 ligands - mismatching opposed wedge/dash bonds
-  unique_ptr<ROMol> m2 {MolBlockToMol(mblock, false, false)};
-  Chirality::reapplyMolBlockWedging(*m2);
-  errout = stereo.validate(*m2, true);
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0].what();
   TEST_ASSERT(
@@ -637,9 +764,9 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m3 {MolBlockToMol(mblock, false, false)};
-  Chirality::reapplyMolBlockWedging(*m3);
-  errout = stereo.validate(*m3, true);
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0].what();
   TEST_ASSERT(
@@ -670,9 +797,9 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m4 {MolBlockToMol(mblock, false, false)};
-  Chirality::reapplyMolBlockWedging(*m4);
-  errout = stereo.validate(*m4, true);
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0].what();
   TEST_ASSERT(
@@ -701,9 +828,9 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m5 {MolBlockToMol(mblock, false, false)};
-  Chirality::reapplyMolBlockWedging(*m5);
-  errout = stereo.validate(*m5, true);
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
   TEST_ASSERT(errout.size() == 0);
 
   // 3 Ligands - multiple stereo bonds
@@ -728,9 +855,9 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m6 {MolBlockToMol(mblock, false, false)};
-  Chirality::reapplyMolBlockWedging(*m6);
-  errout = stereo.validate(*m6, true);
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0].what();
   TEST_ASSERT(
@@ -759,9 +886,9 @@ M  V30 END CTAB
 M  END
 )";
 
-  unique_ptr<ROMol> m7 {MolBlockToMol(mblock, false, false)};
-  Chirality::reapplyMolBlockWedging(*m7);
-  errout = stereo.validate(*m7, true);
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0].what();
   TEST_ASSERT(
@@ -806,6 +933,7 @@ int main() {
   testAllowedAtomsValidation();
   testDisallowedAtomsValidation();
   testFragment();
+  testFeaturesValidation();
   testIs2DValidation();
   testLayout2DValidation();
   testValidateStereo();

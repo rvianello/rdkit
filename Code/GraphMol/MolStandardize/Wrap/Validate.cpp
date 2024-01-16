@@ -184,6 +184,13 @@ struct validate_wrapper {
       ;
 
     python::class_<
+      MolStandardize::FeaturesValidation,
+      python::bases<MolStandardize::ValidationMethod>,
+      boost::noncopyable>("FeaturesValidation")
+        .def(python::init<bool>())
+      ;
+
+    python::class_<
       MolStandardize::Is2DValidation,
       python::bases<MolStandardize::ValidationMethod>,
       boost::noncopyable>("Is2DValidation")

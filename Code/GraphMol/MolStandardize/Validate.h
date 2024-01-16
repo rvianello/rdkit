@@ -189,6 +189,18 @@ class RDKIT_MOLSTANDARDIZE_EXPORT DisallowedAtomsValidation
   std::vector<std::shared_ptr<Atom>> d_disallowedList;
 };
 
+//!
+class RDKIT_MOLSTANDARDIZE_EXPORT FeaturesValidation
+    : public ValidationMethod {
+ public:
+  FeaturesValidation(bool allowEnhancedStereo=false)
+    : allowEnhancedStereo(allowEnhancedStereo) {};
+  std::vector<ValidationErrorInfo> validate(
+      const ROMol &mol, bool reportAllFailures) const override;
+ private:
+  bool allowEnhancedStereo;
+};
+
 //! 
 class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation 
     : public ValidationMethod {

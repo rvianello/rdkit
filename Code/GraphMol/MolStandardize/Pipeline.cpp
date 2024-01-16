@@ -111,14 +111,17 @@ void Pipeline::validate(const ROMol & mol, PipelineResult & result)
     return errors.empty();
   };
 
+  // check for undesired features in the input molecule (e.g., query atoms/bonds)
+  FeaturesValidation featuresValidation(options.allowEnhancedStereo);
+  if (!applyValidation(featuresValidation, FEATURES_VALIDATION_ERROR) && !options.reportAllFailures) {
+    return;
+  }
+
   // check the number of atoms and valence status
   RDKitValidation rdkitValidation;
   if (!applyValidation(rdkitValidation, BASIC_VALIDATION_ERROR) && !options.reportAllFailures) {
     return;
   }
-
-  // check for undesired features in the input molecule
-  // TBD
 
   // verify that the input is a 2D structure
   Is2DValidation is2DValidation(options.is2DZeroThreshold);

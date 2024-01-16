@@ -1148,6 +1148,29 @@ chlorine	[Cl]
     self.assertEqual([Chem.MolToSmiles(m) for m in ms], [y for x, y in ind])
 
   def test33MolBlockValidation(self):
+    # featuresValidation
+    mol = Chem.MolFromMolBlock('''
+  Mrv2311 01162413552D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 R# -17.3747 6.9367 0 0 RGROUPS=(1 0)
+M  V30 2 C -18.7083 6.1667 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+''', sanitize=False)
+    
+    validator = rdMolStandardize.FeaturesValidation()
+    errinfo = validator.validate(mol)
+    self.assertEqual(len(errinfo), 1)
+    self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Query atom 1 not allowed")
+    
     # is2DValidation
     mol = Chem.MolFromMolBlock('''
                     2D          
@@ -1282,6 +1305,28 @@ M  V30 BEGIN CTAB
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.PARSING_INPUT)
     self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.INPUT_ERROR)
+
+    molblock = '''
+  Mrv2311 01162413552D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 R# -17.3747 6.9367 0 0 RGROUPS=(1 0)
+M  V30 2 C -18.7083 6.1667 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+'''
+    result = pipeline.run(molblock)
+    self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
+    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
+    self.assertTrue(result.status & rdMolStandardize.PipelineStatus.FEATURES_VALIDATION_ERROR)
 
     molblock = '''
           10052313452D          

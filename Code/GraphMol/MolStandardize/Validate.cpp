@@ -260,6 +260,48 @@ std::vector<ValidationErrorInfo> DisallowedAtomsValidation::validate(
   return errors;
 }
 
+std::vector<ValidationErrorInfo> FeaturesValidation::validate(
+      const ROMol &mol, bool reportAllFailures) const {
+  std::vector<ValidationErrorInfo> errors;
+
+  // disallow query atoms and bonds
+  for (auto atom : mol.atoms()) {
+    if (atom->hasQuery()) {
+      errors.emplace_back(
+        "ERROR: [FeaturesValidation] Query atom " + std::to_string(atom->getIdx()+1) + " not allowed");
+      if (!reportAllFailures) {
+        return errors;
+      }
+    }
+    else if (atom->getAtomicNum() == 0) { // (atom->isDummyAtom()) { // GH PR # 6768
+      errors.emplace_back(
+        "ERROR: [FeaturesValidation] Dummy atom " + std::to_string(atom->getIdx()+1) + " not allowed");
+      if (!reportAllFailures) {
+        return errors;
+      }
+    }
+  }
+
+  for (auto bond : mol.bonds()) {
+    if (bond->hasQuery()) {
+      errors.emplace_back(
+        "ERROR: [FeaturesValidation] Query bond " + std::to_string(bond->getIdx()+1) + " not allowed");
+      if (!reportAllFailures) {
+        return errors;
+      }
+    }
+  }
+
+  // disallow using the enahanced stereochemistry
+  // (based on configured options)
+  if (!allowEnhancedStereo && mol.getStereoGroups().size()) {
+    errors.emplace_back(
+      "ERROR: [FeaturesValidation] Enhanced stereochemistry features are not allowed");
+  }
+
+  return errors;
+}
+
 std::vector<ValidationErrorInfo> Is2DValidation::validate(
       const ROMol &mol, bool reportAllFailures) const {
   std::vector<ValidationErrorInfo> errors;

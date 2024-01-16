@@ -99,6 +99,73 @@ M  END
       ));
   }
 
+  SECTION("failing features validation, query atom") {
+    const char * molblock = R"(
+  Mrv2311 01162413552D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 R# -17.3747 6.9367 0 0 RGROUPS=(1 0)
+M  V30 2 C -18.7083 6.1667 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
+    REQUIRE(result.status & MolStandardize::FEATURES_VALIDATION_ERROR);
+  }
+
+  SECTION("failing features validation, enhanced stereo") {
+    const char * molblock = R"(
+  Mrv2311 01162411552D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -18.208 8.52 0 0 CFG=2
+M  V30 2 F -19.5417 7.75 0 0
+M  V30 3 C -16.8743 7.75 0 0
+M  V30 4 Cl -18.208 10.06 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 3 CFG=1
+M  V30 2 1 2 1
+M  V30 3 1 1 4
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STERAC1 ATOMS=(1 1)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
+    REQUIRE(result.status & MolStandardize::FEATURES_VALIDATION_ERROR);
+  }
+
   SECTION("failing 2D validation, non-null Z coords") {
     const char * molblock = R"(
                     2D          
