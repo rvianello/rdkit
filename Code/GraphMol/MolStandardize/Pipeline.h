@@ -10,15 +10,13 @@
 #ifndef RD_MOLSTANDARDIZE_PIPELINE_H
 #define RD_MOLSTANDARDIZE_PIPELINE_H
 #include <RDGeneral/export.h>
+#include <GraphMol/RWMol.h>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace RDKit {
-
-class ROMol;
-class RWMol;
 
 namespace MolStandardize {
 
@@ -59,16 +57,16 @@ enum RDKIT_MOLSTANDARDIZE_EXPORT PipelineStatus {
   PREPARE_STANDARDIZATION_ERROR=(1<<6),
   METAL_STANDARDIZATION_ERROR=(1<<7),
   NORMALIZER_STANDARDIZATION_ERROR=(1<<8),
-  PROTONATION_STANDARDIZATION_ERROR=(1<<9),
-  FRAGMENT_STANDARDIZATION_ERROR=(1<<10),
-  CHARGE_STANDARDIZATION_ERROR=(1<<11),
+  FRAGMENT_STANDARDIZATION_ERROR=(1<<9),
+  CHARGE_STANDARDIZATION_ERROR=(1<<10),
+  PROTONATION_STANDARDIZATION_ERROR=(1<<11),
   STANDARDIZATION_ERROR=(
     PREPARE_STANDARDIZATION_ERROR
     | METAL_STANDARDIZATION_ERROR
     | NORMALIZER_STANDARDIZATION_ERROR
-    | PROTONATION_STANDARDIZATION_ERROR
     | FRAGMENT_STANDARDIZATION_ERROR
     | CHARGE_STANDARDIZATION_ERROR
+    | PROTONATION_STANDARDIZATION_ERROR
   ),
   OUTPUT_ERROR=(1<<12)
 };
@@ -95,6 +93,7 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineResult {
   PipelineLog log;
   std::string inputMolBlock;
   std::string outputMolBlock;
+  std::string parentMolBlock;
 
   void append(PipelineStatus newStatus, const std::string & info); 
 };
@@ -110,10 +109,11 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Pipeline {
   PipelineResult run(const std::string & molblock);
 
  private:
-  std::unique_ptr<RWMol> parse(const std::string & molblock, PipelineResult & result);
+  RWMOL_SPTR parse(const std::string & molblock, PipelineResult & result);
   void validate(const ROMol & mol, PipelineResult & result);
-  std::unique_ptr<RWMol> standardize(RWMol & mol, PipelineResult & result);
-  void serialize(const ROMol & mol, PipelineResult & result);
+  using RWMOL_SPTR_PAIR = std::pair<RWMOL_SPTR, RWMOL_SPTR>;
+  RWMOL_SPTR_PAIR standardize(RWMOL_SPTR mol, PipelineResult & result);
+  void serialize(RWMOL_SPTR_PAIR output, PipelineResult & result);
 };
 
 }  // namespace MolStandardize

@@ -37,7 +37,7 @@ PipelineResult Pipeline::run(const std::string & molblock)
   result.outputMolBlock = molblock;
 
   // parse the molblock into an RWMol instance
-  std::unique_ptr<RWMol> mol = parse(molblock, result);
+  RWMOL_SPTR mol = parse(molblock, result);
   if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
     return result;
   }
@@ -49,13 +49,13 @@ PipelineResult Pipeline::run(const std::string & molblock)
   }
 
   // standardize/normalize
-  mol = standardize(*mol, result);
-  if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
+  RWMOL_SPTR_PAIR output = standardize(mol, result);
+  if (!output.first || !output.second || (result.status != NO_ERROR && !options.reportAllFailures)) {
     return result;
   }
 
   // serialize as MolBlock
-  serialize(*mol, result);
+  serialize(output, result);
   if (result.status != NO_ERROR && !options.reportAllFailures) {
     return result;
   }
@@ -65,7 +65,7 @@ PipelineResult Pipeline::run(const std::string & molblock)
   return result;
 }
 
-std::unique_ptr<RWMol> Pipeline::parse(const std::string & molblock, PipelineResult & result)
+RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result)
 {
   result.stage = PARSING_INPUT;
 
@@ -77,7 +77,7 @@ std::unique_ptr<RWMol> Pipeline::parse(const std::string & molblock, PipelineRes
   // strict parsing is configurable via the pipeline options
   const bool strictParsing {options.strictParsing};
 
-  std::unique_ptr<RWMol> mol {};
+  RWMOL_SPTR mol {};
 
   try {
     mol.reset(MolBlockToMol(molblock, sanitize, removeHs, strictParsing));
@@ -142,11 +142,9 @@ void Pipeline::validate(const ROMol & mol, PipelineResult & result)
   }
 }
 
-std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & result)
+Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result)
 {
   result.stage = STANDARDIZATION;
-
-  std::unique_ptr<RWMol> mol {new RWMol(original)};
 
   // Prepare the mol for standardization
   try {
@@ -162,7 +160,7 @@ std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & 
     result.append(
       PREPARE_STANDARDIZATION_ERROR,
       "ERROR: [Standardization] An unexpected error occurred while preparing the molecule for standardization.");
-    return std::unique_ptr<RWMol> {};
+    return {{}, {}};
   }
 
   // bonding to metals
@@ -178,7 +176,7 @@ std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & 
     result.append(
       METAL_STANDARDIZATION_ERROR,
       "ERROR: [Standardization] An unexpected error occurred while processing the bonding of metal species.");
-    return std::unique_ptr<RWMol> {};
+    return {{}, {}};
   }
 
   // functional groups
@@ -190,7 +188,7 @@ std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & 
     result.append(
       NORMALIZER_STANDARDIZATION_ERROR, 
       "ERROR: [Standardization] An unexpected error occurred while normalizing the representation of some functional groups");
-    return std::unique_ptr<RWMol> {};
+    return {{}, {}};
   }
 
   // rearrange the protonation status
@@ -203,7 +201,7 @@ std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & 
     result.append(
       PROTONATION_STANDARDIZATION_ERROR, 
       "ERROR: [Standardization] An unexpected error occurred while reassigning the formal charges");
-    return std::unique_ptr<RWMol> {};
+    return {{}, {}};
   }
 
   // keep the largest fragment
@@ -216,7 +214,12 @@ std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & 
     result.append(
       FRAGMENT_STANDARDIZATION_ERROR, 
       "ERROR: [Standardization] An unexpected error occurred while removing the disconnected fragments");
+    // FIXME: return {{}, {}};
   }
+
+  RWMOL_SPTR parent {new RWMol(*mol)};
+
+  // FIXME ...
 
   // overall charge status
   try {
@@ -227,7 +230,7 @@ std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & 
     result.append(
       CHARGE_STANDARDIZATION_ERROR, 
       "ERROR: [Standardization] An unexpected error occurred while normalizing the total charge status");
-    return std::unique_ptr<RWMol> {};
+    return {{}, {}};
   }
 
   // updating the property cache was observed to be required, in order to clear the explicit valence
@@ -236,26 +239,33 @@ std::unique_ptr<RWMol> Pipeline::standardize(RWMol & original, PipelineResult & 
   //
   // needsUpdatePropertyCache() returns false 
   //if (mol->needsUpdatePropertyCache()) {
-  if (true) {
-    mol->updatePropertyCache(false);
-  }
+  mol->updatePropertyCache(false);
+  parent->updatePropertyCache(false);
 
-  return mol;
+  return {mol, parent};
 }
 
-void Pipeline::serialize(const ROMol & mol, PipelineResult & result)
+void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result)
 {
   result.stage = SERIALIZING_OUTPUT;
 
+  const ROMol & outputMol = *output.first;
+  const ROMol & parentMol = *output.second;
+  
   try {
     if (!options.ouputV2000) {
-      result.outputMolBlock = MolToV3KMolBlock(mol);
+      result.outputMolBlock = MolToV3KMolBlock(outputMol);
+      result.parentMolBlock = MolToV3KMolBlock(parentMol);
     }
-    else if (mol.getNumAtoms() > 999 || mol.getNumBonds() > 999) {
+    else if (
+        outputMol.getNumAtoms() > 999 || outputMol.getNumBonds() > 999 ||
+        parentMol.getNumAtoms() > 999 || parentMol.getNumBonds() > 999
+        ) {
       result.append(OUTPUT_ERROR, "ERROR: [Output] Molecule is too large for V2000 format.");
     }
     else {
-      result.outputMolBlock = MolToMolBlock(mol);
+      result.outputMolBlock = MolToMolBlock(outputMol);
+      result.parentMolBlock = MolToMolBlock(parentMol);
     }
   }
   catch (const std::exception & e) {
