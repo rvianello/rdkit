@@ -516,7 +516,7 @@ void Uncharger::unchargeInPlace(RWMol &mol) {
       }
     }
   }
-}  // namespace MolStandardize
+}
 
 }  // namespace MolStandardize
 }  // namespace RDKit
