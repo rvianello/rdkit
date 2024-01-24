@@ -24,6 +24,11 @@ struct ValidationMethodWrap : MolStandardize::ValidationMethod, python::wrapper<
     {
         return this->get_override("validate")(mol, reportAllFailures);
     }
+
+    std::shared_ptr<MolStandardize::ValidationMethod> copy() const override
+    {
+        return this->get_override("copy")();
+    }
 };
 
 // Wrap ValidationMethod::validate and convert the returned
@@ -34,8 +39,7 @@ python::list pythonValidateMethod(
   python::list res;
   std::vector<MolStandardize::ValidationErrorInfo> errout =
       self.validate(mol, reportAllFailures);
-  for (auto &query : errout) {
-    std::string msg = query.what();
+  for (const auto &msg : errout) {
     res.append(msg);
   }
   return res;
@@ -43,10 +47,10 @@ python::list pythonValidateMethod(
 
 MolStandardize::MolVSValidation *getMolVSValidation(
     python::object validations) {
-  std::vector<boost::shared_ptr<MolStandardize::MolVSValidations>> vs;
+  std::vector<std::shared_ptr<MolStandardize::ValidationMethod>> vs;
 
   auto pvect =
-      pythonObjectToVect<boost::shared_ptr<MolStandardize::MolVSValidations>>(
+      pythonObjectToVect<std::shared_ptr<MolStandardize::ValidationMethod>>(
           validations);
   if (!pvect) {
     throw_value_error("validations argument must be non-empty");
@@ -55,17 +59,6 @@ MolStandardize::MolVSValidation *getMolVSValidation(
     vs.push_back(v->copy());
   }
   return new MolStandardize::MolVSValidation(vs);
-}
-
-python::list molVSvalidateHelper(MolStandardize::MolVSValidation &self,
-                                 const ROMol &mol, bool reportAllFailures) {
-  python::list s;
-  std::vector<MolStandardize::ValidationErrorInfo> errout =
-      self.validate(mol, reportAllFailures);
-  for (auto &query : errout) {
-    s.append(query.what());
-  }
-  return s;
 }
 
 MolStandardize::AllowedAtomsValidation *getAllowedAtomsValidation(
@@ -98,8 +91,7 @@ python::list standardizeSmilesHelper(const std::string &smiles) {
   python::list res;
   std::vector<MolStandardize::ValidationErrorInfo> errout =
       MolStandardize::validateSmiles(smiles);
-  for (auto &query : errout) {
-    std::string msg = query.what();
+  for (const auto &msg : errout) {
     res.append(msg);
   }
   return res;
@@ -124,56 +116,42 @@ struct validate_wrapper {
       boost::noncopyable>("RDKitValidation")
       ;
 
-    python::class_<MolStandardize::MolVSValidations, boost::noncopyable>(
-        "MolVSValidations", python::no_init)
-        .def("run", &MolStandardize::MolVSValidations::run,
-             (python::arg("self"), python::arg("mol"),
-              python::arg("reportAllFailures"), python::arg("errors")),
-             "");
+    python::class_<
+      MolStandardize::NoAtomValidation,
+      python::bases<MolStandardize::ValidationMethod>,
+      boost::noncopyable>("NoAtomValidation")
+      ;
 
-    python::class_<MolStandardize::NoAtomValidation,
-                   python::bases<MolStandardize::MolVSValidations>>(
-        "NoAtomValidation", python::init<>(python::args("self")))
-        .def("run", &MolStandardize::NoAtomValidation::run,
-             (python::arg("self"), python::arg("mol"),
-              python::arg("reportAllFailures"), python::arg("errors")),
-             "");
+    python::class_<
+      MolStandardize::FragmentValidation,
+      python::bases<MolStandardize::ValidationMethod>,
+      boost::noncopyable>("FragmentValidation")
+      ;
 
-    python::class_<MolStandardize::FragmentValidation,
-                   python::bases<MolStandardize::MolVSValidations>>(
-        "FragmentValidation", python::init<>(python::args("self")))
-        .def("run", &MolStandardize::FragmentValidation::run,
-             (python::arg("self"), python::arg("mol"),
-              python::arg("reportAllFailures"), python::arg("errors")),
-             "");
-    python::class_<MolStandardize::NeutralValidation,
-                   python::bases<MolStandardize::MolVSValidations>>(
-        "NeutralValidation", python::init<>(python::args("self")))
-        .def("run", &MolStandardize::NeutralValidation::run,
-             (python::arg("self"), python::arg("mol"),
-              python::arg("reportAllFailures"), python::arg("errors")),
-             "");
-    python::class_<MolStandardize::IsotopeValidation,
-                   python::bases<MolStandardize::MolVSValidations>>(
-        "IsotopeValidation", python::init<>(python::args("self")))
-        .def("run", &MolStandardize::IsotopeValidation::run,
-             (python::arg("self"), python::arg("mol"),
-              python::arg("reportAllFailures"), python::arg("errors")),
-             "");
+    python::class_<
+      MolStandardize::NeutralValidation,
+      python::bases<MolStandardize::ValidationMethod>,
+      boost::noncopyable>("NeutralValidation")
+      ;
 
-    python::class_<MolStandardize::MolVSValidation, boost::noncopyable>(
-        "MolVSValidation")
+    python::class_<
+      MolStandardize::IsotopeValidation,
+      python::bases<MolStandardize::ValidationMethod>,
+      boost::noncopyable>("IsotopeValidation")
+      ;
+
+    python::class_<
+      MolStandardize::MolVSValidation,
+      python::bases<MolStandardize::ValidationMethod>,
+      boost::noncopyable>("MolVSValidation")
         .def("__init__", python::make_constructor(&getMolVSValidation))
-        .def("validate", molVSvalidateHelper,
-             (python::arg("self"), python::arg("mol"),
-              python::arg("reportAllFailures") = false),
-             "");
+      ;
 
     python::class_<
       MolStandardize::AllowedAtomsValidation,
       python::bases<MolStandardize::ValidationMethod>,
       boost::noncopyable>("AllowedAtomsValidation", python::no_init)
-        .def("__init__", python::make_constructor(&getDisallowedAtomsValidation))
+        .def("__init__", python::make_constructor(&getAllowedAtomsValidation))
       ;
 
     python::class_<

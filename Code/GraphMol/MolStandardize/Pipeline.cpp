@@ -106,7 +106,7 @@ void Pipeline::validate(const ROMol & mol, PipelineResult & result)
   auto applyValidation = [&mol, &result, this](const ValidationMethod & v, PipelineStatus status) -> bool {
     auto errors = v.validate(mol, options.reportAllFailures);
     for (const auto & error : errors) {
-      result.append(status, error.what());
+      result.append(status, error);
     }
     return errors.empty();
   };
