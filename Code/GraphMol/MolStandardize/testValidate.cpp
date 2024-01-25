@@ -345,7 +345,7 @@ M  END
     cerr << msg << endl;
   }
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query atom 1 not allowed");
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query atom 1 is not allowed");
 
   mblock = R"(
   Mrv2311 01162411522D          
@@ -371,7 +371,30 @@ M  END
     cerr << msg << endl;
   }
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query bond 1 not allowed");
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query bond 1 is not allowed");
+
+  mblock = R"(
+  MJ231601                      
+
+  3  2  0  0  0  0  0  0  0  0999 V2000
+   -8.7163    4.4303    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -9.4308    4.0178    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -8.7163    5.2553    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+  2  1  1  0  0  0  0
+  1  3  1  0  0  0  0
+A    3
+CF3
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = features.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  for (auto msg: errout) {
+    cerr << msg << endl;
+  }
+  errmsg = errout[0];
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Atom 3 with alias 'CF3' is not allowed");
 
   mblock = R"(
   Mrv2311 01162411552D          

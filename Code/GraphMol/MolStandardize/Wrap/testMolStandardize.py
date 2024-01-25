@@ -1169,7 +1169,7 @@ M  END
     validator = rdMolStandardize.FeaturesValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Query atom 1 not allowed")
+    self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Query atom 1 is not allowed")
     
     # is2DValidation
     mol = Chem.MolFromMolBlock('''

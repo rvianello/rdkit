@@ -271,28 +271,39 @@ std::vector<ValidationErrorInfo> FeaturesValidation::validate(
       const ROMol &mol, bool reportAllFailures) const {
   std::vector<ValidationErrorInfo> errors;
 
-  // disallow query atoms and bonds
+  // disallow query and dummy atoms, and aliases
   for (auto atom : mol.atoms()) {
     if (atom->hasQuery()) {
-      errors.emplace_back(
-        "ERROR: [FeaturesValidation] Query atom " + std::to_string(atom->getIdx()+1) + " not allowed");
+      errors.push_back(
+        "ERROR: [FeaturesValidation] Query atom " + std::to_string(atom->getIdx()+1) + " is not allowed");
       if (!reportAllFailures) {
         return errors;
       }
     }
     else if (atom->getAtomicNum() == 0) { // (atom->isDummyAtom()) { // GH PR # 6768
-      errors.emplace_back(
-        "ERROR: [FeaturesValidation] Dummy atom " + std::to_string(atom->getIdx()+1) + " not allowed");
+      errors.push_back(
+        "ERROR: [FeaturesValidation] Dummy atom " + std::to_string(atom->getIdx()+1) + " is not allowed");
+      if (!reportAllFailures) {
+        return errors;
+      }
+    }
+
+    if (atom->hasProp(common_properties::molFileAlias)) {
+      errors.push_back(
+        "ERROR: [FeaturesValidation] Atom " + std::to_string(atom->getIdx()+1)
+        + " with alias '" + atom->getProp<std::string>(common_properties::molFileAlias)
+        + "' is not allowed");
       if (!reportAllFailures) {
         return errors;
       }
     }
   }
 
+  // disallow query bonds
   for (auto bond : mol.bonds()) {
     if (bond->hasQuery()) {
-      errors.emplace_back(
-        "ERROR: [FeaturesValidation] Query bond " + std::to_string(bond->getIdx()+1) + " not allowed");
+      errors.push_back(
+        "ERROR: [FeaturesValidation] Query bond " + std::to_string(bond->getIdx()+1) + " is not allowed");
       if (!reportAllFailures) {
         return errors;
       }
@@ -434,7 +445,7 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
       auto dy = pj.y - pi.y;
       auto d2 = dx*dx + dy*dy;
       if (d2 < atomClashThreshold) {
-        errors.emplace_back(
+        errors.push_back(
           "ERROR: [Layout2DValidation] atom " + std::to_string(i+1)
           + " too close to atom " + std::to_string(j+1));
         if (!reportAllFailures) {
@@ -452,7 +463,7 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
 
     auto ll = (pi.x - pj.x)*(pi.x - pj.x) + (pi.y - pj.y)*(pi.y - pj.y);
     if (ll > bondLengthThreshold) {
-      errors.emplace_back(
+      errors.push_back(
         "ERROR: [Layout2DValidation] length of bond " + std::to_string(bond->getIdx()+1)
         + " between atoms " + std::to_string(i+1) + " and " + std::to_string(j+1)
         + " exceeds a configured limit");
@@ -485,7 +496,7 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
         rb <= bb  &&  /* projection of r onto b does not exceed b */
         kb < atomClashThreshold /* distance from bond < limit */
         ) {
-        errors.emplace_back(
+        errors.push_back(
           "ERROR: [Layout2DValidation] atom " + std::to_string(k+1)
           + " too close to bond " + std::to_string(bond->getIdx()+1));
         if (!reportAllFailures) {
@@ -639,7 +650,7 @@ namespace {
 
       static constexpr auto ANGLE_EPSILON = (M_PI*5./180.); // 5 degrees 
       if (angle < ANGLE_EPSILON || (M_PI - angle) < ANGLE_EPSILON) {
-        errors.emplace_back(
+        errors.push_back(
           "ERROR: [StereoValidation] colinearity of non-stereo bonds at atom " + std::to_string(atom->getIdx()+1)
           );
       }
@@ -653,7 +664,7 @@ namespace {
       // The AvalonTools' struchk implementation simply doesn't allow multiple stereo bonds
       // on stereo centers with 3 explicit ligands. The validations criteria for this sub-case
       // could be refined, but for now I'm keeping the same approach.
-      errors.emplace_back(
+      errors.push_back(
         "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
         + " has 3 explicit ligands and multiple stereo bonds"
         );
@@ -667,7 +678,7 @@ namespace {
     if (neighborsInfo.dirCount.dash > 2 || neighborsInfo.dirCount.wedge > 2) {
       // this condition would anyway trigger an "adjacent bonds with like orientation"
       // alert, but this test could be clearer / more explicit.
-      errors.emplace_back(
+      errors.push_back(
         "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
         + " has too many stereo bonds with like orientation"
         );
@@ -682,7 +693,7 @@ namespace {
           ||
           (neighborsInfo.bonds[i]->getBondDir() == Bond::BondDir::BEGINWEDGE &&
            neighborsInfo.bonds[i+2]->getBondDir() == Bond::BondDir::BEGINDASH)) {
-        errors.emplace_back(
+        errors.push_back(
           "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
           + " has opposing stereo bonds with different up/down orientation"
           );
@@ -698,7 +709,7 @@ namespace {
           ||
           (neighborsInfo.bonds[i]->getBondDir() == Bond::BondDir::BEGINWEDGE &&
            neighborsInfo.bonds[(i+1)%4]->getBondDir() == Bond::BondDir::BEGINWEDGE)) {
-        errors.emplace_back(
+        errors.push_back(
           "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
           + " has adjacent stereo bonds with like orientation"
           );
@@ -741,7 +752,7 @@ namespace {
             }
           }
           if (opposed == 3) {
-            errors.emplace_back(
+            errors.push_back(
               "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
               + " has a potentially ambiguous representation: all non-stereo bonds"
               + " opposite to the only stereo bond"
@@ -775,7 +786,7 @@ namespace {
           auto v2 = pl - pk;
           auto angle = v1.signedAngleTo(v2);
           if (angle < 185.*M_PI/180.) {
-            errors.emplace_back(
+            errors.push_back(
               "ERROR: [StereoValidation] colinearity or triangle rule violation of "
               "non-stereo bonds at atom " + std::to_string(atom->getIdx()+1) /* +
               " due to angle formed by ("  +
@@ -823,7 +834,7 @@ namespace {
     if (
       multipleBondFound && !possibleAllene && atomicNum != 15 && atomicNum != 16
       ) {
-        errors.emplace_back(
+        errors.push_back(
           "ERROR: [StereoValidation] unexpected stereo bond found at unsaturated atom "
           + std::to_string(atom->getIdx()+1));
         return;
@@ -837,7 +848,7 @@ namespace {
     NeighborsInfo neighborsInfo(mol, atom);
 
     if (neighborsInfo.dirCount.other) {
-      errors.emplace_back(
+      errors.push_back(
         "ERROR: [StereoValidation] one or more bonds incident to atom "
         + std::to_string(atom->getIdx()+1)
         + "have invalid direction settings");
@@ -848,7 +859,7 @@ namespace {
 
     if (neighborsInfo.dirCount.unknown) {
       if (neighborsInfo.dirCount.dash || neighborsInfo.dirCount.wedge) {
-        errors.emplace_back(
+        errors.push_back(
           "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
           + "has both unknown and wedged/dashed stereo bonds.");
       }
@@ -882,7 +893,7 @@ std::vector<ValidationErrorInfo> StereoValidation::validate(
      * is well-defined/unambiguous.
      */
     /* else if (stereoBondFound) {
-      errors.emplace_back(
+      errors.push_back(
         "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
         + " has stereo bonds, but it doesn't seem to be a stereogenic center");
     }*/
