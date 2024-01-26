@@ -34,7 +34,6 @@ PipelineResult Pipeline::run(const std::string & molblock)
   result.status = NO_ERROR;
   result.stage = STARTED;
   result.inputMolBlock = molblock;
-  result.outputMolBlock = molblock;
 
   // parse the molblock into an RWMol instance
   RWMOL_SPTR mol = parse(molblock, result);
@@ -193,16 +192,16 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
 
   // rearrange the protonation status
   // TODO: is this useful/necessary, considering the Uncharger applied at the end?
-  try {
-    Reionizer reionizer;
-    reionizer.reionizeInPlace(*mol);
-  }
-  catch (...) {
-    result.append(
-      PROTONATION_STANDARDIZATION_ERROR, 
-      "ERROR: [Standardization] An unexpected error occurred while reassigning the formal charges");
-    return {{}, {}};
-  }
+  //try {
+  //  Reionizer reionizer;
+  //  reionizer.reionizeInPlace(*mol);
+  //}
+  //catch (...) {
+  //  result.append(
+  //    PROTONATION_STANDARDIZATION_ERROR, 
+  //    "ERROR: [Standardization] An unexpected error occurred while reassigning the formal charges");
+  //  return {{}, {}};
+  //}
 
   // keep the largest fragment
   try {
@@ -214,17 +213,15 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     result.append(
       FRAGMENT_STANDARDIZATION_ERROR, 
       "ERROR: [Standardization] An unexpected error occurred while removing the disconnected fragments");
-    // FIXME: return {{}, {}};
+    return {{}, {}};
   }
 
   RWMOL_SPTR parent {new RWMol(*mol)};
 
-  // FIXME ...
-
   // overall charge status
   try {
     Uncharger uncharger;
-    uncharger.unchargeInPlace(*mol);
+    uncharger.unchargeInPlace(*parent);
   }
   catch (...) {
     result.append(

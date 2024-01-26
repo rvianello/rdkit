@@ -89,7 +89,7 @@ M  END
       std::cerr << info.status << " " << info.detail << std::endl;
     }
 
-    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.stage == MolStandardize::STANDARDIZATION);
     REQUIRE(result.status != MolStandardize::NO_ERROR);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::STANDARDIZATION_ERROR);
@@ -376,9 +376,16 @@ M  END
     std::unique_ptr<RWMol> mol(MolBlockToMol(result.outputMolBlock, false, false));
     REQUIRE(mol);
 
-    std::string smiles {MolToSmiles(*mol)};
-    REQUIRE(smiles == "CC(=O)O");
-  }
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "CC(=O)O");
+
+    std::unique_ptr<RWMol> outputMol(MolBlockToMol(result.outputMolBlock, false, false));
+    REQUIRE(outputMol);
+    std::string outputSmiles {MolToSmiles(*outputMol)};
+    REQUIRE(outputSmiles == "CC(=O)[O-]");
+}
 
   SECTION("normalize nitro") {
     const char * molblock = R"(
@@ -446,11 +453,15 @@ M  END
     REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE(result.status == MolStandardize::NO_ERROR);
 
-    std::unique_ptr<RWMol> mol(MolBlockToMol(result.outputMolBlock, false, false));
-    REQUIRE(mol);
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "NCC(=O)O");
 
-    std::string smiles {MolToSmiles(*mol)};
-    REQUIRE(smiles == "NCC(=O)O");
+    std::unique_ptr<RWMol> outputMol(MolBlockToMol(result.outputMolBlock, false, false));
+    REQUIRE(outputMol);
+    std::string outputSmiles {MolToSmiles(*outputMol)};
+    REQUIRE(outputSmiles == "[NH3+]CC(=O)[O-]");
   }
 }
 

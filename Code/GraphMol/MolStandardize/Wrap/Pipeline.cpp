@@ -83,6 +83,7 @@ void wrap_pipeline() {
         .def_readonly("log", &MolStandardize::PipelineResult::log)
         .def_readonly("inputMolBlock", &MolStandardize::PipelineResult::inputMolBlock)
         .def_readonly("outputMolBlock", &MolStandardize::PipelineResult::outputMolBlock)
+        .def_readonly("parentMolBlock", &MolStandardize::PipelineResult::parentMolBlock)
         ;
 
     python::class_<MolStandardize::Pipeline>("Pipeline")

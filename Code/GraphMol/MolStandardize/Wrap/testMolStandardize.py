@@ -1380,7 +1380,7 @@ M  V30 END CTAB
 M  END
 '''
     result = pipeline.run(molblock)
-    self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
+    self.assertEqual(result.stage, rdMolStandardize.PipelineStage.STANDARDIZATION)
     self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.STANDARDIZATION_ERROR)
@@ -1496,9 +1496,13 @@ M  END
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
     self.assertEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
 
-    mol = Chem.MolFromMolBlock(result.outputMolBlock, sanitize=False)
-    smiles = Chem.MolToSmiles(mol)
-    self.assertEqual(smiles, "CC(=O)O")
+    parentMol = Chem.MolFromMolBlock(result.parentMolBlock, sanitize=False)
+    parentSmiles = Chem.MolToSmiles(parentMol)
+    self.assertEqual(parentSmiles, "CC(=O)O")
+
+    outputMol = Chem.MolFromMolBlock(result.outputMolBlock, sanitize=False)
+    outputSmiles = Chem.MolToSmiles(outputMol)
+    self.assertEqual(outputSmiles, "CC(=O)[O-]")
 
     molblock = '''
           10282320572D          
@@ -1525,9 +1529,13 @@ M  END
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
     self.assertEqual(result.status, rdMolStandardize.PipelineStatus.BASIC_VALIDATION_ERROR)
 
-    mol = Chem.MolFromMolBlock(result.outputMolBlock, sanitize=False)
-    smiles = Chem.MolToSmiles(mol)
-    self.assertEqual(smiles, "C[N+](=O)[O-]")
+    parentMol = Chem.MolFromMolBlock(result.parentMolBlock, sanitize=False)
+    parentSmiles = Chem.MolToSmiles(parentMol)
+    self.assertEqual(parentSmiles, "C[N+](=O)[O-]")
+
+    outputMol = Chem.MolFromMolBlock(result.outputMolBlock, sanitize=False)
+    outputSmiles = Chem.MolToSmiles(outputMol)
+    self.assertEqual(outputSmiles, "C[N+](=O)[O-]")
 
     molblock = '''
           10282320572D          
@@ -1558,9 +1566,13 @@ M  END
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
     self.assertEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
 
-    mol = Chem.MolFromMolBlock(result.outputMolBlock, sanitize=False)
-    smiles = Chem.MolToSmiles(mol)
-    self.assertEqual(smiles, "NCC(=O)O")
+    parentMol = Chem.MolFromMolBlock(result.parentMolBlock, sanitize=False)
+    parentSmiles = Chem.MolToSmiles(parentMol)
+    self.assertEqual(parentSmiles, "NCC(=O)O")
+
+    outputMol = Chem.MolFromMolBlock(result.outputMolBlock, sanitize=False)
+    outputSmiles = Chem.MolToSmiles(outputMol)
+    self.assertEqual(outputSmiles, "[NH3+]CC(=O)[O-]")
 
 
 if __name__ == "__main__":
