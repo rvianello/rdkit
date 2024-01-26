@@ -127,12 +127,15 @@ class RDKIT_MOLSTANDARDIZE_EXPORT NeutralValidation : public ValidationMethod {
 //! The IsotopeValidation class logs if molecule contains isotopes.
 class RDKIT_MOLSTANDARDIZE_EXPORT IsotopeValidation : public ValidationMethod {
  public:
+  IsotopeValidation(bool strict=false) : strict(strict) {};
   std::vector<ValidationErrorInfo> validate(
     const ROMol &mol, bool reportAllFailures) const override;
 
   std::shared_ptr<ValidationMethod> copy() const override {
     return std::make_shared<IsotopeValidation>(*this);
   }
+ private:
+  bool strict;
 };
 
 ////////////////////////////////

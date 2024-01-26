@@ -13,6 +13,7 @@
 #include <GraphMol/ROMol.h>
 #include <GraphMol/MolStandardize/FragmentCatalog/FragmentCatalogParams.h>
 #include <GraphMol/Substruct/SubstructMatch.h>
+#include <GraphMol/PeriodicTable.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -165,27 +166,29 @@ NeutralValidation::validate(const ROMol &mol, bool /*reportAllFailures*/) const 
 std::vector<ValidationErrorInfo>
 IsotopeValidation::validate(const ROMol &mol, bool reportAllFailures) const {
   std::vector<ValidationErrorInfo> errors;
-  unsigned int na = mol.getNumAtoms();
-  std::set<std::string> isotopes;
-
-  // loop over atoms
-  for (size_t i = 0; i < na; ++i) {
-    if (!reportAllFailures) {
-      if (errors.size() >= 1) {
-        break;
-      }
-    }
-    const Atom *atom = mol.getAtomWithIdx(i);
+  for (auto atom : mol.atoms()) {
     unsigned int isotope = atom->getIsotope();
-    if (isotope != 0) {
-      std::string symbol = atom->getSymbol();
-      isotopes.insert(std::to_string(isotope) + symbol);
+    if (isotope == 0) {
+      continue;
     }
-  }
 
-  for (auto &isotope : isotopes) {
-    errors.push_back("INFO: [IsotopeValidation] Molecule contains isotope " +
-                     isotope);
+    std::string symbol = atom->getSymbol();
+    if (strict) {
+      PeriodicTable *periodicTable = PeriodicTable::getTable();
+      double mass = periodicTable->getMassForIsotope(symbol, isotope);
+      if (mass == 0.0) {
+        errors.push_back(
+          "ERROR: [IsotopeValidation] Molecule contains unknown isotope " +
+          std::to_string(isotope) + symbol);
+      }
+    } else {
+      errors.push_back("INFO: [IsotopeValidation] Molecule contains isotope " +
+                       std::to_string(isotope) + symbol);
+    }
+
+    if (!errors.empty() && !reportAllFailures) {
+      break;
+    }
   }
   return errors;
 }

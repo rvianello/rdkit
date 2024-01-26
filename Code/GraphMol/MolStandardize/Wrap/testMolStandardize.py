@@ -309,10 +309,24 @@ class TestCase(unittest.TestCase):
     self.assertEqual(
       """INFO: [DisallowedAtomsValidation] Atom F is in disallowedAtoms list""", msg5[0])
 
-    msg6 = rdMolStandardize.ValidateSmiles("ClCCCl.c1ccccc1O")
-    self.assertEqual(len(msg6), 1)
+    mol6 = Chem.MolFromSmiles("[3CH4]")
+    vm6a = rdMolStandardize.IsotopeValidation()
+    msg6a = vm6a.validate(mol6)
+    self.assertEqual(len(msg6a), 1)
     self.assertEqual(
-      """INFO: [FragmentValidation] 1,2-dichloroethane is present""", msg6[0])
+      "INFO: [IsotopeValidation] Molecule contains isotope 3C", msg6a[0]
+    )
+    vm6b = rdMolStandardize.IsotopeValidation(True)
+    msg6b = vm6b.validate(mol6)
+    self.assertEqual(len(msg6b), 1)
+    self.assertEqual(
+      "ERROR: [IsotopeValidation] Molecule contains unknown isotope 3C", msg6b[0]
+    )
+
+    msg999 = rdMolStandardize.ValidateSmiles("ClCCCl.c1ccccc1O")
+    self.assertEqual(len(msg999), 1)
+    self.assertEqual(
+      """INFO: [FragmentValidation] 1,2-dichloroethane is present""", msg999[0])
 
   def test10NormalizeFromData(self):
     data = """//	Name	SMIRKS

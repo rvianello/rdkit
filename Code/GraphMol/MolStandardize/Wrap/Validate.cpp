@@ -138,6 +138,7 @@ struct validate_wrapper {
       MolStandardize::IsotopeValidation,
       python::bases<MolStandardize::ValidationMethod>,
       boost::noncopyable>("IsotopeValidation")
+        .def(python::init<bool>())
       ;
 
     python::class_<

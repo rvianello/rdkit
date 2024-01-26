@@ -191,20 +191,35 @@ void testMolVSOptions() {
   string smi1 = "";
   unique_ptr<ROMol> m1(SmilesToMol(smi1, 0, false));
   vector<ValidationErrorInfo> errout1 = vm.validate(*m1, true);
-  for (const auto &msg : errout1) {
-    //    TEST_ASSERT(msg == "ERROR: [NoAtomValidation] Molecule has no atoms");
-    TEST_ASSERT(msg == "");
-  }
+  //for (const auto &msg : errout1) {
+  //  TEST_ASSERT(msg == "ERROR: [NoAtomValidation] Molecule has no atoms");
+  //}
+  TEST_ASSERT(errout1.empty());
 
   string smi2 = "O=C([O-])c1ccccc1";
   unique_ptr<ROMol> m2(SmilesToMol(smi2, 0, false));
   vector<ValidationErrorInfo> errout2 = vm.validate(*m2, true);
-  for (const auto &msg : errout2) {
-    //    TEST_ASSERT(msg ==
-    //                "INFO: [NeutralValidation] Not an overall neutral system
-    //                (-1)");
-    TEST_ASSERT(msg == "");
-  }
+  //for (const auto &msg : errout2) {
+  //  TEST_ASSERT(
+  //    msg == "INFO: [NeutralValidation] Not an overall neutral system (-1)");
+  //}
+  TEST_ASSERT(errout2.empty());
+
+  // test strict option of IsotopeValidation
+  IsotopeValidation isotopeValidation(true);
+
+  string smi3 = "[13CH3]";
+  unique_ptr<ROMol> m3(SmilesToMol(smi3, 0, false));
+  vector<ValidationErrorInfo> errout3 = isotopeValidation.validate(*m3, true);
+  TEST_ASSERT(errout3.empty());
+
+  string smi4 = "[3CH3]";
+  unique_ptr<ROMol> m4(SmilesToMol(smi4, 0, false));
+  vector<ValidationErrorInfo> errout4 = isotopeValidation.validate(*m4, true);
+  TEST_ASSERT(errout4.size() == 1);
+  TEST_ASSERT(
+    errout4[0] == "ERROR: [IsotopeValidation] Molecule contains unknown isotope 3C");
+
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
 
