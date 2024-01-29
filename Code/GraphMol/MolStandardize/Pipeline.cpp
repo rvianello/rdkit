@@ -230,6 +230,32 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     return {{}, {}};
   }
 
+  int parentCharge {};
+  for (auto atom: parent->atoms()) {
+    parentCharge += atom->getFormalCharge();
+  }
+
+  if (parentCharge <0) {
+    // TODO: are there any useful cases where this is possible?
+    result.append(
+      CHARGE_STANDARDIZATION_ERROR,
+      "ERROR: [Standardization] Could not produce a valid uncharged structure");
+    return {{}, {}};
+  }
+
+  // Check if `mol` was submitted in a "reasonable" ionization state
+  int molCharge {};
+  for (auto atom: mol->atoms()) {
+    molCharge += atom->getFormalCharge();
+  }
+
+  // If mol is in a protonation state that partially or fully balances the
+  // non-neutralizable positively charged sites in the parent structure, then
+  // mol is accepted. Otherwise, it is replaced by its parent.
+  if (molCharge > parentCharge || molCharge < 0) {
+    mol = parent;
+  }
+
   // updating the property cache was observed to be required, in order to clear the explicit valence
   // property (CTab's VAL) from deprotonated quaternary nitrogens, that would otherwise persist in the
   // output MolBlock and would result in an invalid molecule.

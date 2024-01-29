@@ -1502,7 +1502,7 @@ M  END
 
     outputMol = Chem.MolFromMolBlock(result.outputMolBlock, sanitize=False)
     outputSmiles = Chem.MolToSmiles(outputMol)
-    self.assertEqual(outputSmiles, "CC(=O)[O-]")
+    self.assertEqual(outputSmiles, "CC(=O)O")
 
     molblock = '''
           10282320572D          

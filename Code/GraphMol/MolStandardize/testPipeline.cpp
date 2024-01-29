@@ -384,7 +384,7 @@ M  END
     std::unique_ptr<RWMol> outputMol(MolBlockToMol(result.outputMolBlock, false, false));
     REQUIRE(outputMol);
     std::string outputSmiles {MolToSmiles(*outputMol)};
-    REQUIRE(outputSmiles == "CC(=O)[O-]");
+    REQUIRE(outputSmiles == "CC(=O)O");
 }
 
   SECTION("normalize nitro") {
