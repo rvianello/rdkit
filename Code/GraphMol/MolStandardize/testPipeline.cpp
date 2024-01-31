@@ -399,6 +399,10 @@ M  END
 
     MolStandardize::PipelineResult result = pipeline.run(molblock);
 
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
     REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE((result.status & MolStandardize::VALIDATION_ERROR) == 0);
     REQUIRE(result.status == MolStandardize::NO_ERROR);
@@ -441,6 +445,10 @@ M  END
 
     MolStandardize::PipelineResult result = pipeline.run(molblock);
 
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
     REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status == MolStandardize::BASIC_VALIDATION_ERROR);
@@ -479,6 +487,10 @@ M  END
 )";
 
     MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE(result.status == MolStandardize::NO_ERROR);

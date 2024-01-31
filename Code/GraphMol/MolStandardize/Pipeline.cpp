@@ -17,6 +17,7 @@
 #include <RDGeneral/FileParseException.h>
 #include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
+#include <GraphMol/SmilesParse/SmilesWrite.h>
 #include <GraphMol/Chirality.h>
 
 namespace RDKit {
@@ -173,6 +174,9 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     return {{}, {}};
   }
 
+  auto smiles = MolToSmiles(*mol);
+  auto reference = smiles;
+
   // bonding to metals
   try {
     MetalDisconnector metalDisconnector;
@@ -189,6 +193,12 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     return {{}, {}};
   }
 
+  smiles = MolToSmiles(*mol);
+  if (smiles != reference) {
+    result.append("One or more metal atoms were disconnected.");
+  }
+  reference = smiles;
+
   // functional groups
   try {
     Normalizer normalizer;
@@ -200,6 +210,12 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
       "ERROR: [Standardization] An unexpected error occurred while normalizing the representation of some functional groups");
     return {{}, {}};
   }
+
+  smiles = MolToSmiles(*mol);
+  if (smiles != reference) {
+    result.append("The representation of some functional groups was adjusted.");
+  }
+  reference = smiles;
 
   // keep the largest fragment
   try {
@@ -213,6 +229,12 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
       "ERROR: [Standardization] An unexpected error occurred while removing the disconnected fragments");
     return {{}, {}};
   }
+
+  smiles = MolToSmiles(*mol);
+  if (smiles != reference) {
+    result.append("One or more disconnected fragments (e.g., counterions) were removed.");
+  }
+  reference = smiles;
 
   RWMOL_SPTR parent {new RWMol(*mol)};
 
@@ -253,6 +275,12 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
   if (molCharge > parentCharge || molCharge < 0) {
     mol = parent;
   }
+
+  smiles = MolToSmiles(*mol);
+  if (smiles != reference) {
+    result.append("The protonation state was adjusted.");
+  }
+  reference = smiles;
 
   // updating the property cache was observed to be required, in order to clear the explicit valence
   // property (CTab's VAL) from deprotonated quaternary nitrogens, that would otherwise persist in the
