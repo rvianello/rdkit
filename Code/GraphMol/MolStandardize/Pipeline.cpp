@@ -22,6 +22,11 @@
 namespace RDKit {
 namespace MolStandardize {
 
+void PipelineResult::append(const std::string & info)
+{
+  append(NO_ERROR, info);
+}
+
 void PipelineResult::append(PipelineStatus newStatus, const std::string & info)
 {
   status = static_cast<PipelineStatus>(status | newStatus);
@@ -122,6 +127,12 @@ void Pipeline::validate(const ROMol & mol, PipelineResult & result)
     return;
   }
 
+  // validate the isotopic numbers (if any are specified)
+  IsotopeValidation isotopeValidation(true);
+  if (!applyValidation(isotopeValidation, BASIC_VALIDATION_ERROR) && !options.reportAllFailures) {
+    return;
+  }
+
   // verify that the input is a 2D structure
   Is2DValidation is2DValidation(options.is2DZeroThreshold);
   if (!applyValidation(is2DValidation, IS2D_VALIDATION_ERROR) && !options.reportAllFailures) {
@@ -190,19 +201,6 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     return {{}, {}};
   }
 
-  // rearrange the protonation status
-  // TODO: is this useful/necessary, considering the Uncharger applied at the end?
-  //try {
-  //  Reionizer reionizer;
-  //  reionizer.reionizeInPlace(*mol);
-  //}
-  //catch (...) {
-  //  result.append(
-  //    PROTONATION_STANDARDIZATION_ERROR, 
-  //    "ERROR: [Standardization] An unexpected error occurred while reassigning the formal charges");
-  //  return {{}, {}};
-  //}
-
   // keep the largest fragment
   try {
     LargestFragmentChooser fragmentChooser;
@@ -236,7 +234,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
   }
 
   if (parentCharge <0) {
-    // TODO: are there any useful cases where this is possible?
+    // this is actually unexpected
     result.append(
       CHARGE_STANDARDIZATION_ERROR,
       "ERROR: [Standardization] Could not produce a valid uncharged structure");
@@ -249,9 +247,9 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     molCharge += atom->getFormalCharge();
   }
 
-  // If mol is in a protonation state that partially or fully balances the
-  // non-neutralizable positively charged sites in the parent structure, then
-  // mol is accepted. Otherwise, it is replaced by its parent.
+  // If mol is neutral or in a protonation state that partially or fully
+  // balances the non-neutralizable positively charged sites in the parent
+  // structure, then mol is accepted. Otherwise, it is replaced by its parent.
   if (molCharge > parentCharge || molCharge < 0) {
     mol = parent;
   }

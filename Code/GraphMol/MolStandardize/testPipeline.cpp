@@ -99,6 +99,36 @@ M  END
       ));
   }
 
+  SECTION("failing Isotopes validation") {
+    const char * molblock = R"(
+  Mrv2311 01312409582D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -15.3955 7.6033 0 0 MASS=3
+M  V30 2 C -16.7292 6.8333 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
+    REQUIRE(result.status == MolStandardize::BASIC_VALIDATION_ERROR);
+  }
+  
   SECTION("failing features validation, query atom") {
     const char * molblock = R"(
   Mrv2311 01162413552D          
