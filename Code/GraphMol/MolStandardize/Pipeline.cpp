@@ -8,6 +8,7 @@
 //  of the RDKit source tree.
 //
 
+#include <regex>
 #include "Pipeline.h"
 #include "Validate.h"
 #include "Metal.h"
@@ -104,6 +105,13 @@ RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result
   return mol;
 }
 
+namespace {
+  static const std::regex prefix("^(ERROR|INFO): \\[.+\\] ");
+  std::string removeErrorPrefix(const std::string & message) {
+    return std::regex_replace(message, prefix, "");
+  }
+}
+
 void Pipeline::validate(const ROMol & mol, PipelineResult & result)
 {
   result.stage = VALIDATION;
@@ -111,7 +119,7 @@ void Pipeline::validate(const ROMol & mol, PipelineResult & result)
   auto applyValidation = [&mol, &result, this](const ValidationMethod & v, PipelineStatus status) -> bool {
     auto errors = v.validate(mol, options.reportAllFailures);
     for (const auto & error : errors) {
-      result.append(status, error);
+      result.append(status, removeErrorPrefix(error));
     }
     return errors.empty();
   };
@@ -170,7 +178,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
   catch (MolSanitizeException &) {
     result.append(
       PREPARE_STANDARDIZATION_ERROR,
-      "ERROR: [Standardization] An unexpected error occurred while preparing the molecule for standardization.");
+      "An unexpected error occurred while preparing the molecule for standardization.");
     return {{}, {}};
   }
 
@@ -189,7 +197,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
   catch (...) {
     result.append(
       METAL_STANDARDIZATION_ERROR,
-      "ERROR: [Standardization] An unexpected error occurred while processing the bonding of metal species.");
+      "An unexpected error occurred while processing the bonding of metal species.");
     return {{}, {}};
   }
 
@@ -207,7 +215,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
   catch (...) {
     result.append(
       NORMALIZER_STANDARDIZATION_ERROR, 
-      "ERROR: [Standardization] An unexpected error occurred while normalizing the representation of some functional groups");
+      "An unexpected error occurred while normalizing the representation of some functional groups");
     return {{}, {}};
   }
 
@@ -226,7 +234,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
   catch (...) {
     result.append(
       FRAGMENT_STANDARDIZATION_ERROR, 
-      "ERROR: [Standardization] An unexpected error occurred while removing the disconnected fragments");
+      "An unexpected error occurred while removing the disconnected fragments");
     return {{}, {}};
   }
 
@@ -246,7 +254,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
   catch (...) {
     result.append(
       CHARGE_STANDARDIZATION_ERROR, 
-      "ERROR: [Standardization] An unexpected error occurred while normalizing the total charge status");
+      "An unexpected error occurred while normalizing the total charge status");
     return {{}, {}};
   }
 
@@ -259,7 +267,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     // this is actually unexpected
     result.append(
       CHARGE_STANDARDIZATION_ERROR,
-      "ERROR: [Standardization] Could not produce a valid uncharged structure");
+      "Could not produce a valid uncharged structure");
     return {{}, {}};
   }
 
@@ -310,7 +318,7 @@ void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result)
         outputMol.getNumAtoms() > 999 || outputMol.getNumBonds() > 999 ||
         parentMol.getNumAtoms() > 999 || parentMol.getNumBonds() > 999
         ) {
-      result.append(OUTPUT_ERROR, "ERROR: [Output] Molecule is too large for V2000 format.");
+      result.append(OUTPUT_ERROR, "Molecule is too large for V2000 format.");
     }
     else {
       result.outputMolBlock = MolToMolBlock(outputMol);
@@ -320,12 +328,12 @@ void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result)
   catch (const std::exception & e) {
     result.append(
       OUTPUT_ERROR,
-      "ERROR: [Output] Can't write molecule to output format: " + std::string(e.what()));
+      "Can't write molecule to output format: " + std::string(e.what()));
   }
   catch (...) {
     result.append(
       OUTPUT_ERROR,
-      "ERROR: [Output] An unexpected error occurred.");
+      "An unexpected error occurred.");
   }
 }
 
