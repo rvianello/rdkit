@@ -48,6 +48,13 @@ PipelineResult Pipeline::run(const std::string & molblock)
     return result;
   }
 
+  // input sanitization + cleanup
+  result.stage = SANITIZATION;
+  mol = sanitize(mol, result);
+  if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
+    return result;
+  }
+
   // validate the structure
   result.stage = VALIDATION;
   mol = validate(mol, result);
@@ -82,7 +89,7 @@ RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result
 {
   // we don't want to sanitize the molecule at this stage
   static constexpr bool sanitize {false};
-  // Hs are anyways not removed if the mol is not sanitized
+  // Hs wouldn't be anyway removed if the mol is not sanitized
   static constexpr bool removeHs {false};
 
   // strict parsing is configurable via the pipeline options
@@ -110,6 +117,38 @@ RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result
   return mol;
 }
 
+RWMOL_SPTR Pipeline::sanitize(RWMOL_SPTR mol, PipelineResult & result)
+{
+  // Prepare the mol for validation and standardization.
+  //
+  // The general intention is about validating the original input, and therefore
+  // limit the sanitization to the minimum, but it's not very useful to record a
+  // valence validation error for issues like a badly drawn nitro group that will
+  // be later fixed during by the normalization step. Moreover, some standardization
+  // components do not operate correctly if sanitization is not performed at all.
+
+  try {
+    // convert to smiles and later check if the structure was modified
+    auto smiles = MolToSmiles(*mol);
+    // TODO: consider extending this pre-validation step to other
+    // sanitization flags that may be needed/useful, but do not introduce
+    // significant changes in the input.
+    constexpr unsigned int sanitizeOps = MolOps::SANITIZE_CLEANUP;
+    unsigned int failedOp = 0;
+    MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
+    if (MolToSmiles(*mol) != smiles) {
+      result.append("A cleanup was applied to the input structure.");
+    }
+  }
+  catch (MolSanitizeException &) {
+    result.append(
+      SANITIZATION_ERROR,
+      "An unexpected error occurred while preparing the molecule for validation.");
+  }
+
+  return mol;
+}
+
 namespace {
   static const std::regex prefix("^(ERROR|INFO): \\[.+\\] ");
   std::string removeErrorPrefix(const std::string & message) {
@@ -126,33 +165,6 @@ RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result)
     }
     return errors.empty();
   };
-
-  // Prepare the mol for validation
-  // the intention is about validating the original input, and therefore work
-  // with a mostly unsanitized molecule, but it's not very useful to record a
-  // valence validation error at this stage for issues like a badly drawn nitro
-  // group that will be in any case normalized later
-  try {
-    // convert to smiles and later check if the structure was modified
-    auto smiles = MolToSmiles(*mol);
-    // TODO: consider extending this pre-validation step to other
-    // sanitization flags that may be needed/useful, but do not introduce
-    // significant changes in the input.
-    constexpr unsigned int sanitizeOps = MolOps::SANITIZE_CLEANUP;
-    unsigned int failedOp = 0;
-    MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
-    if (MolToSmiles(*mol) != smiles) {
-      result.append("A cleanup was applied to the input structure.");
-    }
-  }
-  catch (MolSanitizeException &) {
-    result.append(
-      PREPARE_VALIDATION_ERROR,
-      "An unexpected error occurred while preparing the molecule for validation.");
-    if (!options.reportAllFailures) {
-      return mol;
-    }
-  }
 
   // check for undesired features in the input molecule (e.g., query atoms/bonds)
   FeaturesValidation featuresValidation(options.allowEnhancedStereo);
@@ -195,23 +207,6 @@ RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result)
 
 RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result)
 {
-  // Prepare the mol for standardization
-  try {
-    constexpr unsigned int sanitizeOps = MolOps::SANITIZE_ALL
-      ^ MolOps::SANITIZE_CLEANUP
-      ^ MolOps::SANITIZE_CLEANUP_ORGANOMETALLICS
-      ^ MolOps::SANITIZE_PROPERTIES
-      ;
-    unsigned int failedOp = 0;
-    MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
-  }
-  catch (MolSanitizeException &) {
-    result.append(
-      PREPARE_STANDARDIZATION_ERROR,
-      "An unexpected error occurred while preparing the molecule for standardization.");
-    return mol;
-  }
-
   auto smiles = MolToSmiles(*mol);
   auto reference = smiles;
 

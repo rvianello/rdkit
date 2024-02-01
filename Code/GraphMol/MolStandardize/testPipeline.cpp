@@ -14,6 +14,7 @@
 #include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
 #include <GraphMol/MolStandardize/Pipeline.h>
+#include <GraphMol/Chirality.h>
 #include <memory>
 #include <string>
 
@@ -506,5 +507,326 @@ M  END
     std::string outputSmiles {MolToSmiles(*outputMol)};
     REQUIRE(outputSmiles == "[NH3+]CC(=O)[O-]");
   }
+
+  /* FIXME
+  SECTION("uncharge tertiary amine w/ explicit hydrogen") {
+    const char * molblock = R"(
+  Mrv2311 02012412352D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -13.2705 5.77 0 0
+M  V30 2 N -14.6042 5 0 0 CHG=1
+M  V30 3 H -15.9378 5.77 0 0
+M  V30 4 C -14.6042 3.46 0 0
+M  V30 5 C -13.2705 4.23 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 2 4
+M  V30 3 1 2 5
+M  V30 4 1 2 3
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE(result.parentMolBlock == result.outputMolBlock);
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "CN(C)C");
+  }*/
+
+  SECTION("standardize preserves explicit Hs on chiral centers") {
+    const char * molblock = R"(
+  Mrv2311 02012412142D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 19 19 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -22.6876 4.4151 0 0
+M  V30 2 C -24.0211 3.6451 0 0
+M  V30 3 C -24.0211 2.1049 0 0
+M  V30 4 C -22.6876 1.3349 0 0
+M  V30 5 C -21.3539 2.1049 0 0
+M  V30 6 C -21.3539 3.6451 0 0
+M  V30 7 S -20.0202 4.4151 0 0
+M  V30 8 O -20.0202 5.9551 0 0
+M  V30 9 C -18.6865 3.6451 0 0
+M  V30 10 C -17.3528 4.4151 0 0
+M  V30 11 C -16.0191 3.6451 0 0
+M  V30 12 C -14.6855 4.4152 0 0 CFG=1
+M  V30 13 C -13.3518 3.6452 0 0
+M  V30 14 F -14.6855 5.9552 0 0
+M  V30 15 H -14.6855 2.8752 0 0
+M  V30 16 C -25.3548 1.3349 0 0
+M  V30 17 O -26.6885 2.105 0 0
+M  V30 18 O -25.3549 -0.2051 0 0
+M  V30 19 Na -28.0222 1.335 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 2 1 2
+M  V30 2 1 2 3
+M  V30 3 2 3 4
+M  V30 4 1 4 5
+M  V30 5 2 5 6
+M  V30 6 1 6 1
+M  V30 7 1 6 7
+M  V30 8 1 7 9
+M  V30 9 2 7 8
+M  V30 10 1 9 10
+M  V30 11 1 10 11
+M  V30 12 1 11 12
+M  V30 13 1 12 13
+M  V30 14 1 12 15 CFG=1
+M  V30 15 1 12 14
+M  V30 16 1 3 16
+M  V30 17 1 16 17
+M  V30 18 2 16 18
+M  V30 19 1 17 19
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "[H][C@](C)(F)CCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+  }
+
+  SECTION("standardize preserves isotopically marked explicit Hs") {
+    const char * molblock = R"(
+  Mrv2311 02012412262D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 17 17 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -22.6876 4.4151 0 0
+M  V30 2 C -24.0211 3.6451 0 0
+M  V30 3 C -24.0211 2.1049 0 0
+M  V30 4 C -22.6876 1.3349 0 0
+M  V30 5 C -21.3539 2.1049 0 0
+M  V30 6 C -21.3539 3.6451 0 0
+M  V30 7 S -20.0202 4.4151 0 0
+M  V30 8 O -20.0202 5.9551 0 0
+M  V30 9 C -18.6865 3.6451 0 0
+M  V30 10 C -17.3528 4.4151 0 0
+M  V30 11 C -16.0191 3.6451 0 0
+M  V30 12 C -14.6855 4.4152 0 0
+M  V30 13 H -13.3518 3.6452 0 0 MASS=2
+M  V30 14 C -25.3548 1.3349 0 0
+M  V30 15 O -26.6885 2.105 0 0
+M  V30 16 O -25.3549 -0.2051 0 0
+M  V30 17 Na -28.0222 1.335 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 2 1 2
+M  V30 2 1 2 3
+M  V30 3 2 3 4
+M  V30 4 1 4 5
+M  V30 5 2 5 6
+M  V30 6 1 6 1
+M  V30 7 1 6 7
+M  V30 8 1 7 9
+M  V30 9 2 7 8
+M  V30 10 1 9 10
+M  V30 11 1 10 11
+M  V30 12 1 11 12
+M  V30 13 1 3 14
+M  V30 14 1 14 15
+M  V30 15 2 14 16
+M  V30 16 1 15 17
+M  V30 17 1 12 13
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "[2H]CCCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+  }
+
+  SECTION("standardize preserves generic explicit Hs") {
+    const char * molblock = R"(
+  Mrv2311 02012412322D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 17 17 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -22.6876 4.4151 0 0
+M  V30 2 C -24.0211 3.6451 0 0
+M  V30 3 C -24.0211 2.1049 0 0
+M  V30 4 C -22.6876 1.3349 0 0
+M  V30 5 C -21.3539 2.1049 0 0
+M  V30 6 C -21.3539 3.6451 0 0
+M  V30 7 S -20.0202 4.4151 0 0
+M  V30 8 O -20.0202 5.9551 0 0
+M  V30 9 C -18.6865 3.6451 0 0
+M  V30 10 C -17.3528 4.4151 0 0
+M  V30 11 C -16.0191 3.6451 0 0
+M  V30 12 C -14.6855 4.4152 0 0
+M  V30 13 H -13.3518 3.6452 0 0
+M  V30 14 C -25.3548 1.3349 0 0
+M  V30 15 O -26.6885 2.105 0 0
+M  V30 16 O -25.3549 -0.2051 0 0
+M  V30 17 Na -28.0222 1.335 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 2 1 2
+M  V30 2 1 2 3
+M  V30 3 2 3 4
+M  V30 4 1 4 5
+M  V30 5 2 5 6
+M  V30 6 1 6 1
+M  V30 7 1 6 7
+M  V30 8 1 7 9
+M  V30 9 2 7 8
+M  V30 10 1 9 10
+M  V30 11 1 10 11
+M  V30 12 1 11 12
+M  V30 13 1 3 14
+M  V30 14 1 14 15
+M  V30 15 2 14 16
+M  V30 16 1 15 17
+M  V30 17 1 12 13
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "[H]CCCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+  }
+
+  SECTION("standardize doesn't remove oddly placed wedged bonds") {
+    const char * molblock = R"(
+  Mrv2311 02012413282D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 15 15 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -22.6873 4.415 0 0
+M  V30 2 C -24.0208 3.6451 0 0
+M  V30 3 C -24.0208 2.1049 0 0
+M  V30 4 C -22.6873 1.3349 0 0
+M  V30 5 C -21.3536 2.1049 0 0
+M  V30 6 C -21.3536 3.6451 0 0
+M  V30 7 S -20.02 4.415 0 0
+M  V30 8 O -20.02 5.955 0 0
+M  V30 9 C -18.6863 3.6451 0 0
+M  V30 10 C -17.3526 4.415 0 0
+M  V30 11 C -16.0189 3.6451 0 0
+M  V30 12 C -25.3545 1.3349 0 0
+M  V30 13 O -26.6882 2.105 0 0
+M  V30 14 O -25.3546 -0.2051 0 0
+M  V30 15 Na -28.0219 1.3351 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 2 1 2
+M  V30 2 1 2 3
+M  V30 3 2 3 4
+M  V30 4 1 4 5
+M  V30 5 2 5 6
+M  V30 6 1 6 1
+M  V30 7 1 6 7
+M  V30 8 1 7 9
+M  V30 9 2 7 8
+M  V30 10 1 9 10
+M  V30 11 1 10 11 CFG=1
+M  V30 12 1 3 12
+M  V30 13 2 12 14
+M  V30 14 1 12 13
+M  V30 15 1 13 15
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "CCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+  
+    Chirality::reapplyMolBlockWedging(*parentMol);
+
+    const Bond * wedged = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondDir = bond->getBondDir();
+      if (bondDir == Bond::BondDir::BEGINWEDGE) {
+        wedged = bond;
+        break;
+      }
+    }
+    REQUIRE(wedged != nullptr);
+
+    auto beginAtom = wedged->getBeginAtom();
+    REQUIRE(beginAtom->getAtomicNum() == 6);
+    REQUIRE(beginAtom->getDegree() == 2);
+    auto endAtom = wedged->getEndAtom();
+    REQUIRE(endAtom->getAtomicNum() == 6);
+    REQUIRE(endAtom->getDegree() == 1);
+  }
+
 }
 
