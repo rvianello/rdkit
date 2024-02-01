@@ -1380,7 +1380,7 @@ M  V30 END CTAB
 M  END
 '''
     result = pipeline.run(molblock)
-    self.assertEqual(result.stage, rdMolStandardize.PipelineStage.STANDARDIZATION)
+    self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
     self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.STANDARDIZATION_ERROR)
@@ -1527,7 +1527,8 @@ M  END
 
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertEqual(result.status, rdMolStandardize.PipelineStatus.BASIC_VALIDATION_ERROR)
+    # nitro groups are cleaned-up in a pre-validation step
+    self.assertEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
 
     parentMol = Chem.MolFromMolBlock(result.parentMolBlock, sanitize=False)
     parentSmiles = Chem.MolToSmiles(parentMol)

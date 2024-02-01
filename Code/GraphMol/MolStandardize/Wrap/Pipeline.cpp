@@ -52,7 +52,6 @@ void wrap_pipeline() {
         .value("PREPARE_STANDARDIZATION_ERROR", MolStandardize::PREPARE_STANDARDIZATION_ERROR)
         .value("METAL_STANDARDIZATION_ERROR", MolStandardize::METAL_STANDARDIZATION_ERROR)
         .value("NORMALIZER_STANDARDIZATION_ERROR", MolStandardize::NORMALIZER_STANDARDIZATION_ERROR)
-        .value("PROTONATION_STANDARDIZATION_ERROR", MolStandardize::PROTONATION_STANDARDIZATION_ERROR)
         .value("FRAGMENT_STANDARDIZATION_ERROR", MolStandardize::FRAGMENT_STANDARDIZATION_ERROR)
         .value("CHARGE_STANDARDIZATION_ERROR", MolStandardize::CHARGE_STANDARDIZATION_ERROR)
         .value("STANDARDIZATION_ERROR", MolStandardize::STANDARDIZATION_ERROR)
@@ -60,7 +59,6 @@ void wrap_pipeline() {
         ;
 
     python::enum_<MolStandardize::PipelineStage>("PipelineStage")
-        .value("STARTED", MolStandardize::STARTED)
         .value("PARSING_INPUT", MolStandardize::PARSING_INPUT)
         .value("VALIDATION", MolStandardize::VALIDATION)
         .value("STANDARDIZATION", MolStandardize::STANDARDIZATION)

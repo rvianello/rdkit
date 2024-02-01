@@ -39,28 +39,35 @@ PipelineResult Pipeline::run(const std::string & molblock)
 {
   PipelineResult result;
   result.status = NO_ERROR;
-  result.stage = STARTED;
   result.inputMolBlock = molblock;
 
   // parse the molblock into an RWMol instance
+  result.stage = PARSING_INPUT;
   RWMOL_SPTR mol = parse(molblock, result);
   if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
     return result;
   }
 
   // validate the structure
-  validate(*mol, result);
-  if (result.status != NO_ERROR && !options.reportAllFailures) {
+  result.stage = VALIDATION;
+  mol = validate(mol, result);
+  if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
     return result;
   }
 
   // standardize/normalize
-  RWMOL_SPTR_PAIR output = standardize(mol, result);
+  result.stage = STANDARDIZATION;
+  mol = standardize(mol, result);
+  if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
+    return result;
+  }
+  RWMOL_SPTR_PAIR output = makeParent(mol, result);
   if (!output.first || !output.second || (result.status != NO_ERROR && !options.reportAllFailures)) {
     return result;
   }
 
   // serialize as MolBlock
+  result.stage = SERIALIZING_OUTPUT;
   serialize(output, result);
   if (result.status != NO_ERROR && !options.reportAllFailures) {
     return result;
@@ -73,8 +80,6 @@ PipelineResult Pipeline::run(const std::string & molblock)
 
 RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result)
 {
-  result.stage = PARSING_INPUT;
-
   // we don't want to sanitize the molecule at this stage
   static constexpr bool sanitize {false};
   // Hs are anyways not removed if the mol is not sanitized
@@ -112,59 +117,84 @@ namespace {
   }
 }
 
-void Pipeline::validate(const ROMol & mol, PipelineResult & result)
+RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result)
 {
-  result.stage = VALIDATION;
-
   auto applyValidation = [&mol, &result, this](const ValidationMethod & v, PipelineStatus status) -> bool {
-    auto errors = v.validate(mol, options.reportAllFailures);
+    auto errors = v.validate(*mol, options.reportAllFailures);
     for (const auto & error : errors) {
       result.append(status, removeErrorPrefix(error));
     }
     return errors.empty();
   };
 
+  // Prepare the mol for validation
+  // the intention is about validating the original input, and therefore work
+  // with a mostly unsanitized molecule, but it's not very useful to record a
+  // valence validation error at this stage for issues like a badly drawn nitro
+  // group that will be in any case normalized later
+  try {
+    // convert to smiles and later check if the structure was modified
+    auto smiles = MolToSmiles(*mol);
+    // TODO: consider extending this pre-validation step to other
+    // sanitization flags that may be needed/useful, but do not introduce
+    // significant changes in the input.
+    constexpr unsigned int sanitizeOps = MolOps::SANITIZE_CLEANUP;
+    unsigned int failedOp = 0;
+    MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
+    if (MolToSmiles(*mol) != smiles) {
+      result.append("A cleanup was applied to the input structure.");
+    }
+  }
+  catch (MolSanitizeException &) {
+    result.append(
+      PREPARE_VALIDATION_ERROR,
+      "An unexpected error occurred while preparing the molecule for validation.");
+    if (!options.reportAllFailures) {
+      return mol;
+    }
+  }
+
   // check for undesired features in the input molecule (e.g., query atoms/bonds)
   FeaturesValidation featuresValidation(options.allowEnhancedStereo);
   if (!applyValidation(featuresValidation, FEATURES_VALIDATION_ERROR) && !options.reportAllFailures) {
-    return;
+    return mol;
   }
 
   // check the number of atoms and valence status
   RDKitValidation rdkitValidation;
   if (!applyValidation(rdkitValidation, BASIC_VALIDATION_ERROR) && !options.reportAllFailures) {
-    return;
+    return mol;
   }
 
   // validate the isotopic numbers (if any are specified)
   IsotopeValidation isotopeValidation(true);
   if (!applyValidation(isotopeValidation, BASIC_VALIDATION_ERROR) && !options.reportAllFailures) {
-    return;
+    return mol;
   }
 
   // verify that the input is a 2D structure
   Is2DValidation is2DValidation(options.is2DZeroThreshold);
   if (!applyValidation(is2DValidation, IS2D_VALIDATION_ERROR) && !options.reportAllFailures) {
-    return;
+    return mol;
   }
 
   // validate the 2D layout (check for clashing atoms and abnormally long bonds)
   Layout2DValidation layout2DValidation(options.atomClashLimit, options.bondLengthLimit);
   if (!applyValidation(layout2DValidation, LAYOUT2D_VALIDATION_ERROR) && !options.reportAllFailures) {
-    return;
+    return mol;
   }
 
   // verify that the specified stereochemistry is formally correct
   StereoValidation stereoValidation;
   if (!applyValidation(stereoValidation, STEREO_VALIDATION_ERROR) && !options.reportAllFailures) {
-    return;
+    return mol;
   }
+
+  return mol;
 }
 
-Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result)
+RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result)
 {
-  result.stage = STANDARDIZATION;
-
   // Prepare the mol for standardization
   try {
     constexpr unsigned int sanitizeOps = MolOps::SANITIZE_ALL
@@ -179,7 +209,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     result.append(
       PREPARE_STANDARDIZATION_ERROR,
       "An unexpected error occurred while preparing the molecule for standardization.");
-    return {{}, {}};
+    return mol;
   }
 
   auto smiles = MolToSmiles(*mol);
@@ -198,7 +228,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     result.append(
       METAL_STANDARDIZATION_ERROR,
       "An unexpected error occurred while processing the bonding of metal species.");
-    return {{}, {}};
+    return mol;
   }
 
   smiles = MolToSmiles(*mol);
@@ -216,7 +246,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     result.append(
       NORMALIZER_STANDARDIZATION_ERROR, 
       "An unexpected error occurred while normalizing the representation of some functional groups");
-    return {{}, {}};
+    return mol;
   }
 
   smiles = MolToSmiles(*mol);
@@ -235,14 +265,20 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     result.append(
       FRAGMENT_STANDARDIZATION_ERROR, 
       "An unexpected error occurred while removing the disconnected fragments");
-    return {{}, {}};
+    return mol;
   }
 
   smiles = MolToSmiles(*mol);
   if (smiles != reference) {
     result.append("One or more disconnected fragments (e.g., counterions) were removed.");
   }
-  reference = smiles;
+
+  return mol;
+}
+
+Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & result)
+{
+  auto reference = MolToSmiles(*mol);
 
   RWMOL_SPTR parent {new RWMol(*mol)};
 
@@ -284,15 +320,15 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
     mol = parent;
   }
 
-  smiles = MolToSmiles(*mol);
+  auto smiles = MolToSmiles(*mol);
   if (smiles != reference) {
     result.append("The protonation state was adjusted.");
   }
   reference = smiles;
 
   // updating the property cache was observed to be required, in order to clear the explicit valence
-  // property (CTab's VAL) from deprotonated quaternary nitrogens, that would otherwise persist in the
-  // output MolBlock and would result in an invalid molecule.
+  // property (CTab's VAL) from deprotonated quaternary nitrogens, that could be specified in the
+  // original input and otherwise persisted in the output MolBlock, resulting in an invalid molecule.
   //
   // needsUpdatePropertyCache() returns false 
   //if (mol->needsUpdatePropertyCache()) {
@@ -304,8 +340,6 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult &
 
 void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result)
 {
-  result.stage = SERIALIZING_OUTPUT;
-
   const ROMol & outputMol = *output.first;
   const ROMol & parentMol = *output.second;
   

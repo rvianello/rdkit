@@ -89,7 +89,7 @@ M  END
       std::cerr << info.status << " " << info.detail << std::endl;
     }
 
-    REQUIRE(result.stage == MolStandardize::STANDARDIZATION);
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE(result.status != MolStandardize::NO_ERROR);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::STANDARDIZATION_ERROR);
@@ -449,9 +449,10 @@ M  END
       std::cerr << info.status << " " << info.detail << std::endl;
     }
 
+    // nitro groups are sanitized in a pre-validation step.
+    // this test case is not expected to register any errors.
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
-    REQUIRE(result.status == MolStandardize::BASIC_VALIDATION_ERROR);
+    REQUIRE(result.status == MolStandardize::NO_ERROR);
 
     std::unique_ptr<RWMol> mol(MolBlockToMol(result.outputMolBlock, false, false));
     REQUIRE(mol);
