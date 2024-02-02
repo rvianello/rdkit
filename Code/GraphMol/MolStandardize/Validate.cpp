@@ -513,26 +513,6 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
 }
 
 namespace {
-  bool isPotentialStereoCenter(const Atom * atom) {
-    auto degree = atom->getDegree();
-    auto atomicNum = atom->getAtomicNum();
-    return (degree > 2 && degree <= 4 && (
-        // the original set of atomic species recognized by STRUCHK
-        // as stereogenic is C, N, O, Si, P, S
-        atomicNum == 6 ||
-        atomicNum == 7 ||
-        // STRUCHK is documented to be based on the MDL guidelines, and
-        // there is some evidence that oxygen was listed as a stereogenic species
-        // in some old release of the MDL User Guide.
-        // As of today, stereogenic oxygen atoms do apparently exist, but I'm not
-        // really sure it is useful to include this possibility here.
-        atomicNum == 8 ||
-        atomicNum == 14 ||
-        atomicNum == 15 ||
-        atomicNum == 16
-      ));
-  }
-
   bool hasStereoBond(const ROMol &mol, const Atom * atom) {
     for (auto bond: mol.atomBonds(atom)) {
       if (atom != bond->getBeginAtom()) {
@@ -834,17 +814,18 @@ namespace {
       }
     }
     auto atomicNum = atom->getAtomicNum();
-    if (
-      multipleBondFound && !possibleAllene && atomicNum != 15 && atomicNum != 16
-      ) {
-        errors.push_back(
-          "ERROR: [StereoValidation] unexpected stereo bond found at unsaturated atom "
-          + std::to_string(atom->getIdx()+1));
-        return;
+    if (possibleAllene || (multipleBondFound && atomicNum == 15)) {
+      // Allenes and P compounds are not validated at this time.
+      return;
     }
-    else if (multipleBondFound && atomicNum != 16) {
-      // Other cases of unsaturated atoms (allenes, P compounds)
-      // are not further validated at this time.
+    if (
+      multipleBondFound && atomicNum != 16
+      ) {
+      // A stereo bond was found at an unsaturated atom. This condition used to trigger
+      // as error in STRUCHK, but there are valid use cases for it (e.g., wavy bonds
+      // incident to double bonds of undefined/unknown configuration, and atropisomers).
+      //
+      // Validation of these use cases is not currently implemented.
       return;
     }
 
@@ -854,7 +835,7 @@ namespace {
       errors.push_back(
         "ERROR: [StereoValidation] one or more bonds incident to atom "
         + std::to_string(atom->getIdx()+1)
-        + "have invalid direction settings");
+        + " have invalid direction settings");
       // this is an unlikely condition and it would make little sense to
       // continue the analysis also when reportAllFailures were set.
       return;
@@ -864,18 +845,28 @@ namespace {
       if (neighborsInfo.dirCount.dash || neighborsInfo.dirCount.wedge) {
         errors.push_back(
           "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
-          + "has both unknown and wedged/dashed stereo bonds.");
+          + " has both unknown and wedged/dashed stereo bonds.");
       }
       // else: if the only stereo bonds have either/unknown direction,
-      // we can anyway return here.
+      // we can return here.
       return;
     }
 
-    if (atom->getDegree() == 3) {
+    switch (atom->getDegree()) {
+    case 1:
+    case 2:
+        errors.push_back(
+          "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
+          + " has stereo bonds, but less than 3 substituents.");
+      break;
+    case 3:
       check3CoordinatedStereo(mol, atom, neighborsInfo, reportAllFailures, errors);
-    }
-    else {
+      break;
+    case 4:
       check4CoordinatedStereo(mol, atom, neighborsInfo, reportAllFailures, errors);
+      break;
+    default:
+      ;
     }
   }
 }
@@ -885,21 +876,9 @@ std::vector<ValidationErrorInfo> StereoValidation::validate(
   std::vector<ValidationErrorInfo> errors;
 
   for (auto atom: mol.atoms()) {
-    bool stereoBondFound = hasStereoBond(mol, atom);
-    if (stereoBondFound && isPotentialStereoCenter(atom)) {
+    if (hasStereoBond(mol, atom)) {
       checkStereo(mol, atom, reportAllFailures, errors);
     }
-    /* do not disallow stereo bonds on non-stereogenic centers because
-     * they may have been used to describe some kind of atropisomerism.
-     * the else branch below is for this reason commented-out.
-     * note: no attempt is made to verify that this usage of stereo bonds
-     * is well-defined/unambiguous.
-     */
-    /* else if (stereoBondFound) {
-      errors.push_back(
-        "ERROR: [StereoValidation] atom " + std::to_string(atom->getIdx()+1)
-        + " has stereo bonds, but it doesn't seem to be a stereogenic center");
-    }*/
     if (!errors.empty() && !reportAllFailures) {
       break;
     }

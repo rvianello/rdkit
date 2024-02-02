@@ -828,6 +828,51 @@ M  END
     errmsg ==
     "ERROR: [StereoValidation] colinearity or triangle rule violation of non-stereo bonds at atom 2")
 
+  // 4 ligands - wavy bond is allowed
+  mblock = R"(
+  Mrv2311 02022412452D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 12 13 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -14.6042 3.6233 0 0 CFG=3
+M  V30 2 C -15.9379 2.8533 0 0
+M  V30 3 C -15.9379 1.3131 0 0
+M  V30 4 C -14.6042 0.5433 0 0
+M  V30 5 C -13.2704 1.3131 0 0
+M  V30 6 C -13.2704 2.8533 0 0 CFG=1
+M  V30 7 C -11.9366 3.6235 0 0
+M  V30 8 C -11.9369 5.1634 0 0
+M  V30 9 C -13.2704 5.9335 0 0
+M  V30 10 C -14.6042 5.1634 0 0
+M  V30 11 C -14.6042 2.0833 0 0
+M  V30 12 H -13.2704 4.3933 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 1 6
+M  V30 3 1 2 3
+M  V30 4 1 3 4
+M  V30 5 1 4 5
+M  V30 6 1 5 6
+M  V30 7 1 7 8
+M  V30 8 1 8 9
+M  V30 9 1 9 10
+M  V30 10 1 1 10
+M  V30 11 1 6 7
+M  V30 12 1 1 11 CFG=2
+M  V30 13 1 6 12 CFG=1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 0);
+
   // 3 Ligands - No issues
   mblock = R"(
           10052313452D          
@@ -916,6 +961,160 @@ M  END
   TEST_ASSERT(
     errmsg ==
     "ERROR: [StereoValidation] colinearity of non-stereo bonds at atom 2");
+
+  // 3 Ligands - either/unknown bond allowed
+  mblock = R"(
+  Mrv2311 02022410402D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 6 6 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -15.6875 8.3933 0 0
+M  V30 2 N -16.9333 7.488 0 0
+M  V30 3 C -16.4575 6.0234 0 0
+M  V30 4 C -14.9175 6.0234 0 0 CFG=3
+M  V30 5 C -14.4417 7.488 0 0
+M  V30 6 C -14.0123 4.7775 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 5
+M  V30 2 1 3 4
+M  V30 3 1 4 5
+M  V30 4 1 1 2
+M  V30 5 1 2 3
+M  V30 6 1 4 6 CFG=2
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 0);
+
+  // Double bond w/ 2 incident wavy bonds
+  mblock = R"(
+  Mrv2311 02022410492D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -15.6875 8.3933 0 0
+M  V30 2 N -16.9333 7.488 0 0
+M  V30 3 C -16.4575 6.0234 0 0
+M  V30 4 C -14.9175 6.0234 0 0
+M  V30 5 C -14.4417 7.488 0 0
+M  V30 6 C -14.0123 4.7775 0 0
+M  V30 7 C -14.6386 3.3706 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 5
+M  V30 2 1 4 3 CFG=2
+M  V30 3 1 4 5 CFG=2
+M  V30 4 1 1 2
+M  V30 5 1 2 3
+M  V30 6 2 4 6
+M  V30 7 1 6 7
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
+  for (auto msg: errout) {
+    cerr << msg << endl;
+  }
+  TEST_ASSERT(errout.size() == 0);
+
+  // Mixed wavy and wedged bonds
+  mblock = R"(
+  Mrv2311 02022412492D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -15.2292 8.6433 0 0
+M  V30 2 N -16.475 7.738 0 0
+M  V30 3 C -15.9992 6.2734 0 0
+M  V30 4 C -14.4592 6.2734 0 0 CFG=3
+M  V30 5 C -13.9834 7.738 0 0
+M  V30 6 C -13.554 5.0275 0 0
+M  V30 7 C -12.9381 6.5143 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 5
+M  V30 2 1 3 4
+M  V30 3 1 4 5
+M  V30 4 1 1 2
+M  V30 5 1 2 3
+M  V30 6 1 4 6 CFG=1
+M  V30 7 1 4 7 CFG=2
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
+  for (auto msg: errout) {
+    cerr << msg << endl;
+  }
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0];
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] atom 4 has both unknown and wedged/dashed stereo bonds.");
+
+  // Badly drawn perspective diagram
+  mblock = R"(
+  Mrv2311 02022413502D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 9 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -15.6872 7.1033 0 0
+M  V30 2 C -16.7292 8.8333 0 0 CFG=2
+M  V30 3 C -16.6861 7.8235 0 0
+M  V30 4 C -15.1461 7.8235 0 0
+M  V30 5 C -14.4805 7.27 0 0
+M  V30 6 C -13.9002 8.7287 0 0 CFG=2
+M  V30 7 C -13.5305 6.0579 0 0
+M  V30 8 C -15.3955 9.6033 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1 CFG=1
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 1 5 CFG=1
+M  V30 5 1 4 6
+M  V30 6 1 6 5 CFG=1
+M  V30 7 1 5 7
+M  V30 8 1 2 8
+M  V30 9 1 6 8
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
+  for (auto msg: errout) {
+    cerr << msg << endl;
+  }
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0];
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] atom 1 has stereo bonds, but less than 3 substituents.");
 
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }

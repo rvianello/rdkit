@@ -750,27 +750,28 @@ M  END
 
   SECTION("standardize doesn't remove oddly placed wedged bonds") {
     const char * molblock = R"(
-  Mrv2311 02012413282D          
+  Mrv2311 02022413372D          
 
   0  0  0     0  0            999 V3000
 M  V30 BEGIN CTAB
-M  V30 COUNTS 15 15 0 0 0
+M  V30 COUNTS 16 16 0 0 0
 M  V30 BEGIN ATOM
-M  V30 1 C -22.6873 4.415 0 0
-M  V30 2 C -24.0208 3.6451 0 0
-M  V30 3 C -24.0208 2.1049 0 0
-M  V30 4 C -22.6873 1.3349 0 0
-M  V30 5 C -21.3536 2.1049 0 0
-M  V30 6 C -21.3536 3.6451 0 0
-M  V30 7 S -20.02 4.415 0 0
-M  V30 8 O -20.02 5.955 0 0
-M  V30 9 C -18.6863 3.6451 0 0
-M  V30 10 C -17.3526 4.415 0 0
-M  V30 11 C -16.0189 3.6451 0 0
-M  V30 12 C -25.3545 1.3349 0 0
-M  V30 13 O -26.6882 2.105 0 0
-M  V30 14 O -25.3546 -0.2051 0 0
-M  V30 15 Na -28.0219 1.3351 0 0
+M  V30 1 C -22.6878 4.4151 0 0
+M  V30 2 C -24.0213 3.6452 0 0
+M  V30 3 C -24.0213 2.1049 0 0
+M  V30 4 C -22.6878 1.3349 0 0
+M  V30 5 C -21.354 2.1049 0 0
+M  V30 6 C -21.354 3.6452 0 0
+M  V30 7 S -20.0204 4.4151 0 0
+M  V30 8 O -20.0204 5.9551 0 0
+M  V30 9 C -18.6867 3.6452 0 0
+M  V30 10 C -17.353 4.4151 0 0 CFG=2
+M  V30 11 C -16.0192 3.6452 0 0
+M  V30 12 C -25.355 1.3349 0 0
+M  V30 13 O -26.6888 2.105 0 0
+M  V30 14 O -25.3551 -0.2051 0 0
+M  V30 15 Na -28.0225 1.3351 0 0
+M  V30 16 C -17.353 5.9551 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
 M  V30 1 2 1 2
@@ -788,6 +789,7 @@ M  V30 12 1 3 12
 M  V30 13 2 12 14
 M  V30 14 1 12 13
 M  V30 15 1 13 15
+M  V30 16 1 10 16
 M  V30 END BOND
 M  V30 END CTAB
 M  END
@@ -806,7 +808,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "CCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "CC(C)C[S+]([O-])C1=CC=C(C(=O)O)C=C1");
   
     Chirality::reapplyMolBlockWedging(*parentMol);
 
@@ -822,7 +824,89 @@ M  END
 
     auto beginAtom = wedged->getBeginAtom();
     REQUIRE(beginAtom->getAtomicNum() == 6);
-    REQUIRE(beginAtom->getDegree() == 2);
+    REQUIRE(beginAtom->getDegree() == 3);
+    auto endAtom = wedged->getEndAtom();
+    REQUIRE(endAtom->getAtomicNum() == 6);
+    REQUIRE(endAtom->getDegree() == 1);
+  }
+
+  SECTION("standardize doesn't remove oddly placed wedged bonds") {
+    const char * molblock = R"(
+  Mrv2311 02022413372D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 16 16 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -22.6878 4.4151 0 0
+M  V30 2 C -24.0213 3.6452 0 0
+M  V30 3 C -24.0213 2.1049 0 0
+M  V30 4 C -22.6878 1.3349 0 0
+M  V30 5 C -21.354 2.1049 0 0
+M  V30 6 C -21.354 3.6452 0 0
+M  V30 7 S -20.0204 4.4151 0 0
+M  V30 8 O -20.0204 5.9551 0 0
+M  V30 9 C -18.6867 3.6452 0 0
+M  V30 10 C -17.353 4.4151 0 0 CFG=3
+M  V30 11 C -16.0192 3.6452 0 0
+M  V30 12 C -25.355 1.3349 0 0
+M  V30 13 O -26.6888 2.105 0 0
+M  V30 14 O -25.3551 -0.2051 0 0
+M  V30 15 Na -28.0225 1.3351 0 0
+M  V30 16 C -17.353 5.9551 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 2 1 2
+M  V30 2 1 2 3
+M  V30 3 2 3 4
+M  V30 4 1 4 5
+M  V30 5 2 5 6
+M  V30 6 1 6 1
+M  V30 7 1 6 7
+M  V30 8 1 7 9
+M  V30 9 2 7 8
+M  V30 10 1 9 10
+M  V30 11 1 10 11 CFG=2
+M  V30 12 1 3 12
+M  V30 13 2 12 14
+M  V30 14 1 12 13
+M  V30 15 1 13 15
+M  V30 16 1 10 16
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "CC(C)C[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+  
+    Chirality::reapplyMolBlockWedging(*parentMol);
+
+    const Bond * wedged = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondDir = bond->getBondDir();
+      if (bondDir == Bond::BondDir::UNKNOWN) {
+        wedged = bond;
+        break;
+      }
+    }
+    REQUIRE(wedged != nullptr);
+
+    auto beginAtom = wedged->getBeginAtom();
+    REQUIRE(beginAtom->getAtomicNum() == 6);
+    REQUIRE(beginAtom->getDegree() == 3);
     auto endAtom = wedged->getEndAtom();
     REQUIRE(endAtom->getAtomicNum() == 6);
     REQUIRE(endAtom->getDegree() == 1);
