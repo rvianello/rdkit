@@ -508,6 +508,56 @@ M  END
     REQUIRE(outputSmiles == "[NH3+]CC(=O)[O-]");
   }
 
+  SECTION("standardize zwitterion with quaternary nitrogen") {
+    const char * molblock = R"(
+  Mrv2311 02052411472D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 N -10.9997 4.77 0 0 CHG=1
+M  V30 2 C -12.3333 4 0 0
+M  V30 3 C -10.9997 6.31 0 0
+M  V30 4 C -9.666 4 0 0
+M  V30 5 C -10.9997 3.23 0 0
+M  V30 6 C -9.666 2.46 0 0
+M  V30 7 O -10.9997 1.69 0 0
+M  V30 8 O -8.3323 1.69 0 0 CHG=-1
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 4 6
+M  V30 2 2 6 7
+M  V30 3 1 6 8
+M  V30 4 1 2 1
+M  V30 5 1 1 3
+M  V30 6 1 1 4
+M  V30 7 1 1 5
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status == MolStandardize::NO_ERROR);
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "C[N+](C)(C)CC(=O)O");
+
+    std::unique_ptr<RWMol> outputMol(MolBlockToMol(result.outputMolBlock, false, false));
+    REQUIRE(outputMol);
+    std::string outputSmiles {MolToSmiles(*outputMol)};
+    REQUIRE(outputSmiles == "C[N+](C)(C)CC(=O)[O-]");
+  }
+
   /* FIXME
   SECTION("uncharge tertiary amine w/ explicit hydrogen") {
     const char * molblock = R"(
