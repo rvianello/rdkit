@@ -279,7 +279,9 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
 
   // overall charge status
   try {
-    Uncharger uncharger;
+    static const bool canonicalOrdering = false;
+    static const bool force = true;
+    Uncharger uncharger(canonicalOrdering, force);
     uncharger.unchargeInPlace(*parent);
   }
   catch (...) {
