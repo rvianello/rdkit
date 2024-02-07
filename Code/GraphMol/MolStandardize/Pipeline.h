@@ -108,16 +108,16 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Pipeline {
   Pipeline() = default;
   explicit Pipeline(const PipelineOptions & o) : options(o) {};
 
-  PipelineResult run(const std::string & molblock);
+  PipelineResult run(const std::string & molblock) const;
 
  private:
-  RWMOL_SPTR parse(const std::string & molblock, PipelineResult & result);
-  RWMOL_SPTR sanitize(RWMOL_SPTR mol, PipelineResult & result);
-  RWMOL_SPTR validate(RWMOL_SPTR mol, PipelineResult & result);
-  RWMOL_SPTR standardize(RWMOL_SPTR mol, PipelineResult & result);
+  RWMOL_SPTR parse(const std::string & molblock, PipelineResult & result) const;
+  RWMOL_SPTR sanitize(RWMOL_SPTR mol, PipelineResult & result) const;
+  RWMOL_SPTR validate(RWMOL_SPTR mol, PipelineResult & result) const;
+  RWMOL_SPTR standardize(RWMOL_SPTR mol, PipelineResult & result) const;
   using RWMOL_SPTR_PAIR = std::pair<RWMOL_SPTR, RWMOL_SPTR>;
-  RWMOL_SPTR_PAIR makeParent(RWMOL_SPTR mol, PipelineResult & result);
-  void serialize(RWMOL_SPTR_PAIR output, PipelineResult & result);
+  RWMOL_SPTR_PAIR makeParent(RWMOL_SPTR mol, PipelineResult & result) const;
+  void serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const;
 };
 
 }  // namespace MolStandardize

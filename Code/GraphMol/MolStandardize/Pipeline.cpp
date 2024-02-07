@@ -36,7 +36,7 @@ void PipelineResult::append(PipelineStatus newStatus, const std::string & info)
   log.push_back({newStatus, info});
 }
 
-PipelineResult Pipeline::run(const std::string & molblock)
+PipelineResult Pipeline::run(const std::string & molblock) const
 {
   PipelineResult result;
   result.status = NO_ERROR;
@@ -86,7 +86,7 @@ PipelineResult Pipeline::run(const std::string & molblock)
   return result;
 }
 
-RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result)
+RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result) const
 {
   // we don't want to sanitize the molecule at this stage
   static constexpr bool sanitize {false};
@@ -118,7 +118,7 @@ RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result
   return mol;
 }
 
-RWMOL_SPTR Pipeline::sanitize(RWMOL_SPTR mol, PipelineResult & result)
+RWMOL_SPTR Pipeline::sanitize(RWMOL_SPTR mol, PipelineResult & result) const
 {
   // Prepare the mol for validation and standardization.
   //
@@ -157,7 +157,7 @@ namespace {
   }
 }
 
-RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result)
+RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result) const
 {
   auto applyValidation = [&mol, &result, this](const ValidationMethod & v, PipelineStatus status) -> bool {
     auto errors = v.validate(*mol, options.reportAllFailures);
@@ -206,7 +206,7 @@ RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result)
   return mol;
 }
 
-RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result)
+RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
 {
   auto smiles = MolToSmiles(*mol);
   auto reference = smiles;
@@ -279,7 +279,7 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result)
   return mol;
 }
 
-Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & result)
+Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & result) const
 {
   auto reference = MolToSmiles(*mol);
 
@@ -343,7 +343,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
   return {mol, parent};
 }
 
-void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result)
+void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const
 {
   const ROMol & outputMol = *output.first;
   const ROMol & parentMol = *output.second;
