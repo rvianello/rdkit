@@ -462,6 +462,52 @@ M  END
     REQUIRE(smiles == "C[N+](=O)[O-]");
   }
 
+  SECTION("normalize sulfone w/ custom normalizer data") {
+    const char * molblock = R"(
+  Mrv2311 02072415362D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 S -10.3538 4.27 0 0 CHG=1
+M  V30 2 C -11.6875 3.5 0 0
+M  V30 3 O -10.3538 5.81 0 0 CHG=-1
+M  V30 4 C -9.0201 3.5 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 1 4
+M  V30 3 1 1 3
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineOptions options;
+    options.normalizerData = R"(//	Name	SMIRKS
+Sulfone to S=O	[S+:1][O-:2]>>[S+0:1]=[O-0:2]
+)";
+    MolStandardize::Pipeline customizedPipeline(options);
+
+    MolStandardize::PipelineResult result = customizedPipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    // nitro groups are sanitized in a pre-validation step.
+    // this test case is not expected to register any errors.
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status == MolStandardize::NO_ERROR);
+
+    std::unique_ptr<RWMol> mol(MolBlockToMol(result.outputMolBlock, false, false));
+    REQUIRE(mol);
+
+    std::string smiles {MolToSmiles(*mol)};
+    REQUIRE(smiles == "CS(C)=O");
+  }
+
   SECTION("standardize zwitterion") {
     const char * molblock = R"(
           10282320572D          

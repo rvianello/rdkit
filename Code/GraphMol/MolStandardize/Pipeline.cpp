@@ -9,6 +9,7 @@
 //
 
 #include <regex>
+#include <sstream>
 #include "Pipeline.h"
 #include "Validate.h"
 #include "Metal.h"
@@ -234,8 +235,15 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result)
 
   // functional groups
   try {
-    Normalizer normalizer;
-    normalizer.normalizeInPlace(*mol);
+    std::unique_ptr<Normalizer> normalizer {};
+    if (options.normalizerData.empty()) {
+      normalizer.reset(new Normalizer);
+    }
+    else {
+      std::istringstream sstr(options.normalizerData);
+      normalizer.reset(new Normalizer(sstr, options.normalizerMaxRestarts));
+    }
+    normalizer->normalizeInPlace(*mol);
   }
   catch (...) {
     result.append(
