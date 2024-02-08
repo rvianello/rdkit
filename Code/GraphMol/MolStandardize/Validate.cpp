@@ -270,6 +270,45 @@ std::vector<ValidationErrorInfo> DisallowedAtomsValidation::validate(
   return errors;
 }
 
+std::vector<ValidationErrorInfo> DisallowedRadicalValidation::validate(
+      const ROMol &mol, bool reportAllFailures) const {
+  std::vector<ValidationErrorInfo> errors;
+
+  for (auto atom: mol.atoms()) {
+    unsigned int numRadicalElectrons = atom->getNumRadicalElectrons();
+    if (numRadicalElectrons == 0) {
+      continue;
+    }
+    unsigned int atomicNum = atom->getAtomicNum();
+    unsigned int degree = atom->getDegree();
+    if ((atomicNum == 7 || atomicNum == 8) &&
+        numRadicalElectrons == 1 &&
+        degree == 1) {
+      unsigned int neighborAtomicNum {};
+      Bond::BondType bondType = Bond::BondType::UNSPECIFIED;
+      for (auto neighbor: mol.atomNeighbors(atom)) {
+        // only one iteration is performed, because degree == 1
+        neighborAtomicNum = neighbor->getAtomicNum();
+        bondType = mol.getBondBetweenAtoms(atom->getIdx(), neighbor->getIdx())->getBondType();
+      }
+      if (atomicNum == 7 && neighborAtomicNum == 8 && bondType == Bond::BondType::DOUBLE) {
+        // nitric oxide
+        continue;
+      }
+      if (atomicNum == 8 && neighborAtomicNum == 7 && bondType == Bond::BondType::SINGLE) {
+        // aminoxyl
+        continue;
+      }
+    }
+    errors.push_back(
+      "ERROR: [DisallowedRadicalValidation] The radical at atom " + std::to_string(atom->getIdx()+1) + " is not allowed");
+    if (!reportAllFailures) {
+      break;
+    }
+  }
+  return errors;
+}
+
 std::vector<ValidationErrorInfo> FeaturesValidation::validate(
       const ROMol &mol, bool reportAllFailures) const {
   std::vector<ValidationErrorInfo> errors;

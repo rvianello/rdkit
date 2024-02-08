@@ -195,6 +195,18 @@ class RDKIT_MOLSTANDARDIZE_EXPORT DisallowedAtomsValidation
 };
 
 //!
+class RDKIT_MOLSTANDARDIZE_EXPORT DisallowedRadicalValidation
+    : public ValidationMethod {
+ public:
+  std::vector<ValidationErrorInfo> validate(
+      const ROMol &mol, bool reportAllFailures) const override;
+
+  std::shared_ptr<ValidationMethod> copy() const override {
+    return std::make_shared<DisallowedRadicalValidation>(*this);
+  }
+};
+
+//!
 class RDKIT_MOLSTANDARDIZE_EXPORT FeaturesValidation
     : public ValidationMethod {
  public:

@@ -177,6 +177,12 @@ RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result) const
     return mol;
   }
 
+  // disallow radicals
+  DisallowedRadicalValidation radicalValidation;
+  if (!applyValidation(radicalValidation, BASIC_VALIDATION_ERROR) && !options.reportAllFailures) {
+    return mol;
+  }
+
   // validate the isotopic numbers (if any are specified)
   IsotopeValidation isotopeValidation(true);
   if (!applyValidation(isotopeValidation, BASIC_VALIDATION_ERROR) && !options.reportAllFailures) {

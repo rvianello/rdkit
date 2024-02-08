@@ -447,6 +447,65 @@ M  END
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
 
+void testDisallowedRadicalValidation() {
+  BOOST_LOG(rdInfoLog) << "-----------------------\n Testing DisallowedRadicalValidation"
+                       << std::endl;
+
+  unique_ptr<ROMol> mol;
+  DisallowedRadicalValidation radicalValidation;
+  string mblock, errmsg;
+  vector<ValidationErrorInfo> errout;
+
+
+  mblock = R"(
+  Mrv2311 02082417202D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -20.9372 7.145 0 0
+M  V30 2 C -22.2708 6.375 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = radicalValidation.validate(*mol, true);
+  TEST_ASSERT(errout.empty());
+
+  mblock = R"(
+  Mrv2311 02082417212D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -20.9372 7.145 0 0 RAD=2
+M  V30 2 C -22.2708 6.375 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = radicalValidation.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0];
+  TEST_ASSERT(errmsg == 
+    "ERROR: [DisallowedRadicalValidation] The radical at atom 1 is not allowed");
+
+
+  BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
+}
+
 void testIs2DValidation() {
   BOOST_LOG(rdInfoLog) << "-----------------------\n Testing Is2DValidation"
                        << std::endl;
@@ -1154,6 +1213,7 @@ int main() {
   testDisallowedAtomsValidation();
   testFragment();
   testFeaturesValidation();
+  testDisallowedRadicalValidation();
   testIs2DValidation();
   testLayout2DValidation();
   testValidateStereo();

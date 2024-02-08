@@ -170,6 +170,12 @@ struct validate_wrapper {
       ;
 
     python::class_<
+      MolStandardize::DisallowedRadicalValidation,
+      python::bases<MolStandardize::ValidationMethod>,
+      boost::noncopyable>("DisallowedRadicalValidation")
+      ;
+
+    python::class_<
       MolStandardize::Is2DValidation,
       python::bases<MolStandardize::ValidationMethod>,
       boost::noncopyable>("Is2DValidation")

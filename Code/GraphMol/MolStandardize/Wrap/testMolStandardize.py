@@ -1185,6 +1185,29 @@ M  END
     self.assertEqual(len(errinfo), 1)
     self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Query atom 1 is not allowed")
     
+    # disallowedRadicalValidation
+    mol = Chem.MolFromMolBlock('''
+  Mrv2311 02082417212D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -20.9372 7.145 0 0 RAD=2
+M  V30 2 C -22.2708 6.375 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+''', sanitize=False)
+
+    validator = rdMolStandardize.DisallowedRadicalValidation()
+    errinfo = validator.validate(mol)
+    self.assertEqual(len(errinfo), 1)
+    self.assertEqual(errinfo[0], "ERROR: [DisallowedRadicalValidation] The radical at atom 1 is not allowed")
+
     # is2DValidation
     mol = Chem.MolFromMolBlock('''
                     2D          
