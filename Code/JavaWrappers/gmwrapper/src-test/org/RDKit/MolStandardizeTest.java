@@ -25,8 +25,8 @@ import org.junit.*;
 		);
 
 	    assertEquals(result.getStage(), PipelineStage.PARSING_INPUT);
-    	assertFalse(result.getStatus() == PipelineStatus.NO_ERROR);
-    	assertTrue((result.getStatus() & PipelineStatus.INPUT_ERROR) != PipelineStatus.NO_ERROR);
+        assertFalse(result.getStatus() == PipelineStatus.NO_EVENT);
+        assertTrue((result.getStatus() & PipelineStatus.INPUT_ERROR) != PipelineStatus.NO_EVENT);
 
 		result.delete();
 		pipeline.delete();
@@ -54,9 +54,9 @@ import org.junit.*;
 		);
 
 	    assertEquals(result.getStage(), PipelineStage.COMPLETED);
-    	assertFalse(result.getStatus() == PipelineStatus.NO_ERROR);
-    	assertTrue((result.getStatus() & PipelineStatus.VALIDATION_ERROR) != PipelineStatus.NO_ERROR);
-    	assertTrue((result.getStatus() & PipelineStatus.FEATURES_VALIDATION_ERROR) != PipelineStatus.NO_ERROR);
+        assertFalse(result.getStatus() == PipelineStatus.NO_EVENT);
+        assertTrue((result.getStatus() & PipelineStatus.VALIDATION_ERROR) != PipelineStatus.NO_EVENT);
+        assertTrue((result.getStatus() & PipelineStatus.FEATURES_VALIDATION_ERROR) != PipelineStatus.NO_EVENT);
 
 		result.delete();
 		pipeline.delete();

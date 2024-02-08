@@ -43,7 +43,7 @@ void wrap_pipeline() {
         ;
 
     python::enum_<MolStandardize::PipelineStatus>("PipelineStatus")
-        .value("NO_ERROR", MolStandardize::NO_ERROR)
+        .value("NO_EVENT", MolStandardize::NO_EVENT)
         .value("INPUT_ERROR", MolStandardize::INPUT_ERROR)
         .value("SANITIZATION_ERROR", MolStandardize::SANITIZATION_ERROR)
         .value("FEATURES_VALIDATION_ERROR", MolStandardize::FEATURES_VALIDATION_ERROR)
@@ -58,6 +58,13 @@ void wrap_pipeline() {
         .value("CHARGE_STANDARDIZATION_ERROR", MolStandardize::CHARGE_STANDARDIZATION_ERROR)
         .value("STANDARDIZATION_ERROR", MolStandardize::STANDARDIZATION_ERROR)
         .value("OUTPUT_ERROR", MolStandardize::OUTPUT_ERROR)
+        .value("PIPELINE_ERROR", MolStandardize::PIPELINE_ERROR)
+        .value("SANITIZATION_APPLIED", MolStandardize::SANITIZATION_APPLIED)
+        .value("METALS_DISCONNECTED", MolStandardize::METALS_DISCONNECTED)
+        .value("NORMALIZATION_APPLIED", MolStandardize::NORMALIZATION_APPLIED)
+        .value("FRAGMENTS_REMOVED", MolStandardize::FRAGMENTS_REMOVED)
+        .value("PROTONATION_CHANGED", MolStandardize::PROTONATION_CHANGED)
+        .value("STRUCTURE_MODIFICATION", MolStandardize::STRUCTURE_MODIFICATION)
         ;
 
     python::enum_<MolStandardize::PipelineStage>("PipelineStage")

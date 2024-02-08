@@ -1317,7 +1317,7 @@ M  V30 BEGIN CTAB
 '''
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.PARSING_INPUT)
-    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_EVENT)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.INPUT_ERROR)
 
     molblock = '''
@@ -1338,7 +1338,7 @@ M  END
 '''
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_EVENT)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.FEATURES_VALIDATION_ERROR)
 
@@ -1353,7 +1353,7 @@ M  END
 '''
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_EVENT)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.BASIC_VALIDATION_ERROR)
 
@@ -1381,7 +1381,7 @@ M  END
 '''
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_EVENT)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.STANDARDIZATION_ERROR)
     self.assertEqual(result.status,
@@ -1407,7 +1407,7 @@ M  END
 
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_EVENT)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.IS2D_VALIDATION_ERROR)
 
@@ -1434,7 +1434,7 @@ M  END
 
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_EVENT)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.LAYOUT2D_VALIDATION_ERROR)
 
@@ -1463,7 +1463,7 @@ M  END
 
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_EVENT)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertEqual(result.status,
                      rdMolStandardize.PipelineStatus.IS2D_VALIDATION_ERROR
@@ -1494,7 +1494,16 @@ M  END
 
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertEqual((result.status & rdMolStandardize.PipelineStatus.PIPELINE_ERROR), rdMolStandardize.PipelineStatus.NO_EVENT)
+    self.assertNotEqual((result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION), rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION)
+    self.assertEqual(
+      (result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION),
+      (
+        rdMolStandardize.PipelineStatus.METALS_DISCONNECTED
+        | rdMolStandardize.PipelineStatus.FRAGMENTS_REMOVED
+        | rdMolStandardize.PipelineStatus.PROTONATION_CHANGED
+      )
+    )
 
     parentMol = Chem.MolFromMolBlock(result.parentMolBlock, sanitize=False)
     parentSmiles = Chem.MolToSmiles(parentMol)
@@ -1528,7 +1537,9 @@ M  END
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
     # nitro groups are cleaned-up in a pre-validation step
-    self.assertEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertEqual((result.status & rdMolStandardize.PipelineStatus.PIPELINE_ERROR), rdMolStandardize.PipelineStatus.NO_EVENT)
+    self.assertNotEqual((result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION), rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION)
+    self.assertEqual((result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION), rdMolStandardize.PipelineStatus.SANITIZATION_APPLIED)
 
     parentMol = Chem.MolFromMolBlock(result.parentMolBlock, sanitize=False)
     parentSmiles = Chem.MolToSmiles(parentMol)
@@ -1565,7 +1576,15 @@ M  END
 
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertEqual((result.status & rdMolStandardize.PipelineStatus.PIPELINE_ERROR), rdMolStandardize.PipelineStatus.NO_EVENT)
+    self.assertNotEqual((result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION), rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION)
+    self.assertEqual(
+      (result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION),
+      (
+        rdMolStandardize.PipelineStatus.METALS_DISCONNECTED
+        | rdMolStandardize.PipelineStatus.FRAGMENTS_REMOVED
+      )
+    )
 
     parentMol = Chem.MolFromMolBlock(result.parentMolBlock, sanitize=False)
     parentSmiles = Chem.MolToSmiles(parentMol)
@@ -1604,7 +1623,9 @@ M  END
 '''
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    self.assertEqual(result.status, rdMolStandardize.PipelineStatus.NO_ERROR)
+    self.assertEqual((result.status & rdMolStandardize.PipelineStatus.PIPELINE_ERROR), rdMolStandardize.PipelineStatus.NO_EVENT)
+    self.assertNotEqual((result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION), rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION)
+    self.assertEqual((result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION), rdMolStandardize.PipelineStatus.NORMALIZATION_APPLIED)
 
     outputMol = Chem.MolFromMolBlock(result.outputMolBlock, sanitize=False)
     outputSmiles = Chem.MolToSmiles(outputMol)

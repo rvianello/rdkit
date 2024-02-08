@@ -25,11 +25,6 @@
 namespace RDKit {
 namespace MolStandardize {
 
-void PipelineResult::append(const std::string & info)
-{
-  append(NO_ERROR, info);
-}
-
 void PipelineResult::append(PipelineStatus newStatus, const std::string & info)
 {
   status = static_cast<PipelineStatus>(status | newStatus);
@@ -39,45 +34,46 @@ void PipelineResult::append(PipelineStatus newStatus, const std::string & info)
 PipelineResult Pipeline::run(const std::string & molblock) const
 {
   PipelineResult result;
-  result.status = NO_ERROR;
+  result.status = NO_EVENT;
   result.inputMolBlock = molblock;
 
   // parse the molblock into an RWMol instance
   result.stage = PARSING_INPUT;
   RWMOL_SPTR mol = parse(molblock, result);
-  if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
+  if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
     return result;
   }
 
   // input sanitization + cleanup
   result.stage = SANITIZATION;
   mol = sanitize(mol, result);
-  if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
+  if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
     return result;
   }
 
   // validate the structure
   result.stage = VALIDATION;
   mol = validate(mol, result);
-  if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
+  if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
     return result;
   }
 
   // standardize/normalize
   result.stage = STANDARDIZATION;
   mol = standardize(mol, result);
-  if (!mol || (result.status != NO_ERROR && !options.reportAllFailures)) {
+  if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
     return result;
   }
   RWMOL_SPTR_PAIR output = makeParent(mol, result);
-  if (!output.first || !output.second || (result.status != NO_ERROR && !options.reportAllFailures)) {
+  if (!output.first || !output.second
+      || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
     return result;
   }
 
   // serialize as MolBlock
   result.stage = SERIALIZING_OUTPUT;
   serialize(output, result);
-  if (result.status != NO_ERROR && !options.reportAllFailures) {
+  if ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures) {
     return result;
   }
 
@@ -138,7 +134,9 @@ RWMOL_SPTR Pipeline::sanitize(RWMOL_SPTR mol, PipelineResult & result) const
     unsigned int failedOp = 0;
     MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
     if (MolToSmiles(*mol) != smiles) {
-      result.append("A cleanup was applied to the input structure.");
+      result.append(
+        SANITIZATION_APPLIED,
+        "The representation of some functional groups was modified in a pre-validation cleanup step.");
     }
   }
   catch (MolSanitizeException &) {
@@ -229,7 +227,7 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
 
   smiles = MolToSmiles(*mol);
   if (smiles != reference) {
-    result.append("One or more metal atoms were disconnected.");
+    result.append(METALS_DISCONNECTED, "One or more metal atoms were disconnected.");
   }
   reference = smiles;
 
@@ -254,7 +252,9 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
 
   smiles = MolToSmiles(*mol);
   if (smiles != reference) {
-    result.append("The representation of some functional groups was adjusted.");
+    result.append(
+      NORMALIZATION_APPLIED,
+      "The representation of some functional groups was adjusted.");
   }
   reference = smiles;
 
@@ -273,7 +273,9 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
 
   smiles = MolToSmiles(*mol);
   if (smiles != reference) {
-    result.append("One or more disconnected fragments (e.g., counterions) were removed.");
+    result.append(
+      FRAGMENTS_REMOVED,
+      "One or more disconnected fragments (e.g., counterions) were removed.");
   }
 
   return mol;
@@ -327,7 +329,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
 
   auto smiles = MolToSmiles(*mol);
   if (smiles != reference) {
-    result.append("The protonation state was adjusted.");
+    result.append(PROTONATION_CHANGED, "The protonation state was adjusted.");
   }
   reference = smiles;
 

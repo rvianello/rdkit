@@ -33,7 +33,7 @@ M  V30 BEGIN CTAB
     MolStandardize::PipelineResult result = pipeline.run(molblock);
 
     REQUIRE(result.stage == MolStandardize::PARSING_INPUT);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::INPUT_ERROR);
   }
 
@@ -55,7 +55,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::BASIC_VALIDATION_ERROR);
   }
@@ -91,7 +91,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR)  != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::STANDARDIZATION_ERROR);
     REQUIRE(result.status == (
@@ -125,9 +125,9 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
-    REQUIRE(result.status == MolStandardize::BASIC_VALIDATION_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::BASIC_VALIDATION_ERROR);
   }
   
   SECTION("failing features validation, query atom") {
@@ -155,7 +155,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::FEATURES_VALIDATION_ERROR);
   }
@@ -192,7 +192,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::FEATURES_VALIDATION_ERROR);
   }
@@ -222,7 +222,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::IS2D_VALIDATION_ERROR);
   }
@@ -256,7 +256,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::LAYOUT2D_VALIDATION_ERROR);
   }
@@ -290,7 +290,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::STEREO_VALIDATION_ERROR);
   }
@@ -326,7 +326,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::STEREO_VALIDATION_ERROR);
   }
@@ -362,7 +362,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status != MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::IS2D_VALIDATION_ERROR);
     REQUIRE(result.status & MolStandardize::STEREO_VALIDATION_ERROR);
@@ -405,8 +405,9 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE((result.status & MolStandardize::VALIDATION_ERROR) == 0);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(result.status & MolStandardize::METALS_DISCONNECTED);
 
     std::unique_ptr<RWMol> mol(MolBlockToMol(result.outputMolBlock, false, false));
     REQUIRE(mol);
@@ -453,7 +454,9 @@ M  END
     // nitro groups are sanitized in a pre-validation step.
     // this test case is not expected to register any errors.
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(result.status & MolStandardize::SANITIZATION_APPLIED);
 
     std::unique_ptr<RWMol> mol(MolBlockToMol(result.outputMolBlock, false, false));
     REQUIRE(mol);
@@ -496,10 +499,10 @@ Sulfone to S=O	[S+:1][O-:2]>>[S+0:1]=[O-0:2]
       std::cerr << info.status << " " << info.detail << std::endl;
     }
 
-    // nitro groups are sanitized in a pre-validation step.
-    // this test case is not expected to register any errors.
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(result.status & MolStandardize::NORMALIZATION_APPLIED);
 
     std::unique_ptr<RWMol> mol(MolBlockToMol(result.outputMolBlock, false, false));
     REQUIRE(mol);
@@ -541,7 +544,12 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (MolStandardize::METALS_DISCONNECTED | MolStandardize::FRAGMENTS_REMOVED)
+    );
 
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
@@ -591,7 +599,8 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NO_EVENT);
 
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
@@ -636,7 +645,7 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE(result.status == MolStandardize::NO_EVENT);
     REQUIRE(result.parentMolBlock == result.outputMolBlock);
 
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
@@ -705,7 +714,17 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (
+        MolStandardize::METALS_DISCONNECTED
+        | MolStandardize::NORMALIZATION_APPLIED
+        | MolStandardize::FRAGMENTS_REMOVED
+        | MolStandardize::PROTONATION_CHANGED
+        )
+    );
     REQUIRE(result.outputMolBlock == result.parentMolBlock);
 
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
@@ -770,7 +789,17 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (
+        MolStandardize::METALS_DISCONNECTED
+        | MolStandardize::NORMALIZATION_APPLIED
+        | MolStandardize::FRAGMENTS_REMOVED
+        | MolStandardize::PROTONATION_CHANGED
+        )
+    );
     REQUIRE(result.outputMolBlock == result.parentMolBlock);
 
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
@@ -835,7 +864,17 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (
+        MolStandardize::METALS_DISCONNECTED
+        | MolStandardize::NORMALIZATION_APPLIED
+        | MolStandardize::FRAGMENTS_REMOVED
+        | MolStandardize::PROTONATION_CHANGED
+        )
+    );
     REQUIRE(result.outputMolBlock == result.parentMolBlock);
 
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
@@ -844,7 +883,7 @@ M  END
     REQUIRE(parentSmiles == "[H]CCCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
   }
 
-  SECTION("standardize doesn't remove oddly placed wedged bonds") {
+  SECTION("standardize doesn't remove wedged bonds from non-stereogenic centers") {
     const char * molblock = R"(
   Mrv2311 02022413372D          
 
@@ -898,7 +937,17 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (
+        MolStandardize::METALS_DISCONNECTED
+        | MolStandardize::NORMALIZATION_APPLIED
+        | MolStandardize::FRAGMENTS_REMOVED
+        | MolStandardize::PROTONATION_CHANGED
+        )
+    );
     REQUIRE(result.outputMolBlock == result.parentMolBlock);
 
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
@@ -926,7 +975,7 @@ M  END
     REQUIRE(endAtom->getDegree() == 1);
   }
 
-  SECTION("standardize doesn't remove oddly placed wedged bonds") {
+  SECTION("standardize doesn't remove wavy bonds from non-stereogenic centers") {
     const char * molblock = R"(
   Mrv2311 02022413372D          
 
@@ -980,7 +1029,17 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_ERROR);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (
+        MolStandardize::METALS_DISCONNECTED
+        | MolStandardize::NORMALIZATION_APPLIED
+        | MolStandardize::FRAGMENTS_REMOVED
+        | MolStandardize::PROTONATION_CHANGED
+        )
+    );
     REQUIRE(result.outputMolBlock == result.parentMolBlock);
 
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
