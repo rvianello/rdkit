@@ -320,7 +320,7 @@ class TestCase(unittest.TestCase):
     msg6b = vm6b.validate(mol6)
     self.assertEqual(len(msg6b), 1)
     self.assertEqual(
-      "ERROR: [IsotopeValidation] Molecule contains unknown isotope 3C", msg6b[0]
+      "ERROR: [IsotopeValidation] The molecule contains an unknown isotope: 3C", msg6b[0]
     )
 
     msg999 = rdMolStandardize.ValidateSmiles("ClCCCl.c1ccccc1O")
@@ -1216,7 +1216,7 @@ M  END
     validator = rdMolStandardize.Is2DValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [Is2DValidation] Molecule has non-null Z coordinates")
+    self.assertEqual(errinfo[0], "ERROR: [Is2DValidation] The molecule includes non-null Z coordinates")
     
     validator = rdMolStandardize.Is2DValidation(0.2)
     errinfo = validator.validate(mol)
@@ -1241,7 +1241,7 @@ M  END
     validator = rdMolStandardize.Is2DValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [Is2DValidation] Molecule is 3D")
+    self.assertEqual(errinfo[0], "ERROR: [Is2DValidation] The molecule includes non-null Z coordinates")
 
     # AtomClashValidation
     mol = Chem.MolFromMolBlock('''
@@ -1272,7 +1272,7 @@ M  END
     validator = rdMolStandardize.Layout2DValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [Layout2DValidation] atom 5 too close to atom 6")
+    self.assertEqual(errinfo[0], "ERROR: [Layout2DValidation] Atom 5 is too close to atom 6")
 
     validator = rdMolStandardize.Layout2DValidation(1e-3)
     errinfo = validator.validate(mol)
@@ -1306,7 +1306,7 @@ M  END
     validator = rdMolStandardize.StereoValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [StereoValidation] atom 2 has opposing stereo bonds with different up/down orientation")
+    self.assertEqual(errinfo[0], "ERROR: [StereoValidation] Atom 2 has opposing stereo bonds with different up/down orientation")
 
   def test24Pipeline(self):
     pipeline = rdMolStandardize.Pipeline()

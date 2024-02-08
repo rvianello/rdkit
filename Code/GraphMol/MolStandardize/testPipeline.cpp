@@ -32,6 +32,10 @@ M  V30 BEGIN CTAB
 
     MolStandardize::PipelineResult result = pipeline.run(molblock);
 
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
     REQUIRE(result.stage == MolStandardize::PARSING_INPUT);
     REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::INPUT_ERROR);

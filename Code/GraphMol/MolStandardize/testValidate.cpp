@@ -218,7 +218,7 @@ void testMolVSOptions() {
   vector<ValidationErrorInfo> errout4 = isotopeValidation.validate(*m4, true);
   TEST_ASSERT(errout4.size() == 1);
   TEST_ASSERT(
-    errout4[0] == "ERROR: [IsotopeValidation] Molecule contains unknown isotope 3C");
+    errout4[0] == "ERROR: [IsotopeValidation] The molecule contains an unknown isotope: 3C");
 
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
@@ -499,7 +499,8 @@ M  END
   errout = is2D.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [Is2DValidation] Molecule is 3D");
+  TEST_ASSERT(errmsg == 
+    "ERROR: [Is2DValidation] The molecule includes non-null Z coordinates");
 
   mblock = R"(
                     2D          
@@ -590,7 +591,7 @@ M  END
   errout = layout2D.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] atom 5 too close to atom 6");
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] Atom 5 is too close to atom 6");
 
   mblock = R"(
                     2D          
@@ -621,7 +622,7 @@ M  END
   errout = layout2D.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] atom 6 too close to bond 5");
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] Atom 6 too close to bond 5");
 
   mblock = R"(
           01112413352D          
@@ -649,7 +650,7 @@ M  END
   errout = layout2D.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] length of bond 4 between atoms 1 and 4 exceeds a configured limit");
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] The length of bond 4 between atoms 1 and 4 exceeds a configured limit");
 
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
@@ -722,11 +723,11 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] atom 2 has too many stereo bonds with like orientation");
+    "ERROR: [StereoValidation] Atom 2 has too many stereo bonds with like orientation");
   errmsg = errout[1];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] atom 2 has adjacent stereo bonds with like orientation");
+    "ERROR: [StereoValidation] Atom 2 has adjacent stereo bonds with like orientation");
 
   // 4 ligands - mismatching opposed wedge/dash bonds
   mblock = R"(
@@ -760,7 +761,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] atom 2 has opposing stereo bonds with different up/down orientation")
+    "ERROR: [StereoValidation] Atom 2 has opposing stereo bonds with different up/down orientation")
 
   // 4 ligands - potentially ambiguous umbrella configuration
   mblock = R"(
@@ -793,7 +794,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] atom 2 has a potentially ambiguous representation: all non-stereo bonds opposite to the only stereo bond")
+    "ERROR: [StereoValidation] Atom 2 has a potentially ambiguous representation: all non-stereo bonds opposite to the only stereo bond")
 
   // 4 ligands - colinearity / triangle rule violation
   mblock = R"(
@@ -826,7 +827,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] colinearity or triangle rule violation of non-stereo bonds at atom 2")
+    "ERROR: [StereoValidation] Colinearity or triangle rule violation of non-stereo bonds at atom 2")
 
   // 4 ligands - wavy bond is allowed
   mblock = R"(
@@ -929,7 +930,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] atom 2 has 3 explicit ligands and multiple stereo bonds")
+    "ERROR: [StereoValidation] Atom 2 has 3 explicit substituents and multiple stereo bonds")
 
   // 3 Ligands - colinearity violation
   mblock = R"(
@@ -960,7 +961,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] colinearity of non-stereo bonds at atom 2");
+    "ERROR: [StereoValidation] Colinearity of non-stereo bonds at atom 2");
 
   // 3 Ligands - either/unknown bond allowed
   mblock = R"(
@@ -1070,7 +1071,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] atom 4 has both unknown and wedged/dashed stereo bonds.");
+    "ERROR: [StereoValidation] Atom 4 has both unknown and wedged/dashed stereo bonds.");
 
   // Badly drawn perspective diagram
   mblock = R"(
@@ -1114,7 +1115,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] atom 1 has stereo bonds, but less than 3 substituents.");
+    "ERROR: [StereoValidation] Atom 1 has stereo bonds, but less than 3 explicit substituents.");
 
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }

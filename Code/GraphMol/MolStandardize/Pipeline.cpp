@@ -297,7 +297,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
   catch (...) {
     result.append(
       CHARGE_STANDARDIZATION_ERROR, 
-      "An unexpected error occurred while normalizing the total charge status");
+      "An unexpected error occurred while normalizing the compound's charge status");
     return {{}, {}};
   }
 
@@ -359,7 +359,7 @@ void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const
         outputMol.getNumAtoms() > 999 || outputMol.getNumBonds() > 999 ||
         parentMol.getNumAtoms() > 999 || parentMol.getNumBonds() > 999
         ) {
-      result.append(OUTPUT_ERROR, "Molecule is too large for V2000 format.");
+      result.append(OUTPUT_ERROR, "The molecule is too large for V2000 format.");
     }
     else {
       result.outputMolBlock = MolToMolBlock(outputMol);
@@ -374,7 +374,7 @@ void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const
   catch (...) {
     result.append(
       OUTPUT_ERROR,
-      "An unexpected error occurred.");
+      "An unexpected error occurred while serializing the output structures.");
   }
 }
 
