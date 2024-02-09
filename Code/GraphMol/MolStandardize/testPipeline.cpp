@@ -201,6 +201,36 @@ M  END
     REQUIRE(result.status & MolStandardize::FEATURES_VALIDATION_ERROR);
   }
 
+  SECTION("failing radical validation, disallowed radical") {
+    const char * molblock = R"(
+  Mrv2311 02082417212D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 2 1 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -20.9372 7.145 0 0 RAD=2
+M  V30 2 C -22.2708 6.375 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
+    REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
+    REQUIRE(result.status & MolStandardize::BASIC_VALIDATION_ERROR);
+  }
+
   SECTION("failing 2D validation, non-null Z coords") {
     const char * molblock = R"(
                     2D          
