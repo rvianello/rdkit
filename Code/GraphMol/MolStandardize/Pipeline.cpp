@@ -126,14 +126,15 @@ RWMOL_SPTR Pipeline::sanitize(RWMOL_SPTR mol, PipelineResult & result) const
 
   try {
     // convert to smiles and later check if the structure was modified
-    auto smiles = MolToSmiles(*mol);
+    auto reference = MolToSmiles(*mol);
     // TODO: consider extending this pre-validation step to other
     // sanitization flags that may be needed/useful, but do not introduce
     // significant changes in the input.
     constexpr unsigned int sanitizeOps = MolOps::SANITIZE_CLEANUP;
     unsigned int failedOp = 0;
     MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
-    if (MolToSmiles(*mol) != smiles) {
+    auto smiles = MolToSmiles(*mol);
+    if (reference != smiles) {
       result.append(
         SANITIZATION_APPLIED,
         "The representation of some functional groups was modified in a pre-validation cleanup step.");
@@ -149,6 +150,9 @@ RWMOL_SPTR Pipeline::sanitize(RWMOL_SPTR mol, PipelineResult & result) const
 }
 
 namespace {
+  // The error messages from the ValidationMethod classes include some metadata
+  // in a string prefix that are not particularly useful within the context of this
+  // Pipeline. The function below removes that prefix.
   static const std::regex prefix("^(ERROR|INFO): \\[.+\\] ");
   std::string removeErrorPrefix(const std::string & message) {
     return std::regex_replace(message, prefix, "");
@@ -267,8 +271,7 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
   // keep the largest fragment
   try {
     LargestFragmentChooser fragmentChooser;
-    std::unique_ptr<ROMol> largestFragment {fragmentChooser.choose(*mol)};
-    mol.reset(static_cast<RWMol *>(largestFragment.release()));
+    fragmentChooser.chooseInPlace(*mol);
   }
   catch (...) {
     result.append(
@@ -320,7 +323,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
     return {{}, {}};
   }
 
-  // Check if `mol` was submitted in a "reasonable" ionization state
+  // Check if `mol` was submitted in a suitable ionization state
   int molCharge {};
   for (auto atom: mol->atoms()) {
     molCharge += atom->getFormalCharge();

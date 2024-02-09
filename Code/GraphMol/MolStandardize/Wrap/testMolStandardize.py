@@ -1334,6 +1334,7 @@ M  END
   def test24Pipeline(self):
     pipeline = rdMolStandardize.Pipeline()
 
+    # invalid input molblock
     molblock = '''
              sldfj;ldskfj sldkjfsd;lkf 
 M  V30 BEGIN CTAB
@@ -1343,6 +1344,7 @@ M  V30 BEGIN CTAB
     self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_EVENT)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.INPUT_ERROR)
 
+    # R group
     molblock = '''
   Mrv2311 01162413552D          
 
@@ -1365,6 +1367,7 @@ M  END
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.FEATURES_VALIDATION_ERROR)
 
+    # no atoms
     molblock = '''
           10052313452D          
 
@@ -1380,6 +1383,7 @@ M  END
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.BASIC_VALIDATION_ERROR)
 
+    # neutral quaternary N
     molblock = '''
           10242314442D          
 
@@ -1406,10 +1410,7 @@ M  END
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
     self.assertNotEqual(result.status, rdMolStandardize.PipelineStatus.NO_EVENT)
     self.assertTrue(result.status & rdMolStandardize.PipelineStatus.VALIDATION_ERROR)
-    self.assertTrue(result.status & rdMolStandardize.PipelineStatus.STANDARDIZATION_ERROR)
-    self.assertEqual(result.status,
-                     rdMolStandardize.PipelineStatus.BASIC_VALIDATION_ERROR
-                     | rdMolStandardize.PipelineStatus.FRAGMENT_STANDARDIZATION_ERROR)
+    self.assertEqual(result.status, rdMolStandardize.PipelineStatus.BASIC_VALIDATION_ERROR)
 
     molblock = '''
                     2D          

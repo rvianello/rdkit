@@ -95,13 +95,10 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR)  != MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
-    REQUIRE(result.status & MolStandardize::STANDARDIZATION_ERROR);
-    REQUIRE(result.status == (
-      MolStandardize::BASIC_VALIDATION_ERROR
-      | MolStandardize::FRAGMENT_STANDARDIZATION_ERROR
-      ));
+    REQUIRE((result.status & MolStandardize::STANDARDIZATION_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE(result.status == MolStandardize::BASIC_VALIDATION_ERROR);
   }
 
   SECTION("failing Isotopes validation") {
@@ -1099,6 +1096,78 @@ M  END
     auto endAtom = wedged->getEndAtom();
     REQUIRE(endAtom->getAtomicNum() == 6);
     REQUIRE(endAtom->getDegree() == 1);
+  }
+
+  SECTION("pipeline doesn't remove stereo bonds from biaryls") {
+    const char * molblock = R"(
+  Mrv2311 02092409022D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 12 13 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -17.8543 8.7068 0 0
+M  V30 2 C -19.1878 7.9368 0 0
+M  V30 3 C -19.1878 6.3966 0 0
+M  V30 4 C -17.8543 5.6266 0 0
+M  V30 5 C -16.5205 6.3966 0 0
+M  V30 6 C -16.5205 7.9368 0 0
+M  V30 7 C -17.8543 4.0866 0 0
+M  V30 8 C -19.1879 3.3166 0 0
+M  V30 9 C -19.1879 1.7764 0 0
+M  V30 10 C -17.8544 1.0064 0 0
+M  V30 11 C -16.5206 1.7763 0 0
+M  V30 12 C -16.5206 3.3165 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 2 1 2
+M  V30 2 1 2 3
+M  V30 3 2 3 4
+M  V30 4 1 4 5 CFG=1
+M  V30 5 2 5 6
+M  V30 6 1 6 1
+M  V30 7 1 4 7
+M  V30 8 1 8 9
+M  V30 9 2 9 10
+M  V30 10 1 10 11
+M  V30 11 2 11 12
+M  V30 12 2 7 8
+M  V30 13 1 12 7
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NO_EVENT);
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+  
+    Chirality::reapplyMolBlockWedging(*parentMol);
+
+    const Bond * wedged = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondDir = bond->getBondDir();
+      if (bondDir == Bond::BondDir::BEGINWEDGE) {
+        wedged = bond;
+        break;
+      }
+    }
+    REQUIRE(wedged != nullptr);
+
+    auto beginAtom = wedged->getBeginAtom();
+    // there's only two position with degree 3
+    // and they are equivalent
+    REQUIRE(beginAtom->getDegree() == 3);
   }
 
 }
