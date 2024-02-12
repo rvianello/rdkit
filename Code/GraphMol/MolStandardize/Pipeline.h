@@ -28,7 +28,7 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
   bool reportAllFailures {true};
   bool allowEnhancedStereo {false};
   double is2DZeroThreshold {1e-3};
-  double atomClashLimit {0.3};
+  double atomClashLimit {0.03};
   double bondLengthLimit {10.};
 
   // cleanup/standardization
