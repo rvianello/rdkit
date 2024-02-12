@@ -173,9 +173,10 @@ IsotopeValidation::validate(const ROMol &mol, bool reportAllFailures) const {
     }
 
     std::string symbol = atom->getSymbol();
-    if (strict) {
+    unsigned int atomicNum = atom->getAtomicNum();
+    if (atomicNum && strict) {
       PeriodicTable *periodicTable = PeriodicTable::getTable();
-      double mass = periodicTable->getMassForIsotope(symbol, isotope);
+      double mass = periodicTable->getMassForIsotope(atomicNum, isotope);
       if (mass == 0.0) {
         errors.push_back(
           "ERROR: [IsotopeValidation] The molecule contains an unknown isotope: " +
