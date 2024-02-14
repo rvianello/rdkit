@@ -1239,6 +1239,94 @@ M  END
   errout = stereo.validate(*mol, true);
   TEST_ASSERT(errout.size() == 0);
 
+  // adjacent double bonds do not interfere with the validation of a
+  // center's stereochemistry
+
+  mblock = R"(
+  Mrv2311 02142408162D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 6 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -6.9372 3.9783 0 0 CFG=2
+M  V30 2 C -8.2708 3.2083 0 0
+M  V30 3 F -6.9372 5.5183 0 0
+M  V30 4 C -5.6035 3.2083 0 0
+M  V30 5 H -6.9372 2.4383 0 0
+M  V30 6 C -9.6045 3.9783 0 0
+M  V30 7 C -10.9382 3.2083 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 1 4
+M  V30 3 1 1 3
+M  V30 4 1 1 5 CFG=1
+M  V30 5 2 2 6
+M  V30 6 1 6 7
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
+
+  for (auto msg: errout) {
+    cerr << msg << endl;
+  }
+
+  TEST_ASSERT(errout.size() == 0);
+
+  // stereo bonds between stereocenters do not interfere with the validation
+  // of each individual center.
+  // Note: according to IUPAC guidelines stereo bonds between stereocenters
+  // should be avoided. The validation doesn't doesn't restrict the positioning
+  // of stereo bonds on actual stereocenters and it would be complex to determine
+  // if better options were available. The intention here is just to try and make
+  // sure that in case any such stereo bonds are present, the stereochemistry can
+  // be still interpreted correctly, even if their use may be questionable.
+
+  mblock = R"(
+  Mrv2311 02142408012D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -6.9372 3.9783 0 0 CFG=2
+M  V30 2 C -8.2708 3.2083 0 0
+M  V30 3 F -6.9372 5.5183 0 0
+M  V30 4 C -5.6035 3.2083 0 0
+M  V30 5 H -6.9372 2.4383 0 0
+M  V30 6 Br -9.6045 3.9783 0 0
+M  V30 7 C -8.2708 1.6683 0 0
+M  V30 8 F -8.2708 4.7483 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1 CFG=1
+M  V30 2 1 1 4
+M  V30 3 1 1 3
+M  V30 4 1 2 7
+M  V30 5 1 2 6
+M  V30 6 1 1 5 CFG=1
+M  V30 7 1 2 8
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
+
+  for (auto msg: errout) {
+    cerr << msg << endl;
+  }
+
+  TEST_ASSERT(errout.size() == 0);
+
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
 

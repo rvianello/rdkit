@@ -571,6 +571,12 @@ namespace {
     return false;
   }
 
+  struct BondInfo {
+    const Bond * bond = nullptr;
+    Bond::BondDir bondDir = Bond::BondDir::NONE;
+    double angle = 0.;
+  };
+
   struct BondDirCount {
     unsigned int wedge = 0;
     unsigned int dash = 0;
@@ -580,30 +586,35 @@ namespace {
 
   struct NeighborsInfo {
     NeighborsInfo(const ROMol &mol, const Atom * atom);
-    std::vector<const Bond *> bonds;
+    std::vector<BondInfo> bonds;
     BondDirCount dirCount;
   };
 
   NeighborsInfo::NeighborsInfo(const ROMol &mol, const Atom * atom)
   {
     for (auto bond: mol.atomBonds(atom)) {
-      bonds.push_back(bond);
-      Bond::BondDir dir = bond->getBondDir();
+      BondInfo info {};
+      info.bond = bond;
+      if (bond->getBeginAtom() == atom) {
+        // do not consider the bond direction
+        // settings of bonds that begin from
+        // neighboring atoms
+        info.bondDir = bond->getBondDir();
+      }
+      bonds.push_back(info);
+    }
+
+    for (const auto & info: bonds) {
+      Bond::BondDir dir = info.bondDir;
       switch (dir) {
       case Bond::BondDir::BEGINDASH:
-        if (bond->getBeginAtom() == atom) {
-          ++dirCount.dash;
-        }
+        ++dirCount.dash;
         break;
       case Bond::BondDir::BEGINWEDGE:
-        if (bond->getBeginAtom() == atom) {
-          ++dirCount.wedge;
-        }
+        ++dirCount.wedge;
         break;
       case Bond::BondDir::UNKNOWN:
-        if (bond->getBeginAtom() == atom) {
-          ++dirCount.unknown;
-        }
+        ++dirCount.unknown;
         break;
       case Bond::BondDir::NONE:
         // ok, ignore
@@ -617,28 +628,24 @@ namespace {
     auto p = conf.getAtomPos(atom->getIdx());
 
     auto degree = bonds.size();
-    std::vector<double> angles(degree);
 
-    auto bond0 = bonds[0];
+    auto bond0 = bonds[0].bond;
     auto atom0 = bond0->getOtherAtom(atom);
     auto v0 = conf.getAtomPos(atom0->getIdx()) - p;
     for (unsigned int n=1; n < degree; ++n) {
-      auto bondn = bonds[n];
+      auto bondn = bonds[n].bond;
       auto atomn = bondn->getOtherAtom(atom);
       auto vn = conf.getAtomPos(atomn->getIdx()) - p;
-      angles[n] = v0.signedAngleTo(vn);
+      bonds[n].angle = v0.signedAngleTo(vn);
     }
 
     // sort neighbors
     for (unsigned int i=2; i < degree; ++i) {
       for (unsigned int j=i; j>1; --j) {
-        if (angles[j] < angles[j-1]) {
-          auto bond = bonds[j];
+        if (bonds[j].angle < bonds[j-1].angle) {
+          auto info = bonds[j];
           bonds[j] = bonds[j-1];
-          bonds[j-1] = bond;
-          auto angle = angles[j];
-          angles[j] = angles[j-1];
-          angles[j-1] = angle;
+          bonds[j-1] = info;
         }
         else {
           break;
@@ -657,7 +664,7 @@ namespace {
       // identify the stereo bond
       unsigned int i;
       for (i=0; i<3; ++i) {
-        Bond::BondDir bondDir = neighborsInfo.bonds[i]->getBondDir();
+        Bond::BondDir bondDir = neighborsInfo.bonds[i].bondDir;
         if (bondDir == Bond::BondDir::BEGINDASH || bondDir == Bond::BondDir::BEGINWEDGE) {
           break;
         }
@@ -665,9 +672,9 @@ namespace {
       // check for the colinearity of the stereocenter and the other two ligands.
       const auto & conf = mol.getConformer();
       auto p = conf.getAtomPos(atom->getIdx());
-      auto atoma = neighborsInfo.bonds[(i+1)%3]->getOtherAtom(atom);
+      auto atoma = neighborsInfo.bonds[(i+1)%3].bond->getOtherAtom(atom);
       auto va = conf.getAtomPos(atoma->getIdx()) - p;
-      auto atomb = neighborsInfo.bonds[(i+2)%3]->getOtherAtom(atom);
+      auto atomb = neighborsInfo.bonds[(i+2)%3].bond->getOtherAtom(atom);
       auto vb = conf.getAtomPos(atomb->getIdx()) - p;
 
       auto angle = va.angleTo(vb);
@@ -687,7 +694,7 @@ namespace {
 
       // The AvalonTools' struchk implementation simply doesn't allow multiple stereo bonds
       // on stereo centers with 3 explicit ligands. The validations criteria for this sub-case
-      // could be refined, but for now I'm keeping the same approach.
+      // could be in principle refined, but for now the same policy is implemented.
       errors.push_back(
         "ERROR: [StereoValidation] Atom " + std::to_string(atom->getIdx()+1)
         + " has 3 explicit substituents and multiple stereo bonds"
@@ -712,11 +719,11 @@ namespace {
     }
 
     for (unsigned int i=0; i<2; ++i) {
-      if ((neighborsInfo.bonds[i]->getBondDir() == Bond::BondDir::BEGINDASH &&
-           neighborsInfo.bonds[i+2]->getBondDir() == Bond::BondDir::BEGINWEDGE)
+      if ((neighborsInfo.bonds[i].bondDir == Bond::BondDir::BEGINDASH &&
+           neighborsInfo.bonds[i+2].bondDir == Bond::BondDir::BEGINWEDGE)
           ||
-          (neighborsInfo.bonds[i]->getBondDir() == Bond::BondDir::BEGINWEDGE &&
-           neighborsInfo.bonds[i+2]->getBondDir() == Bond::BondDir::BEGINDASH)) {
+          (neighborsInfo.bonds[i].bondDir == Bond::BondDir::BEGINWEDGE &&
+           neighborsInfo.bonds[i+2].bondDir == Bond::BondDir::BEGINDASH)) {
         errors.push_back(
           "ERROR: [StereoValidation] Atom " + std::to_string(atom->getIdx()+1)
           + " has opposing stereo bonds with different up/down orientation"
@@ -728,11 +735,11 @@ namespace {
     }
 
     for (unsigned int i=0; i<4; ++i) {
-      if ((neighborsInfo.bonds[i]->getBondDir() == Bond::BondDir::BEGINDASH &&
-           neighborsInfo.bonds[(i+1)%4]->getBondDir() == Bond::BondDir::BEGINDASH)
+      if ((neighborsInfo.bonds[i].bondDir == Bond::BondDir::BEGINDASH &&
+           neighborsInfo.bonds[(i+1)%4].bondDir == Bond::BondDir::BEGINDASH)
           ||
-          (neighborsInfo.bonds[i]->getBondDir() == Bond::BondDir::BEGINWEDGE &&
-           neighborsInfo.bonds[(i+1)%4]->getBondDir() == Bond::BondDir::BEGINWEDGE)) {
+          (neighborsInfo.bonds[i].bondDir == Bond::BondDir::BEGINWEDGE &&
+           neighborsInfo.bonds[(i+1)%4].bondDir == Bond::BondDir::BEGINWEDGE)) {
         errors.push_back(
           "ERROR: [StereoValidation] Atom " + std::to_string(atom->getIdx()+1)
           + " has adjacent stereo bonds with like orientation"
@@ -754,21 +761,21 @@ namespace {
 
       // identify the bond index for the stereo bond with specified direction.
       for (unsigned int i=0; i<4; ++i) {
-        Bond::BondDir bondDir = neighborsInfo.bonds[i]->getBondDir();
+        Bond::BondDir bondDir = neighborsInfo.bonds[i].bondDir;
         if (bondDir == Bond::BondDir::BEGINDASH || bondDir == Bond::BondDir::BEGINWEDGE) {
           // count how many of the other bonds lie on the opposite half-plane, i.e.
           // form an angle > pi/4 with the stereo bond (compute the dot-product of the
           // corresponding vectors, and check if it's negative).
           unsigned int opposed = 0;
           auto p = conf.getAtomPos(atom->getIdx());
-          auto bondi = neighborsInfo.bonds[i];
+          auto bondi = neighborsInfo.bonds[i].bond;
           auto atomi = bondi->getOtherAtom(atom);
           auto vi = conf.getAtomPos(atomi->getIdx()) - p;
           for (unsigned int j=0; j<4; ++j) {
             if (j==i) {
               continue;
             }
-            auto bondj = neighborsInfo.bonds[j];
+            auto bondj = neighborsInfo.bonds[j].bond;
             auto atomj = bondj->getOtherAtom(atom);
             auto vj = conf.getAtomPos(atomj->getIdx()) - p;
             if (vi.x*vj.x + vi.y*vj.y < 0.) {
@@ -795,14 +802,14 @@ namespace {
       // the middle non-stereo bond is badly positioned (i.e., too short
       // compared to the other two on its sides).
       for (unsigned int i=0; i<4; i++) {
-        Bond::BondDir bondDir = neighborsInfo.bonds[i]->getBondDir();
+        Bond::BondDir bondDir = neighborsInfo.bonds[i].bondDir;
         if (bondDir == Bond::BondDir::BEGINDASH || bondDir == Bond::BondDir::BEGINWEDGE) {
           auto j = (i+1) % 4;
           auto k = (i+2) % 4;
           auto l = (i+3) % 4;
-          auto atomj = neighborsInfo.bonds[j]->getOtherAtom(atom);
-          auto atomk = neighborsInfo.bonds[k]->getOtherAtom(atom);
-          auto atoml = neighborsInfo.bonds[l]->getOtherAtom(atom);
+          auto atomj = neighborsInfo.bonds[j].bond->getOtherAtom(atom);
+          auto atomk = neighborsInfo.bonds[k].bond->getOtherAtom(atom);
+          auto atoml = neighborsInfo.bonds[l].bond->getOtherAtom(atom);
           auto pj = conf.getAtomPos(atomj->getIdx());
           auto pk = conf.getAtomPos(atomk->getIdx());
           auto pl = conf.getAtomPos(atoml->getIdx());
