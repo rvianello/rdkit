@@ -617,7 +617,13 @@ namespace {
         ++dirCount.unknown;
         break;
       case Bond::BondDir::NONE:
-        // ok, ignore
+        // ok, bonds with unspecified direction
+        // are fine to ignore
+      case Bond::ENDUPRIGHT:
+      case Bond::ENDDOWNRIGHT:
+        // also ignore direction settings that
+        // may describe the configuration of an
+        // adjacent double bond
         break;
       default:
         ++dirCount.other;
@@ -883,7 +889,7 @@ namespace {
       errors.push_back(
         "ERROR: [StereoValidation] one or more bonds incident to atom "
         + std::to_string(atom->getIdx()+1)
-        + " have invalid direction settings");
+        + " have unexpected direction settings");
       // this is an unlikely condition and it would make little sense to
       // continue the analysis also when reportAllFailures were set.
       return;
