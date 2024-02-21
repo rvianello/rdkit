@@ -770,8 +770,7 @@ namespace {
         Bond::BondDir bondDir = neighborsInfo.bonds[i].bondDir;
         if (bondDir == Bond::BondDir::BEGINDASH || bondDir == Bond::BondDir::BEGINWEDGE) {
           // count how many of the other bonds lie on the opposite half-plane, i.e.
-          // form an angle > pi/4 with the stereo bond (compute the dot-product of the
-          // corresponding vectors, and check if it's negative).
+          // form an angle > pi/4 with the stereo bond.
           unsigned int opposed = 0;
           auto p = conf.getAtomPos(atom->getIdx());
           auto bondi = neighborsInfo.bonds[i].bond;
@@ -784,7 +783,7 @@ namespace {
             auto bondj = neighborsInfo.bonds[j].bond;
             auto atomj = bondj->getOtherAtom(atom);
             auto vj = conf.getAtomPos(atomj->getIdx()) - p;
-            if (vi.x*vj.x + vi.y*vj.y < 0.) {
+            if (vi.angleTo(vj) > 95.*M_PI/180.) {
               ++opposed;
             }
           }
