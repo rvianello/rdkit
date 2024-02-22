@@ -31,6 +31,7 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
   double is2DZeroThreshold {1e-3};
   double atomClashLimit {0.03};
   double bondLengthLimit {10.};
+  bool allowLongBondsInRings {true};
 
   // cleanup/standardization
   // metal disconnector options

@@ -188,6 +188,7 @@ struct validate_wrapper {
       boost::noncopyable>("Layout2DValidation")
         .def(python::init<double>())
         .def(python::init<double, double>())
+        .def(python::init<double, double, bool>())
       ;
 
     python::class_<

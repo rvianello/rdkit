@@ -36,6 +36,7 @@ void wrap_pipeline() {
         .def_readwrite("is2DZeroThreshold", &MolStandardize::PipelineOptions::is2DZeroThreshold)
         .def_readwrite("atomClashLimit", &MolStandardize::PipelineOptions::atomClashLimit)
         .def_readwrite("bondLengthLimit", &MolStandardize::PipelineOptions::bondLengthLimit)
+        .def_readwrite("allowLongBondsInRings", &MolStandardize::PipelineOptions::allowLongBondsInRings)
         .def_readwrite("metalNof", &MolStandardize::PipelineOptions::metalNof)
         .def_readwrite("metalNon", &MolStandardize::PipelineOptions::metalNon)
         .def_readwrite("normalizerData", &MolStandardize::PipelineOptions::normalizerData)

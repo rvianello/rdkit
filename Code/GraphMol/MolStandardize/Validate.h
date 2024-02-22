@@ -239,8 +239,9 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation
 class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation 
     : public ValidationMethod {
  public:
-  Layout2DValidation(double clashLimit=0.15, double bondLengthLimit=10)
-    : clashLimit(clashLimit), bondLengthLimit(bondLengthLimit) {};
+  Layout2DValidation(double clashLimit=0.15, double bondLengthLimit=10, bool allowLongBondsInRings=true)
+    : clashLimit(clashLimit), bondLengthLimit(bondLengthLimit),
+      allowLongBondsInRings(allowLongBondsInRings) {};
   std::vector<ValidationErrorInfo> validate(
       const ROMol &mol, bool reportAllFailures) const override;
   std::shared_ptr<ValidationMethod> copy() const override {
@@ -249,6 +250,7 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation
  private:
   double clashLimit;
   double bondLengthLimit;
+  bool allowLongBondsInRings;
 };
 
 //! 

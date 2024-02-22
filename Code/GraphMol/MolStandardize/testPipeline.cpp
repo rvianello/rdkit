@@ -292,6 +292,99 @@ M  END
     REQUIRE(result.status & MolStandardize::LAYOUT2D_VALIDATION_ERROR);
   }
 
+  SECTION("failing validation, abnormally long bonds") {
+    const char * molblock = R"(
+          01112413352D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -28.1663 10.4367 0 0
+M  V30 2 C -29.5 9.6667 0 0
+M  V30 3 C -29.5 11.2067 0 0
+M  V30 4 F 0.0 10.4367 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 2 3
+M  V30 3 1 3 1
+M  V30 4 1 1 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
+    REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
+    REQUIRE(result.status & MolStandardize::LAYOUT2D_VALIDATION_ERROR);
+
+    molblock = R"(
+  Mrv2311 02222409302D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 17 17 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -9.0205 2.1033 0 0
+M  V30 2 C -10.3542 1.3333 0 0
+M  V30 3 C -7.4805 2.1033 0 0
+M  V30 4 C -5.9405 2.1033 0 0
+M  V30 5 C -4.4005 2.1033 0 0
+M  V30 6 C -2.8605 2.1033 0 0
+M  V30 7 C -1.3205 2.1033 0 0
+M  V30 8 C 0.2195 2.1033 0 0
+M  V30 9 C 1.7595 2.1033 0 0
+M  V30 10 C 3.2995 2.1033 0 0
+M  V30 11 C 4.8395 2.1033 0 0
+M  V30 12 C 6.3795 2.1033 0 0
+M  V30 13 C 7.9195 2.1033 0 0
+M  V30 14 C 9.4595 2.1033 0 0
+M  V30 15 C 10.9995 2.1033 0 0
+M  V30 16 C 12.5395 2.1033 0 0
+M  V30 17 C 13.7854 1.1981 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 1 3
+M  V30 3 1 3 4
+M  V30 4 1 4 5
+M  V30 5 1 5 6
+M  V30 6 1 6 7
+M  V30 7 1 7 8
+M  V30 8 1 8 9
+M  V30 9 1 9 10
+M  V30 10 1 10 11
+M  V30 11 1 11 12
+M  V30 12 1 12 13
+M  V30 13 1 13 14
+M  V30 14 1 14 15
+M  V30 15 1 15 16
+M  V30 16 1 16 17
+M  V30 17 1 17 2
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    // long bonds in rings are by defaul allowed
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+  }
+
   SECTION("failing stereo validation, too many stereo bonds (3 subst. case)") {
     const char * molblock = R"(
                     2D          
@@ -425,6 +518,74 @@ M  END
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE(result.status == MolStandardize::NO_EVENT);
+  }
+}
+
+TEST_CASE("VALIDATION_WITH_DISALLOWED_LONG_BONDS_IN_RINGS") {
+
+  MolStandardize::PipelineOptions options;
+  options.allowLongBondsInRings = false;
+  MolStandardize::Pipeline pipeline(options);
+
+  SECTION("report long bonds in rings") {
+    const char * molblock = R"(
+  Mrv2311 02222409302D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 17 17 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -9.0205 2.1033 0 0
+M  V30 2 C -10.3542 1.3333 0 0
+M  V30 3 C -7.4805 2.1033 0 0
+M  V30 4 C -5.9405 2.1033 0 0
+M  V30 5 C -4.4005 2.1033 0 0
+M  V30 6 C -2.8605 2.1033 0 0
+M  V30 7 C -1.3205 2.1033 0 0
+M  V30 8 C 0.2195 2.1033 0 0
+M  V30 9 C 1.7595 2.1033 0 0
+M  V30 10 C 3.2995 2.1033 0 0
+M  V30 11 C 4.8395 2.1033 0 0
+M  V30 12 C 6.3795 2.1033 0 0
+M  V30 13 C 7.9195 2.1033 0 0
+M  V30 14 C 9.4595 2.1033 0 0
+M  V30 15 C 10.9995 2.1033 0 0
+M  V30 16 C 12.5395 2.1033 0 0
+M  V30 17 C 13.7854 1.1981 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 1 3
+M  V30 3 1 3 4
+M  V30 4 1 4 5
+M  V30 5 1 5 6
+M  V30 6 1 6 7
+M  V30 7 1 7 8
+M  V30 8 1 8 9
+M  V30 9 1 9 10
+M  V30 10 1 10 11
+M  V30 11 1 11 12
+M  V30 12 1 12 13
+M  V30 13 1 13 14
+M  V30 14 1 14 15
+M  V30 15 1 15 16
+M  V30 16 1 16 17
+M  V30 17 1 17 2
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
+    REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
+    REQUIRE(result.status & MolStandardize::LAYOUT2D_VALIDATION_ERROR);
   }
 }
 

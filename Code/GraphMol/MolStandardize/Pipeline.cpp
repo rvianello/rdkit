@@ -207,7 +207,8 @@ RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result) const
   }
 
   // validate the 2D layout (check for clashing atoms and abnormally long bonds)
-  Layout2DValidation layout2DValidation(options.atomClashLimit, options.bondLengthLimit);
+  Layout2DValidation layout2DValidation(
+    options.atomClashLimit, options.bondLengthLimit, options.allowLongBondsInRings);
   if (!applyValidation(layout2DValidation, LAYOUT2D_VALIDATION_ERROR) && !options.reportAllFailures) {
     return mol;
   }

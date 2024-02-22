@@ -499,20 +499,30 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
     }
   }
 
+  // make sure we have the required rings info available
+  // if needed
+  if (allowLongBondsInRings) {
+    if (!mol.getRingInfo()->isInitialized()) {
+      RDKit::MolOps::fastFindRings(mol);
+    }
+  }
+
   for (auto bond : mol.bonds()) {
     unsigned int i = bond->getBeginAtomIdx();
     const auto & pi = conf.getAtomPos(i);
     unsigned int j = bond->getEndAtomIdx();
     const auto & pj = conf.getAtomPos(j);
 
-    auto ll = (pi.x - pj.x)*(pi.x - pj.x) + (pi.y - pj.y)*(pi.y - pj.y);
-    if (ll > bondLengthThreshold) {
-      errors.push_back(
-        "ERROR: [Layout2DValidation] The length of bond " + std::to_string(bond->getIdx()+1)
-        + " between atoms " + std::to_string(i+1) + " and " + std::to_string(j+1)
-        + " exceeds a configured limit");
-      if (!reportAllFailures) {
-        return errors;
+    if (!allowLongBondsInRings || mol.getRingInfo()->numBondRings(bond->getIdx()) == 0) {
+      auto ll = (pi.x - pj.x)*(pi.x - pj.x) + (pi.y - pj.y)*(pi.y - pj.y);
+      if (ll > bondLengthThreshold) {
+        errors.push_back(
+          "ERROR: [Layout2DValidation] The length of bond " + std::to_string(bond->getIdx()+1)
+          + " between atoms " + std::to_string(i+1) + " and " + std::to_string(j+1)
+          + " exceeds a configured limit");
+        if (!reportAllFailures) {
+          return errors;
+        }
       }
     }
 
