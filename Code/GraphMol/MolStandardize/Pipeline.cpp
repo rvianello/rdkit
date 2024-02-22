@@ -318,29 +318,22 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
     return {{}, {}};
   }
 
+  // Check if `mol` was submitted in a suitable ionization state
   int parentCharge {};
   for (auto atom: parent->atoms()) {
     parentCharge += atom->getFormalCharge();
   }
 
-  if (parentCharge <0) {
-    // this is actually unexpected
-    result.append(
-      CHARGE_STANDARDIZATION_ERROR,
-      "Could not produce a valid uncharged structure");
-    return {{}, {}};
-  }
-
-  // Check if `mol` was submitted in a suitable ionization state
   int molCharge {};
   for (auto atom: mol->atoms()) {
     molCharge += atom->getFormalCharge();
   }
 
   // If mol is neutral or in a protonation state that partially or fully
-  // balances the non-neutralizable positively charged sites in the parent
-  // structure, then mol is accepted. Otherwise, it is replaced by its parent.
-  if (molCharge > parentCharge || molCharge < 0) {
+  // balances the non-neutralizable charged sites in the parent structure,
+  // then mol is accepted. Otherwise, it is replaced by its parent.
+  if ((molCharge > 0 && molCharge > parentCharge) ||
+      (molCharge < 0 && molCharge < parentCharge)) {
     mol = parent;
   }
 
