@@ -44,33 +44,40 @@ PipelineResult Pipeline::run(const std::string & molblock) const
     return result;
   }
 
-  // input sanitization + cleanup
-  result.stage = SANITIZATION;
-  mol = sanitize(mol, result);
-  if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
-    return result;
+  RWMOL_SPTR_PAIR output;
+
+  if (mol->getNumAtoms() == 0 && options.allowEmptyMolecules) {
+    output = {mol, mol};
+  }
+  else {
+    // input sanitization + cleanup
+    result.stage = SANITIZATION;
+    mol = sanitize(mol, result);
+    if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
+      return result;
+    }
+
+    // validate the structure
+    result.stage = VALIDATION;
+    mol = validate(mol, result);
+    if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
+      return result;
+    }
+
+    // standardize/normalize
+    result.stage = STANDARDIZATION;
+    mol = standardize(mol, result);
+    if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
+      return result;
+    }
+    output = makeParent(mol, result);
+    if (!output.first || !output.second
+        || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
+      return result;
+    }
   }
 
-  // validate the structure
-  result.stage = VALIDATION;
-  mol = validate(mol, result);
-  if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
-    return result;
-  }
-
-  // standardize/normalize
-  result.stage = STANDARDIZATION;
-  mol = standardize(mol, result);
-  if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
-    return result;
-  }
-  RWMOL_SPTR_PAIR output = makeParent(mol, result);
-  if (!output.first || !output.second
-      || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
-    return result;
-  }
-
-  // serialize as MolBlock
+  // serialize as MolBlocks
   result.stage = SERIALIZING_OUTPUT;
   serialize(output, result);
   if ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures) {

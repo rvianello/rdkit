@@ -31,6 +31,7 @@ void wrap_pipeline() {
     python::class_<MolStandardize::PipelineOptions>("PipelineOptions")
         .def_readwrite("strictParsing", &MolStandardize::PipelineOptions::strictParsing)
         .def_readwrite("reportAllFailures", &MolStandardize::PipelineOptions::reportAllFailures)
+        .def_readwrite("allowEmptyMolecules", &MolStandardize::PipelineOptions::allowEmptyMolecules)
         .def_readwrite("allowEnhancedStereo", &MolStandardize::PipelineOptions::allowEnhancedStereo)
         .def_readwrite("is2DZeroThreshold", &MolStandardize::PipelineOptions::is2DZeroThreshold)
         .def_readwrite("atomClashLimit", &MolStandardize::PipelineOptions::atomClashLimit)

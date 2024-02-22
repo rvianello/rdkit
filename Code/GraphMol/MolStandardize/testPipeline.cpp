@@ -400,6 +400,33 @@ M  END
   }
 }
 
+TEST_CASE("VALIDATION_WITH_ALLOW_EMPTY_MOLS_OPTION") {
+
+  MolStandardize::PipelineOptions options;
+  options.allowEmptyMolecules = true;
+  MolStandardize::Pipeline pipeline(options);
+
+  SECTION("no atoms produces no error") {
+    const char * molblock = R"(
+          10052313452D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 0 0 0 0 0
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE(result.status == MolStandardize::NO_EVENT);
+  }
+}
 
 TEST_CASE("STANDARDIZATION") {
 
