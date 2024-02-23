@@ -832,7 +832,6 @@ M  END
     REQUIRE(outputSmiles == "C[N+](C)(C)CC(=O)[O-]");
   }
 
-  /* FIXME
   SECTION("uncharge tertiary amine w/ explicit hydrogen") {
     const char * molblock = R"(
   Mrv2311 02012412352D          
@@ -864,14 +863,15 @@ M  END
     }
 
     REQUIRE(result.stage == MolStandardize::COMPLETED);
-    REQUIRE(result.status == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::PROTONATION_CHANGED);
     REQUIRE(result.parentMolBlock == result.outputMolBlock);
 
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
     REQUIRE(parentSmiles == "CN(C)C");
-  }*/
+  }
 
   SECTION("standardize preserves explicit Hs on chiral centers") {
     const char * molblock = R"(

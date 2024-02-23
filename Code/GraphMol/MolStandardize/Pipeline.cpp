@@ -298,6 +298,38 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
   return mol;
 }
 
+namespace {
+
+  void removeHsAtProtonatedSites(RWMOL_SPTR mol) {
+    boost::dynamic_bitset<> protons{mol->getNumAtoms(), 0};
+    for (auto atom : mol->atoms()) {
+      if (atom->getAtomicNum() != 1 || atom->getDegree() != 1) {
+        continue;
+      }
+      for (auto neighbor : mol->atomNeighbors(atom)) {
+        if (neighbor->getFormalCharge() > 0) {
+          protons.set(atom->getIdx());
+        }
+      }
+    }
+    if (protons.any()) {
+      for (int idx = mol->getNumAtoms() - 1; idx >= 0; --idx) {
+        if (!protons[idx]) {
+          continue;
+        }
+        auto atom = mol->getAtomWithIdx(idx);
+        for (auto bond : mol->atomBonds(atom)) {
+          auto neighbor = bond->getOtherAtom(atom);
+          neighbor->setNumExplicitHs(neighbor->getNumExplicitHs() + 1);
+          break; // there are no other bonds anyways
+        }
+        mol->removeAtom(atom);
+      }
+      mol->updatePropertyCache(false);
+    }
+  }
+}
+
 Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & result) const
 {
   auto reference = MolToSmiles(*mol);
@@ -306,6 +338,15 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
 
   // overall charge status
   try {
+    // The Uncharger implementation wouldn't identify the positively
+    // charged sites with adjacent explicit Hs correctly (it's a quite
+    // unlikely configuration, but potentially possible considering that
+    // the pipeline operates on unsanitized input).
+    //
+    // If present, these Hs are therefore removed from the molecular graph
+    // prior to neutralization.
+    removeHsAtProtonatedSites(parent);
+
     static const bool canonicalOrdering = false;
     static const bool force = true;
     Uncharger uncharger(canonicalOrdering, force);
