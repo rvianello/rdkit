@@ -643,11 +643,13 @@ namespace {
     const auto & conf = mol.getConformer();
     auto p = conf.getAtomPos(atom->getIdx());
 
-    auto degree = bonds.size();
-
     auto bond0 = bonds[0].bond;
     auto atom0 = bond0->getOtherAtom(atom);
     auto v0 = conf.getAtomPos(atom0->getIdx()) - p;
+
+    // sort the neighbors based on the angle they form
+    // with the first one
+    auto degree = bonds.size();
     for (unsigned int n=1; n < degree; ++n) {
       auto bondn = bonds[n].bond;
       auto atomn = bondn->getOtherAtom(atom);
@@ -655,19 +657,10 @@ namespace {
       bonds[n].angle = v0.signedAngleTo(vn);
     }
 
-    // sort neighbors
-    for (unsigned int i=2; i < degree; ++i) {
-      for (unsigned int j=i; j>1; --j) {
-        if (bonds[j].angle < bonds[j-1].angle) {
-          auto info = bonds[j];
-          bonds[j] = bonds[j-1];
-          bonds[j-1] = info;
-        }
-        else {
-          break;
-        }
-      }
-    }
+    std::sort(
+      bonds.begin()+1, bonds.end(),
+      [](const BondInfo & a, const BondInfo & b) { return a.angle < b.angle; }
+    );
   }
 
   void check3CoordinatedStereo(
