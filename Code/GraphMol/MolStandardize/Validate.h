@@ -157,8 +157,7 @@ class RDKIT_MOLSTANDARDIZE_EXPORT MolVSValidation : public CompositeValidation {
 };
 
 //! The AllowedAtomsValidation class lets the user input a list of atoms,
-//! anything not on
-/// the list throws an error.
+//! anything not on the list throws an error.
 class RDKIT_MOLSTANDARDIZE_EXPORT AllowedAtomsValidation
     : public ValidationMethod {
  public:
@@ -176,8 +175,7 @@ class RDKIT_MOLSTANDARDIZE_EXPORT AllowedAtomsValidation
 };
 
 //! The DisallowedAtomsValidation class lets the user input a list of atoms and
-//! as long
-/// as there are no atoms from the list it is deemed acceptable.
+//! as long as there are no atoms from the list it is deemed acceptable.
 class RDKIT_MOLSTANDARDIZE_EXPORT DisallowedAtomsValidation
     : public ValidationMethod {
  public:
@@ -194,7 +192,8 @@ class RDKIT_MOLSTANDARDIZE_EXPORT DisallowedAtomsValidation
   std::vector<std::shared_ptr<Atom>> d_disallowedList;
 };
 
-//!
+//! The DisallowedRadicalValidation class reports an error if any
+/// unstable radicalic atoms are found.
 class RDKIT_MOLSTANDARDIZE_EXPORT DisallowedRadicalValidation
     : public ValidationMethod {
  public:
@@ -206,7 +205,11 @@ class RDKIT_MOLSTANDARDIZE_EXPORT DisallowedRadicalValidation
   }
 };
 
-//!
+//! The FeaturesValidation class reports an error if the input
+/// molecule representation includes any undesired features.
+/// The list of undesired features currently includes query atoms
+/// and bonds, dummy atoms, atom aliases, and (optionally)
+/// enhanced stereochemistry.
 class RDKIT_MOLSTANDARDIZE_EXPORT FeaturesValidation
     : public ValidationMethod {
  public:
@@ -221,7 +224,10 @@ class RDKIT_MOLSTANDARDIZE_EXPORT FeaturesValidation
   bool allowEnhancedStereo;
 };
 
-//! 
+//! The Is2DValidation class reports an error if the input
+/// molecule representation is designated as 3D or if it includes
+/// non-null Z coordinates, and in case all atoms are assigned the
+/// same coordinates.
 class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation 
     : public ValidationMethod {
  public:
@@ -235,7 +241,9 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation
   double threshold;
 };
 
-//! 
+//! The Layout2DValidation class reports an error if any atoms are
+/// too close to any other atoms or bonds, and in case any bonds are
+/// too long.
 class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation 
     : public ValidationMethod {
  public:
@@ -253,7 +261,11 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation
   bool allowLongBondsInRings;
 };
 
-//! 
+//! The StereoValidation class checks various "syntactic" constraints
+/// related to the usage of stereo bonds on centers with 4 or 3 substituents,
+/// in an attempt to ensure that the associated stereochemical configuration
+/// can be interpreted unambiguously.
+/// These validation criteria were ported from the AvalonTools STRUCHK software.
 class RDKIT_MOLSTANDARDIZE_EXPORT StereoValidation 
     : public ValidationMethod {
  public:
