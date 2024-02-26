@@ -45,6 +45,8 @@ class RDKIT_MOLSTANDARDIZE_EXPORT MetalDisconnector {
  public:
   MetalDisconnector(
       const MetalDisconnectorOptions &options = MetalDisconnectorOptions());
+  MetalDisconnector(const MetalDisconnector &other) = default;
+  ~MetalDisconnector() = default;
 
   ROMol *getMetalNof();  // {return dp_metal_nof;}
   ROMol *getMetalNon();  // {return dp_metal_non;}
