@@ -389,6 +389,44 @@ M  END
   TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query bond 1 is not allowed");
 
   mblock = R"(
+  Mrv2311 02272411562D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -10.3542 4.29 0 0
+M  V30 2 C -11.6879 3.52 0 0
+M  V30 3 C -11.6879 1.9798 0 0
+M  V30 4 N -10.3542 1.21 0 0
+M  V30 5 C -9.0204 1.9798 0 0
+M  V30 6 C -9.0204 3.52 0 0
+M  V30 7 C -10.3542 5.83 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 4 1 2
+M  V30 2 4 1 6
+M  V30 3 4 2 3
+M  V30 4 4 5 6
+M  V30 5 1 1 7
+M  V30 6 4 3 4
+M  V30 7 4 4 5
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  errout = features.validate(*mol, true);
+  TEST_ASSERT(errout.size() == 6);
+  for (auto msg: errout) {
+    cerr << msg << endl;
+  }
+  errmsg = errout[0];
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Bond 1 of aromatic type is not allowed");
+
+  mblock = R"(
   MJ231601                      
 
   3  2  0  0  0  0  0  0  0  0999 V2000

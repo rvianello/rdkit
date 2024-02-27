@@ -161,6 +161,47 @@ M  END
     REQUIRE(result.status & MolStandardize::FEATURES_VALIDATION_ERROR);
   }
 
+  SECTION("failing features validation, aromatic bonds") {
+    const char * molblock = R"(
+  Mrv2311 02272411562D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -10.3542 4.29 0 0
+M  V30 2 C -11.6879 3.52 0 0
+M  V30 3 C -11.6879 1.9798 0 0
+M  V30 4 N -10.3542 1.21 0 0
+M  V30 5 C -9.0204 1.9798 0 0
+M  V30 6 C -9.0204 3.52 0 0
+M  V30 7 C -10.3542 5.83 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 4 1 2
+M  V30 2 4 1 6
+M  V30 3 4 2 3
+M  V30 4 4 5 6
+M  V30 5 1 1 7
+M  V30 6 4 3 4
+M  V30 7 4 4 5
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
+    REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
+    REQUIRE(result.status & MolStandardize::FEATURES_VALIDATION_ERROR);
+  }
+
   SECTION("failing features validation, enhanced stereo") {
     const char * molblock = R"(
   Mrv2311 01162411552D          

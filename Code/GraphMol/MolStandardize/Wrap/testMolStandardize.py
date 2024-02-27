@@ -1040,8 +1040,8 @@ chlorine	[Cl]
 
   def test24NormalizeInPlaceMT(self):
     ind = (("O=N(=O)-CC-N(=O)=O", "O=[N+]([O-])CC[N+](=O)[O-]"),
-           ("O=N(=O)-CCC-N(=O)=O", "O=[N+]([O-])CCC[N+](=O)[O-]"), ("O=N(=O)-CCCC-N(=O)=O",
-                                                                    "O=[N+]([O-])CCCC[N+](=O)[O-]"))
+           ("O=N(=O)-CCC-N(=O)=O", "O=[N+]([O-])CCC[N+](=O)[O-]"),
+           ("O=N(=O)-CCCC-N(=O)=O", "O=[N+]([O-])CCCC[N+](=O)[O-]"))
     for i in range(4):
       ind = ind + ind
     ms = [Chem.MolFromSmiles(x) for x, y in ind]
@@ -1050,8 +1050,8 @@ chlorine	[Cl]
 
   def test25ReionizeInPlaceMT(self):
     ind = (("c1cc([O-])cc(C(=O)O)c1", "O=C([O-])c1cccc(O)c1"),
-           ("c1cc(C[O-])cc(C(=O)O)c1", "O=C([O-])c1cccc(CO)c1"), ("c1cc(CC[O-])cc(C(=O)O)c1",
-                                                                  "O=C([O-])c1cccc(CCO)c1"))
+           ("c1cc(C[O-])cc(C(=O)O)c1", "O=C([O-])c1cccc(CO)c1"),
+           ("c1cc(CC[O-])cc(C(=O)O)c1", "O=C([O-])c1cccc(CCO)c1"))
     for i in range(4):
       ind = ind + ind
     ms = [Chem.MolFromSmiles(x) for x, y in ind]
@@ -1184,6 +1184,80 @@ M  END
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
     self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Query atom 1 is not allowed")
+    
+    mol = Chem.MolFromMolBlock('''
+  Mrv2311 01162411552D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -18.208 8.52 0 0 CFG=2
+M  V30 2 F -19.5417 7.75 0 0
+M  V30 3 C -16.8743 7.75 0 0
+M  V30 4 Cl -18.208 10.06 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 3 CFG=1
+M  V30 2 1 2 1
+M  V30 3 1 1 4
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STERAC1 ATOMS=(1 1)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+''')
+
+    # enhanced stereo features are by default disallowed
+    validator = rdMolStandardize.FeaturesValidation()
+    errinfo = validator.validate(mol, True)
+    self.assertEqual(len(errinfo), 1)
+    self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Enhanced stereochemistry features are not allowed")
+
+    # allow enhanced stereo
+    validator = rdMolStandardize.FeaturesValidation(True)
+    errinfo = validator.validate(mol, True)
+    self.assertEqual(len(errinfo), 0)
+
+    mol = Chem.MolFromMolBlock('''
+  Mrv2311 02272411562D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -10.3542 4.29 0 0
+M  V30 2 C -11.6879 3.52 0 0
+M  V30 3 C -11.6879 1.9798 0 0
+M  V30 4 N -10.3542 1.21 0 0
+M  V30 5 C -9.0204 1.9798 0 0
+M  V30 6 C -9.0204 3.52 0 0
+M  V30 7 C -10.3542 5.83 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 4 1 2
+M  V30 2 4 1 6
+M  V30 3 4 2 3
+M  V30 4 4 5 6
+M  V30 5 1 1 7
+M  V30 6 4 3 4
+M  V30 7 4 4 5
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+''', sanitize=False)
+
+    # aromatic bonds are by default disallowed
+    validator = rdMolStandardize.FeaturesValidation()
+    errinfo = validator.validate(mol, True)
+    self.assertEqual(len(errinfo), 6)
+    self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Bond 1 of aromatic type is not allowed")
+    
+    # allow aromatic bonds
+    validator = rdMolStandardize.FeaturesValidation(False, True)
+    errinfo = validator.validate(mol, True)
+    self.assertEqual(len(errinfo), 0)
     
     # disallowedRadicalValidation
     mol = Chem.MolFromMolBlock('''

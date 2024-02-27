@@ -213,8 +213,8 @@ class RDKIT_MOLSTANDARDIZE_EXPORT DisallowedRadicalValidation
 class RDKIT_MOLSTANDARDIZE_EXPORT FeaturesValidation
     : public ValidationMethod {
  public:
-  FeaturesValidation(bool allowEnhancedStereo=false)
-    : allowEnhancedStereo(allowEnhancedStereo) {};
+  FeaturesValidation(bool allowEnhancedStereo=false, bool allowAromaticBondType=false)
+    : allowEnhancedStereo(allowEnhancedStereo), allowAromaticBondType(allowAromaticBondType) {};
   std::vector<ValidationErrorInfo> validate(
       const ROMol &mol, bool reportAllFailures) const override;
   std::shared_ptr<ValidationMethod> copy() const override {
@@ -222,6 +222,7 @@ class RDKIT_MOLSTANDARDIZE_EXPORT FeaturesValidation
   }
  private:
   bool allowEnhancedStereo;
+  bool allowAromaticBondType;
 };
 
 //! The Is2DValidation class reports an error if the input

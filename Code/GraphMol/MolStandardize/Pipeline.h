@@ -28,6 +28,7 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
   bool reportAllFailures {true};
   bool allowEmptyMolecules {false};
   bool allowEnhancedStereo {false};
+  bool allowAromaticBondType {false};
   double is2DZeroThreshold {1e-3};
   double atomClashLimit {0.03};
   double bondLengthLimit {10.};

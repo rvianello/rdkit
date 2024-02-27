@@ -33,6 +33,7 @@ void wrap_pipeline() {
         .def_readwrite("reportAllFailures", &MolStandardize::PipelineOptions::reportAllFailures)
         .def_readwrite("allowEmptyMolecules", &MolStandardize::PipelineOptions::allowEmptyMolecules)
         .def_readwrite("allowEnhancedStereo", &MolStandardize::PipelineOptions::allowEnhancedStereo)
+        .def_readwrite("allowAromaticBondType", &MolStandardize::PipelineOptions::allowAromaticBondType)
         .def_readwrite("is2DZeroThreshold", &MolStandardize::PipelineOptions::is2DZeroThreshold)
         .def_readwrite("atomClashLimit", &MolStandardize::PipelineOptions::atomClashLimit)
         .def_readwrite("bondLengthLimit", &MolStandardize::PipelineOptions::bondLengthLimit)

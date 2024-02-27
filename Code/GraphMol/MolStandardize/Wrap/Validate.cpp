@@ -167,6 +167,7 @@ struct validate_wrapper {
       python::bases<MolStandardize::ValidationMethod>,
       boost::noncopyable>("FeaturesValidation")
         .def(python::init<bool>())
+        .def(python::init<bool, bool>())
       ;
 
     python::class_<

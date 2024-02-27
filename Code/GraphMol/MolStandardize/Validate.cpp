@@ -342,11 +342,18 @@ std::vector<ValidationErrorInfo> FeaturesValidation::validate(
     }
   }
 
-  // disallow query bonds
+  // disallow query and (optionally) aromatic bonds
   for (auto bond : mol.bonds()) {
     if (bond->hasQuery()) {
       errors.push_back(
         "ERROR: [FeaturesValidation] Query bond " + std::to_string(bond->getIdx()+1) + " is not allowed");
+      if (!reportAllFailures) {
+        return errors;
+      }
+    }
+    if (!allowAromaticBondType && bond->getBondType() == Bond::BondType::AROMATIC) {
+      errors.push_back(
+        "ERROR: [FeaturesValidation] Bond " + std::to_string(bond->getIdx()+1) + " of aromatic type is not allowed");
       if (!reportAllFailures) {
         return errors;
       }

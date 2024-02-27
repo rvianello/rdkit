@@ -177,7 +177,7 @@ RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result) const
   };
 
   // check for undesired features in the input molecule (e.g., query atoms/bonds)
-  FeaturesValidation featuresValidation(options.allowEnhancedStereo);
+  FeaturesValidation featuresValidation(options.allowEnhancedStereo, options.allowAromaticBondType);
   if (!applyValidation(featuresValidation, FEATURES_VALIDATION_ERROR) && !options.reportAllFailures) {
     return mol;
   }
