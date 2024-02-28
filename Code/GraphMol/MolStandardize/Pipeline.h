@@ -31,7 +31,7 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
   bool allowAromaticBondType {false};
   double is2DZeroThreshold {1e-3};
   double atomClashLimit {0.03};
-  double bondLengthLimit {10.};
+  double bondLengthLimit {50.};
   bool allowLongBondsInRings {true};
 
   // cleanup/standardization

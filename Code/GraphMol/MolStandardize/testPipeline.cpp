@@ -344,7 +344,7 @@ M  V30 BEGIN ATOM
 M  V30 1 C -28.1663 10.4367 0 0
 M  V30 2 C -29.5 9.6667 0 0
 M  V30 3 C -29.5 11.2067 0 0
-M  V30 4 F 0.0 10.4367 0 0
+M  V30 4 F 100.0 10.4367 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
 M  V30 1 1 2 1
@@ -565,6 +565,7 @@ M  END
 TEST_CASE("VALIDATION_WITH_DISALLOWED_LONG_BONDS_IN_RINGS") {
 
   MolStandardize::PipelineOptions options;
+  options.bondLengthLimit = 10.; // adapted to test structure
   options.allowLongBondsInRings = false;
   MolStandardize::Pipeline pipeline(options);
 
