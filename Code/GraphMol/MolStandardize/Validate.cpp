@@ -437,8 +437,8 @@ std::vector<ValidationErrorInfo> Is2DValidation::validate(
   return errors;
 }
 
-namespace {
-  double medianSquaredBondLength(const ROMol &mol, const Conformer &conf) {
+double Layout2DValidation::squaredMedianBondLength(const ROMol &mol, const Conformer &conf)
+{
     double median {};
     unsigned int numBonds = mol.getNumBonds();
     if (numBonds) {
@@ -460,8 +460,7 @@ namespace {
         median = 0.5*(values[numBonds/2-1]+values[numBonds/2]);
       }
     }
-    return median;
-  }
+  return median;
 }
 
 std::vector<ValidationErrorInfo> Layout2DValidation::validate(
@@ -483,8 +482,15 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
 
   // compute threshold values for the squared atom-atom or atom-bond
   // distance and for the maximum bond length using the median squared
-  // bond length as reference. 
-  auto reference = medianSquaredBondLength(mol, conf);
+  // bond length as reference.
+  auto reference = squaredMedianBondLength(mol, conf);
+  if (reference < minMedianBondLength*minMedianBondLength) {
+    errors.emplace_back(
+      "ERROR: [Layout2DValidation] The median bond length is smaller than the configured limit");
+    if (!reportAllFailures) {
+      return errors;
+    }
+  }
   auto atomClashThreshold = clashLimit*clashLimit*reference;
   auto bondLengthThreshold = bondLengthLimit*bondLengthLimit*reference;
 

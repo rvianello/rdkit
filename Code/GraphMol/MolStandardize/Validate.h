@@ -30,6 +30,7 @@
 namespace RDKit {
 class RWMol;
 class ROMol;
+class Conformer;
 
 namespace MolStandardize {
 
@@ -248,18 +249,23 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation
 class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation 
     : public ValidationMethod {
  public:
-  Layout2DValidation(double clashLimit=0.15, double bondLengthLimit=10, bool allowLongBondsInRings=true)
+  Layout2DValidation(
+    double clashLimit=0.15, double bondLengthLimit=10, bool allowLongBondsInRings=true,
+    double minMedianBondLength=1e-3)
     : clashLimit(clashLimit), bondLengthLimit(bondLengthLimit),
-      allowLongBondsInRings(allowLongBondsInRings) {};
+      allowLongBondsInRings(allowLongBondsInRings), minMedianBondLength(minMedianBondLength) {};
   std::vector<ValidationErrorInfo> validate(
       const ROMol &mol, bool reportAllFailures) const override;
   std::shared_ptr<ValidationMethod> copy() const override {
     return std::make_shared<Layout2DValidation>(*this);
   }
+
+  static double squaredMedianBondLength(const ROMol &mol, const Conformer &conf);
  private:
   double clashLimit;
   double bondLengthLimit;
   bool allowLongBondsInRings;
+  double minMedianBondLength;
 };
 
 //! The StereoValidation class checks various "syntactic" constraints

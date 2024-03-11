@@ -31,6 +31,7 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
   bool allowAromaticBondType {false};
   double is2DZeroThreshold {1e-3};
   double atomClashLimit {0.03};
+  double minMedianBondLength {1e-3};
   double bondLengthLimit {100.};
   bool allowLongBondsInRings {true};
 
@@ -67,6 +68,7 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
     "Charge recombination\t[N,P,As,Sb;-1:1]=[C+;v3:2]>>[*+0:1]#[C+0:2]\n"
   };
   unsigned int normalizerMaxRestarts {200};
+  double scaledMedianBondLength {1.};
 
   // serialization
   bool ouputV2000 {false};

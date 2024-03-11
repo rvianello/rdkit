@@ -8,6 +8,7 @@
 //  of the RDKit source tree.
 //
 
+#include <cmath>
 #include <regex>
 #include <sstream>
 #include "Pipeline.h"
@@ -322,6 +323,19 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
     result.append(
       FRAGMENTS_REMOVED,
       "One or more disconnected fragments (e.g., counterions) were removed.");
+  }
+
+  // scale the atoms coordinates
+  if (options.scaledMedianBondLength > 0. && mol->getNumConformers()) {
+    auto & conf = mol->getConformer();
+    double medianBondLength = sqrt(Layout2DValidation::squaredMedianBondLength(*mol, conf));
+    if (medianBondLength > options.minMedianBondLength) {
+      double scaleFactor = options.scaledMedianBondLength/medianBondLength;
+      unsigned int natoms = conf.getNumAtoms();
+      for (unsigned int i = 0; i < natoms; ++i) {
+        conf.setAtomPos(i, conf.getAtomPos(i)*scaleFactor);
+      }
+    }
   }
 
   return mol;
