@@ -1183,7 +1183,7 @@ M  END
     validator = rdMolStandardize.FeaturesValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Query atom 1 is not allowed")
+    self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Query atom 0 is not allowed")
     
     mol = Chem.MolFromMolBlock('''
   Mrv2311 01162411552D          
@@ -1252,7 +1252,7 @@ M  END
     validator = rdMolStandardize.FeaturesValidation()
     errinfo = validator.validate(mol, True)
     self.assertEqual(len(errinfo), 6)
-    self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Bond 1 of aromatic type is not allowed")
+    self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Bond 0 of aromatic type is not allowed")
     
     # allow aromatic bonds
     validator = rdMolStandardize.FeaturesValidation(False, True)
@@ -1280,7 +1280,7 @@ M  END
     validator = rdMolStandardize.DisallowedRadicalValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [DisallowedRadicalValidation] The radical at atom 1 is not allowed")
+    self.assertEqual(errinfo[0], "ERROR: [DisallowedRadicalValidation] The radical at atom 0 is not allowed")
 
     # is2DValidation
     mol = Chem.MolFromMolBlock('''
@@ -1369,7 +1369,7 @@ M  END
     validator = rdMolStandardize.Layout2DValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [Layout2DValidation] Atom 5 is too close to atom 6")
+    self.assertEqual(errinfo[0], "ERROR: [Layout2DValidation] Atom 4 is too close to atom 5")
 
     validator = rdMolStandardize.Layout2DValidation(1e-3)
     errinfo = validator.validate(mol)
@@ -1403,7 +1403,7 @@ M  END
     validator = rdMolStandardize.StereoValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
-    self.assertEqual(errinfo[0], "ERROR: [StereoValidation] Atom 2 has opposing stereo bonds with different up/down orientation")
+    self.assertEqual(errinfo[0], "ERROR: [StereoValidation] Atom 1 has opposing stereo bonds with different up/down orientation")
 
   def test24Pipeline(self):
     pipeline = rdMolStandardize.Pipeline()

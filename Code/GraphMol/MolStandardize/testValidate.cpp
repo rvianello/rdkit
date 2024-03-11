@@ -360,7 +360,7 @@ M  END
     cerr << msg << endl;
   }
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query atom 1 is not allowed");
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query atom 0 is not allowed");
 
   mblock = R"(
   Mrv2311 01162411522D          
@@ -386,7 +386,7 @@ M  END
     cerr << msg << endl;
   }
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query bond 1 is not allowed");
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Query bond 0 is not allowed");
 
   mblock = R"(
   Mrv2311 02272411562D          
@@ -424,7 +424,7 @@ M  END
     cerr << msg << endl;
   }
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Bond 1 of aromatic type is not allowed");
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Bond 0 of aromatic type is not allowed");
 
   mblock = R"(
   MJ231601                      
@@ -447,7 +447,7 @@ M  END
     cerr << msg << endl;
   }
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Atom 3 with alias 'CF3' is not allowed");
+  TEST_ASSERT(errmsg == "ERROR: [FeaturesValidation] Atom 2 with alias 'CF3' is not allowed");
 
   mblock = R"(
   Mrv2311 01162411552D          
@@ -538,7 +538,7 @@ M  END
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
   TEST_ASSERT(errmsg == 
-    "ERROR: [DisallowedRadicalValidation] The radical at atom 1 is not allowed");
+    "ERROR: [DisallowedRadicalValidation] The radical at atom 0 is not allowed");
 
 
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
@@ -688,7 +688,7 @@ M  END
   errout = layout2D.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] Atom 5 is too close to atom 6");
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] Atom 4 is too close to atom 5");
 
   mblock = R"(
                     2D          
@@ -719,7 +719,7 @@ M  END
   errout = layout2D.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] Atom 6 too close to bond 5");
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] Atom 5 too close to bond 4");
 
   mblock = R"(
           01112413352D          
@@ -747,7 +747,7 @@ M  END
   errout = layout2D.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] The length of bond 4 between atoms 1 and 4 exceeds a configured limit");
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] The length of bond 3 between atoms 0 and 3 exceeds a configured limit");
 
   // Long bonds in rings
   mblock = R"(
@@ -806,7 +806,7 @@ M  END
   errout = customLayout2D.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] The length of bond 17 between atoms 17 and 2 exceeds a configured limit");
+  TEST_ASSERT(errmsg == "ERROR: [Layout2DValidation] The length of bond 16 between atoms 16 and 1 exceeds a configured limit");
 
   BOOST_LOG(rdInfoLog) << "Finished" << std::endl;
 }
@@ -879,11 +879,11 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] Atom 2 has too many stereo bonds with like orientation");
+    "ERROR: [StereoValidation] Atom 1 has too many stereo bonds with like orientation");
   errmsg = errout[1];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] Atom 2 has adjacent stereo bonds with like orientation");
+    "ERROR: [StereoValidation] Atom 1 has adjacent stereo bonds with like orientation");
 
   // 4 ligands - mismatching opposed wedge/dash bonds
   mblock = R"(
@@ -917,7 +917,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] Atom 2 has opposing stereo bonds with different up/down orientation")
+    "ERROR: [StereoValidation] Atom 1 has opposing stereo bonds with different up/down orientation")
 
   // 4 ligands - potentially ambiguous umbrella configuration
   mblock = R"(
@@ -950,7 +950,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] Atom 2 has a potentially ambiguous representation: all non-stereo bonds opposite to the only stereo bond")
+    "ERROR: [StereoValidation] Atom 1 has a potentially ambiguous representation: all non-stereo bonds opposite to the only stereo bond")
 
   // 4 ligands - colinearity / triangle rule violation
   mblock = R"(
@@ -983,7 +983,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] Colinearity or triangle rule violation of non-stereo bonds at atom 2")
+    "ERROR: [StereoValidation] Colinearity or triangle rule violation of non-stereo bonds at atom 1")
 
   // 4 ligands - wavy bond is allowed
   mblock = R"(
@@ -1086,7 +1086,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] Atom 2 has 3 explicit substituents and multiple stereo bonds")
+    "ERROR: [StereoValidation] Atom 1 has 3 explicit substituents and multiple stereo bonds")
 
   // 3 Ligands - colinearity violation
   mblock = R"(
@@ -1117,7 +1117,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] Colinearity of non-stereo bonds at atom 2");
+    "ERROR: [StereoValidation] Colinearity of non-stereo bonds at atom 1");
 
   // 3 Ligands - either/unknown bond allowed
   mblock = R"(
@@ -1227,7 +1227,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] Atom 4 has both unknown and wedged/dashed stereo bonds.");
+    "ERROR: [StereoValidation] Atom 3 has both unknown and wedged/dashed stereo bonds.");
 
   // Badly drawn perspective diagram
   mblock = R"(
@@ -1271,7 +1271,7 @@ M  END
   errmsg = errout[0];
   TEST_ASSERT(
     errmsg ==
-    "ERROR: [StereoValidation] Atom 1 has stereo bonds, but less than 3 explicit substituents.");
+    "ERROR: [StereoValidation] Atom 0 has stereo bonds, but less than 3 explicit substituents.");
 
   // stereo bonds on allenes validate w/out errors
   mblock = R"(
