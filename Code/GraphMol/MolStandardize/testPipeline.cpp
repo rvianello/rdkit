@@ -726,32 +726,30 @@ M  END
     REQUIRE(smiles == "C[N+](=O)[O-]");
   }
 
-  SECTION("normalize sulfone w/ custom normalizer data") {
+  SECTION("normalize w/ RDKit's default normalizer transformations") {
     const char * molblock = R"(
-  Mrv2311 02072415362D          
+  Mrv2311 03112410152D          
 
   0  0  0     0  0            999 V3000
 M  V30 BEGIN CTAB
 M  V30 COUNTS 4 3 0 0 0
 M  V30 BEGIN ATOM
-M  V30 1 S -10.3538 4.27 0 0 CHG=1
-M  V30 2 C -11.6875 3.5 0 0
-M  V30 3 O -10.3538 5.81 0 0 CHG=-1
-M  V30 4 C -9.0201 3.5 0 0
+M  V30 1 S -20.083 2.4575 0 0
+M  V30 2 C -21.4167 1.6875 0 0
+M  V30 3 O -20.083 3.9975 0 0
+M  V30 4 C -18.7493 1.6875 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
 M  V30 1 1 2 1
 M  V30 2 1 1 4
-M  V30 3 1 1 3
+M  V30 3 2 1 3
 M  V30 END BOND
 M  V30 END CTAB
 M  END
 )";
 
     MolStandardize::PipelineOptions options;
-    options.normalizerData = R"(//	Name	SMIRKS
-Sulfone to S=O	[S+:1][O-:2]>>[S+0:1]=[O-0:2]
-)";
+    options.normalizerData = "";
     MolStandardize::Pipeline customizedPipeline(options);
 
     MolStandardize::PipelineResult result = customizedPipeline.run(molblock);
@@ -769,7 +767,7 @@ Sulfone to S=O	[S+:1][O-:2]>>[S+0:1]=[O-0:2]
     REQUIRE(mol);
 
     std::string smiles {MolToSmiles(*mol)};
-    REQUIRE(smiles == "CS(C)=O");
+    REQUIRE(smiles == "C[S+](C)[O-]");
   }
 
   SECTION("standardize zwitterion") {
@@ -917,31 +915,31 @@ M  END
 
   SECTION("standardize preserves explicit Hs on chiral centers") {
     const char * molblock = R"(
-  Mrv2311 02012412142D          
+  Mrv2311 03112410582D          
 
   0  0  0     0  0            999 V3000
 M  V30 BEGIN CTAB
 M  V30 COUNTS 19 19 0 0 0
 M  V30 BEGIN ATOM
-M  V30 1 C -22.6876 4.4151 0 0
-M  V30 2 C -24.0211 3.6451 0 0
-M  V30 3 C -24.0211 2.1049 0 0
-M  V30 4 C -22.6876 1.3349 0 0
-M  V30 5 C -21.3539 2.1049 0 0
-M  V30 6 C -21.3539 3.6451 0 0
-M  V30 7 S -20.0202 4.4151 0 0
-M  V30 8 O -20.0202 5.9551 0 0
-M  V30 9 C -18.6865 3.6451 0 0
-M  V30 10 C -17.3528 4.4151 0 0
-M  V30 11 C -16.0191 3.6451 0 0
-M  V30 12 C -14.6855 4.4152 0 0 CFG=1
-M  V30 13 C -13.3518 3.6452 0 0
-M  V30 14 F -14.6855 5.9552 0 0
-M  V30 15 H -14.6855 2.8752 0 0
-M  V30 16 C -25.3548 1.3349 0 0
-M  V30 17 O -26.6885 2.105 0 0
-M  V30 18 O -25.3549 -0.2051 0 0
-M  V30 19 Na -28.0222 1.335 0 0
+M  V30 1 C -22.6873 4.415 0 0
+M  V30 2 C -24.0208 3.6451 0 0
+M  V30 3 C -24.0208 2.1049 0 0
+M  V30 4 C -22.6873 1.3349 0 0
+M  V30 5 C -21.3536 2.1049 0 0
+M  V30 6 C -21.3536 3.6451 0 0
+M  V30 7 S -20.02 4.415 0 0 CHG=1
+M  V30 8 O -20.02 5.955 0 0 CHG=-1
+M  V30 9 C -18.6863 3.6451 0 0
+M  V30 10 C -17.3526 4.415 0 0
+M  V30 11 C -16.0189 3.6451 0 0
+M  V30 12 C -14.6853 4.4151 0 0 CFG=1
+M  V30 13 C -13.3516 3.6452 0 0
+M  V30 14 F -14.6853 5.9551 0 0
+M  V30 15 H -14.6853 2.8752 0 0
+M  V30 16 C -25.3545 1.3349 0 0
+M  V30 17 O -26.6882 2.105 0 0
+M  V30 18 O -25.3546 -0.2051 0 0
+M  V30 19 Na -28.0219 1.335 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
 M  V30 1 2 1 2
@@ -952,7 +950,7 @@ M  V30 5 2 5 6
 M  V30 6 1 6 1
 M  V30 7 1 6 7
 M  V30 8 1 7 9
-M  V30 9 2 7 8
+M  V30 9 1 7 8
 M  V30 10 1 9 10
 M  V30 11 1 10 11
 M  V30 12 1 11 12
@@ -991,34 +989,34 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "[H][C@](C)(F)CCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "[H][C@](C)(F)CCCS(=O)C1=CC=C(C(=O)O)C=C1");
   }
 
   SECTION("standardize preserves isotopically marked explicit Hs") {
     const char * molblock = R"(
-  Mrv2311 02012412262D          
+  Mrv2311 03112410572D          
 
   0  0  0     0  0            999 V3000
 M  V30 BEGIN CTAB
 M  V30 COUNTS 17 17 0 0 0
 M  V30 BEGIN ATOM
-M  V30 1 C -22.6876 4.4151 0 0
-M  V30 2 C -24.0211 3.6451 0 0
-M  V30 3 C -24.0211 2.1049 0 0
-M  V30 4 C -22.6876 1.3349 0 0
-M  V30 5 C -21.3539 2.1049 0 0
-M  V30 6 C -21.3539 3.6451 0 0
-M  V30 7 S -20.0202 4.4151 0 0
-M  V30 8 O -20.0202 5.9551 0 0
-M  V30 9 C -18.6865 3.6451 0 0
-M  V30 10 C -17.3528 4.4151 0 0
-M  V30 11 C -16.0191 3.6451 0 0
-M  V30 12 C -14.6855 4.4152 0 0
-M  V30 13 H -13.3518 3.6452 0 0 MASS=2
-M  V30 14 C -25.3548 1.3349 0 0
-M  V30 15 O -26.6885 2.105 0 0
-M  V30 16 O -25.3549 -0.2051 0 0
-M  V30 17 Na -28.0222 1.335 0 0
+M  V30 1 C -22.6873 4.415 0 0
+M  V30 2 C -24.0208 3.6451 0 0
+M  V30 3 C -24.0208 2.1049 0 0
+M  V30 4 C -22.6873 1.3349 0 0
+M  V30 5 C -21.3536 2.1049 0 0
+M  V30 6 C -21.3536 3.6451 0 0
+M  V30 7 S -20.02 4.415 0 0 CHG=1
+M  V30 8 O -20.02 5.955 0 0 CHG=-1
+M  V30 9 C -18.6863 3.6451 0 0
+M  V30 10 C -17.3526 4.415 0 0
+M  V30 11 C -16.0189 3.6451 0 0
+M  V30 12 C -14.6853 4.4151 0 0
+M  V30 13 H -13.3516 3.6452 0 0 MASS=2
+M  V30 14 C -25.3545 1.3349 0 0
+M  V30 15 O -26.6882 2.105 0 0
+M  V30 16 O -25.3546 -0.2051 0 0
+M  V30 17 Na -28.0219 1.335 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
 M  V30 1 2 1 2
@@ -1029,7 +1027,7 @@ M  V30 5 2 5 6
 M  V30 6 1 6 1
 M  V30 7 1 6 7
 M  V30 8 1 7 9
-M  V30 9 2 7 8
+M  V30 9 1 7 8
 M  V30 10 1 9 10
 M  V30 11 1 10 11
 M  V30 12 1 11 12
@@ -1066,34 +1064,34 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "[2H]CCCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "[2H]CCCCS(=O)C1=CC=C(C(=O)O)C=C1");
   }
 
   SECTION("standardize preserves generic explicit Hs") {
     const char * molblock = R"(
-  Mrv2311 02012412322D          
+  Mrv2311 03112410542D          
 
   0  0  0     0  0            999 V3000
 M  V30 BEGIN CTAB
 M  V30 COUNTS 17 17 0 0 0
 M  V30 BEGIN ATOM
-M  V30 1 C -22.6876 4.4151 0 0
-M  V30 2 C -24.0211 3.6451 0 0
-M  V30 3 C -24.0211 2.1049 0 0
-M  V30 4 C -22.6876 1.3349 0 0
-M  V30 5 C -21.3539 2.1049 0 0
-M  V30 6 C -21.3539 3.6451 0 0
-M  V30 7 S -20.0202 4.4151 0 0
-M  V30 8 O -20.0202 5.9551 0 0
-M  V30 9 C -18.6865 3.6451 0 0
-M  V30 10 C -17.3528 4.4151 0 0
-M  V30 11 C -16.0191 3.6451 0 0
-M  V30 12 C -14.6855 4.4152 0 0
-M  V30 13 H -13.3518 3.6452 0 0
-M  V30 14 C -25.3548 1.3349 0 0
-M  V30 15 O -26.6885 2.105 0 0
-M  V30 16 O -25.3549 -0.2051 0 0
-M  V30 17 Na -28.0222 1.335 0 0
+M  V30 1 C -22.6873 4.415 0 0
+M  V30 2 C -24.0208 3.6451 0 0
+M  V30 3 C -24.0208 2.1049 0 0
+M  V30 4 C -22.6873 1.3349 0 0
+M  V30 5 C -21.3536 2.1049 0 0
+M  V30 6 C -21.3536 3.6451 0 0
+M  V30 7 S -20.02 4.415 0 0 CHG=1
+M  V30 8 O -20.02 5.955 0 0 CHG=-1
+M  V30 9 C -18.6863 3.6451 0 0
+M  V30 10 C -17.3526 4.415 0 0
+M  V30 11 C -16.0189 3.6451 0 0
+M  V30 12 C -14.6853 4.4151 0 0
+M  V30 13 H -13.3516 3.6452 0 0
+M  V30 14 C -25.3545 1.3349 0 0
+M  V30 15 O -26.6882 2.105 0 0
+M  V30 16 O -25.3546 -0.2051 0 0
+M  V30 17 Na -28.0219 1.335 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
 M  V30 1 2 1 2
@@ -1104,7 +1102,7 @@ M  V30 5 2 5 6
 M  V30 6 1 6 1
 M  V30 7 1 6 7
 M  V30 8 1 7 9
-M  V30 9 2 7 8
+M  V30 9 1 7 8
 M  V30 10 1 9 10
 M  V30 11 1 10 11
 M  V30 12 1 11 12
@@ -1141,33 +1139,33 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "[H]CCCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "[H]CCCCS(=O)C1=CC=C(C(=O)O)C=C1");
   }
 
   SECTION("standardize doesn't remove wedged bonds from non-stereogenic centers") {
     const char * molblock = R"(
-  Mrv2311 02022413372D          
+  Mrv2311 03112410512D          
 
   0  0  0     0  0            999 V3000
 M  V30 BEGIN CTAB
 M  V30 COUNTS 16 16 0 0 0
 M  V30 BEGIN ATOM
-M  V30 1 C -22.6878 4.4151 0 0
-M  V30 2 C -24.0213 3.6452 0 0
-M  V30 3 C -24.0213 2.1049 0 0
-M  V30 4 C -22.6878 1.3349 0 0
-M  V30 5 C -21.354 2.1049 0 0
-M  V30 6 C -21.354 3.6452 0 0
-M  V30 7 S -20.0204 4.4151 0 0
-M  V30 8 O -20.0204 5.9551 0 0
-M  V30 9 C -18.6867 3.6452 0 0
-M  V30 10 C -17.353 4.4151 0 0 CFG=2
-M  V30 11 C -16.0192 3.6452 0 0
-M  V30 12 C -25.355 1.3349 0 0
-M  V30 13 O -26.6888 2.105 0 0
-M  V30 14 O -25.3551 -0.2051 0 0
-M  V30 15 Na -28.0225 1.3351 0 0
-M  V30 16 C -17.353 5.9551 0 0
+M  V30 1 C -22.6875 4.415 0 0
+M  V30 2 C -24.021 3.6452 0 0
+M  V30 3 C -24.021 2.1049 0 0
+M  V30 4 C -22.6875 1.3349 0 0
+M  V30 5 C -21.3537 2.1049 0 0
+M  V30 6 C -21.3537 3.6452 0 0
+M  V30 7 S -20.0202 4.415 0 0 CHG=1
+M  V30 8 O -20.0202 5.955 0 0 CHG=-1
+M  V30 9 C -18.6865 3.6452 0 0
+M  V30 10 C -17.3528 4.415 0 0 CFG=2
+M  V30 11 C -16.019 3.6452 0 0
+M  V30 12 C -25.3547 1.3349 0 0
+M  V30 13 O -26.6885 2.105 0 0
+M  V30 14 O -25.3548 -0.2051 0 0
+M  V30 15 Na -28.0222 1.3351 0 0
+M  V30 16 C -17.3528 5.955 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
 M  V30 1 2 1 2
@@ -1178,7 +1176,7 @@ M  V30 5 2 5 6
 M  V30 6 1 6 1
 M  V30 7 1 6 7
 M  V30 8 1 7 9
-M  V30 9 2 7 8
+M  V30 9 1 7 8
 M  V30 10 1 9 10
 M  V30 11 1 10 11 CFG=1
 M  V30 12 1 3 12
@@ -1214,7 +1212,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "CC(C)C[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "CC(C)CS(=O)C1=CC=C(C(=O)O)C=C1");
   
     Chirality::reapplyMolBlockWedging(*parentMol);
 
@@ -1238,28 +1236,28 @@ M  END
 
   SECTION("standardize doesn't remove wavy bonds from non-stereogenic centers") {
     const char * molblock = R"(
-  Mrv2311 02022413372D          
+  Mrv2311 03112410452D          
 
   0  0  0     0  0            999 V3000
 M  V30 BEGIN CTAB
 M  V30 COUNTS 16 16 0 0 0
 M  V30 BEGIN ATOM
-M  V30 1 C -22.6878 4.4151 0 0
-M  V30 2 C -24.0213 3.6452 0 0
-M  V30 3 C -24.0213 2.1049 0 0
-M  V30 4 C -22.6878 1.3349 0 0
-M  V30 5 C -21.354 2.1049 0 0
-M  V30 6 C -21.354 3.6452 0 0
-M  V30 7 S -20.0204 4.4151 0 0
-M  V30 8 O -20.0204 5.9551 0 0
-M  V30 9 C -18.6867 3.6452 0 0
-M  V30 10 C -17.353 4.4151 0 0 CFG=3
-M  V30 11 C -16.0192 3.6452 0 0
-M  V30 12 C -25.355 1.3349 0 0
-M  V30 13 O -26.6888 2.105 0 0
-M  V30 14 O -25.3551 -0.2051 0 0
-M  V30 15 Na -28.0225 1.3351 0 0
-M  V30 16 C -17.353 5.9551 0 0
+M  V30 1 C -22.6875 4.415 0 0
+M  V30 2 C -24.021 3.6452 0 0
+M  V30 3 C -24.021 2.1049 0 0
+M  V30 4 C -22.6875 1.3349 0 0
+M  V30 5 C -21.3537 2.1049 0 0
+M  V30 6 C -21.3537 3.6452 0 0
+M  V30 7 S -20.0202 4.415 0 0 CHG=1
+M  V30 8 O -20.0202 5.955 0 0 CHG=-1
+M  V30 9 C -18.6865 3.6452 0 0
+M  V30 10 C -17.3528 4.415 0 0 CFG=3
+M  V30 11 C -16.019 3.6452 0 0
+M  V30 12 C -25.3547 1.3349 0 0
+M  V30 13 O -26.6885 2.105 0 0
+M  V30 14 O -25.3548 -0.2051 0 0
+M  V30 15 Na -28.0222 1.3351 0 0
+M  V30 16 C -17.3528 5.955 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
 M  V30 1 2 1 2
@@ -1270,7 +1268,7 @@ M  V30 5 2 5 6
 M  V30 6 1 6 1
 M  V30 7 1 6 7
 M  V30 8 1 7 9
-M  V30 9 2 7 8
+M  V30 9 1 7 8
 M  V30 10 1 9 10
 M  V30 11 1 10 11 CFG=2
 M  V30 12 1 3 12
@@ -1306,7 +1304,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "CC(C)C[S+]([O-])C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "CC(C)CS(=O)C1=CC=C(C(=O)O)C=C1");
   
     Chirality::reapplyMolBlockWedging(*parentMol);
 

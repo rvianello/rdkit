@@ -1694,9 +1694,8 @@ M  END
 
   def test25PipelineNormalizerOptions(self):
     options = rdMolStandardize.PipelineOptions()
-    options.normalizerData = '''//	Name	SMIRKS
-Sulfone to S=O	[S+:1][O-:2]>>[S+0:1]=[O-0:2]
-'''
+    # run the pipeline w/ the RDKit default normalizer transforms
+    options.normalizerData = ''
     pipeline = rdMolStandardize.Pipeline(options)
 
     molblock = '''
@@ -1706,15 +1705,15 @@ Sulfone to S=O	[S+:1][O-:2]>>[S+0:1]=[O-0:2]
 M  V30 BEGIN CTAB
 M  V30 COUNTS 4 3 0 0 0
 M  V30 BEGIN ATOM
-M  V30 1 S -10.3538 4.27 0 0 CHG=1
+M  V30 1 S -10.3538 4.27 0 0
 M  V30 2 C -11.6875 3.5 0 0
-M  V30 3 O -10.3538 5.81 0 0 CHG=-1
+M  V30 3 O -10.3538 5.81 0 0
 M  V30 4 C -9.0201 3.5 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
 M  V30 1 1 2 1
 M  V30 2 1 1 4
-M  V30 3 1 1 3
+M  V30 3 2 1 3
 M  V30 END BOND
 M  V30 END CTAB
 M  END
@@ -1727,7 +1726,7 @@ M  END
 
     outputMol = Chem.MolFromMolBlock(result.outputMolBlock, sanitize=False)
     outputSmiles = Chem.MolToSmiles(outputMol)
-    self.assertEqual(outputSmiles, "CS(C)=O")
+    self.assertEqual(outputSmiles, "C[S+](C)[O-]")
 
   def test26PipelineAllowEmptyMoleculesOption(self):
     options = rdMolStandardize.PipelineOptions()
