@@ -1398,5 +1398,52 @@ M  END
     REQUIRE(beginAtom->getDegree() == 3);
   }
 
+  SECTION("SO2H normalization") {
+    const char * molblock = R"(
+  Mrv2311 03122408072D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 S -10.708 4.2075 0 0
+M  V30 2 C -12.0417 3.4375 0 0
+M  V30 3 O -10.708 5.7475 0 0
+M  V30 4 O -9.3743 3.4375 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 2 1 3
+M  V30 3 2 1 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NORMALIZATION_APPLIED);
+
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    std::unique_ptr<RWMol> inputMol(MolBlockToMol(result.inputMolBlock, false, false));
+    REQUIRE(inputMol);
+    std::string inputSmiles {MolToSmiles(*inputMol)};
+    REQUIRE(inputSmiles == "C[SH](=O)=O");
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "CS(=O)O");
+  }
+
 }
 
