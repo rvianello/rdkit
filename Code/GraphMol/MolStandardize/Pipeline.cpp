@@ -330,6 +330,8 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
   }
 
   // scale the atoms coordinates
+  // and make sure that z coords are set to 0 (some z coords may be non-null
+  // if smaller than the validation threshold)
   if (options.scaledMedianBondLength > 0. && mol->getNumConformers()) {
     auto & conf = mol->getConformer();
     double medianBondLength = sqrt(Layout2DValidation::squaredMedianBondLength(*mol, conf));
@@ -337,7 +339,9 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
       double scaleFactor = options.scaledMedianBondLength/medianBondLength;
       unsigned int natoms = conf.getNumAtoms();
       for (unsigned int i = 0; i < natoms; ++i) {
-        conf.setAtomPos(i, conf.getAtomPos(i)*scaleFactor);
+        auto pos = conf.getAtomPos(i)*scaleFactor;
+        pos.z = 0.;
+        conf.setAtomPos(i, pos);
       }
     }
   }
