@@ -141,14 +141,18 @@ RWMOL_SPTR Pipeline::prepareForValidation(RWMOL_SPTR mol, PipelineResult & resul
   try {
     // convert to smiles and later check if the structure was modified
     auto reference = MolToSmiles(*mol);
-    constexpr unsigned int sanitizeOps = MolOps::SANITIZE_CLEANUP;
+    constexpr unsigned int sanitizeOps = (
+      MolOps::SANITIZE_CLEANUP
+      | MolOps::SANITIZE_CLEANUP_ORGANOMETALLICS
+      | MolOps::SANITIZE_FINDRADICALS
+    );
     unsigned int failedOp = 0;
     MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
     auto smiles = MolToSmiles(*mol);
     if (reference != smiles) {
       result.append(
         SANITIZATION_APPLIED,
-        "The representation of some functional groups was modified in a pre-validation cleanup step.");
+        "Some traits in the representation of the chemical structure were updated in a pre-validation cleanup step.");
     }
   }
   catch (MolSanitizeException &) {
