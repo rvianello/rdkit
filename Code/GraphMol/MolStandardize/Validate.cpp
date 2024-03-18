@@ -439,20 +439,26 @@ std::vector<ValidationErrorInfo> Is2DValidation::validate(
 
 double Layout2DValidation::squaredMedianBondLength(const ROMol &mol, const Conformer &conf)
 {
-    double median {};
-    unsigned int numBonds = mol.getNumBonds();
-    if (numBonds) {
-      std::vector<double> values;
-      values.reserve(numBonds);
-      for (const auto & bond : mol.bonds()) {
-        auto p1 = conf.getAtomPos(bond->getBeginAtomIdx());
-        auto p2 = conf.getAtomPos(bond->getEndAtomIdx());
-        auto dx = p2.x - p1.x;
-        auto dy = p2.y - p1.y;
-        auto value = dx*dx + dy*dy;
+  // Compute the squared value of the median bond length, but exclude the bonds
+  // of null length.
+  double median {};
+  unsigned int numBonds = mol.getNumBonds();
+  if (numBonds) {
+    std::vector<double> values;
+    values.reserve(numBonds);
+    for (const auto & bond : mol.bonds()) {
+      auto p1 = conf.getAtomPos(bond->getBeginAtomIdx());
+      auto p2 = conf.getAtomPos(bond->getEndAtomIdx());
+      auto dx = p2.x - p1.x;
+      auto dy = p2.y - p1.y;
+      auto value = dx*dx + dy*dy;
+      if (value > 0.) {
         values.push_back(value);
       }
+    }
+    if (!values.empty()) {
       std::sort(values.begin(), values.end());
+      numBonds = values.size();
       if (numBonds % 2) {
         median = values[numBonds/2];
       }
@@ -460,6 +466,7 @@ double Layout2DValidation::squaredMedianBondLength(const ROMol &mol, const Confo
         median = 0.5*(values[numBonds/2-1]+values[numBonds/2]);
       }
     }
+  }
   return median;
 }
 
