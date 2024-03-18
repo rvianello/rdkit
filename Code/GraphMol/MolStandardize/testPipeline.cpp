@@ -1445,5 +1445,74 @@ M  END
     REQUIRE(parentSmiles == "CS(=O)O");
   }
 
+  SECTION("Partial disconnection of metals") {
+    const char * molblock = R"(
+  Mrv2311 03182415572D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 16 16 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -3.3342 -4.235 0 0
+M  V30 2 C -3.3342 -2.695 0 0
+M  V30 3 O -2.0005 -1.925 0 0
+M  V30 4 Mg -2.0005 -0.385 0 0
+M  V30 5 C -2.0005 1.155 0 0
+M  V30 6 C -3.3342 1.925 0 0
+M  V30 7 C -3.3342 3.465 0 0
+M  V30 8 C -2.0005 4.235 0 0
+M  V30 9 C -0.6668 3.465 0 0
+M  V30 10 C -0.6668 1.925 0 0
+M  V30 11 C 0.6668 1.155 0 0
+M  V30 12 C 0.6668 -0.385 0 0
+M  V30 13 C 2.0005 -1.155 0 0
+M  V30 14 O 2.0005 -2.695 0 0
+M  V30 15 O 3.3342 -0.385 0 0
+M  V30 16 Na 3.3342 1.155 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 4 5
+M  V30 5 1 5 6
+M  V30 6 1 6 7
+M  V30 7 1 7 8
+M  V30 8 1 8 9
+M  V30 9 1 9 10
+M  V30 10 1 5 10
+M  V30 11 1 10 11
+M  V30 12 1 11 12
+M  V30 13 1 12 13
+M  V30 14 2 13 14
+M  V30 15 1 13 15
+M  V30 16 1 15 16
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NO_EVENT);
+
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    std::unique_ptr<RWMol> inputMol(MolBlockToMol(result.inputMolBlock, false, false));
+    REQUIRE(inputMol);
+    std::string inputSmiles {MolToSmiles(*inputMol)};
+    REQUIRE(inputSmiles == "CCO[Mg]C1CCCCC1CCC(=O)O[Na]");
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "CCO[Mg]C1CCCCC1CCC(=O)O[Na]");
+  }
 }
 

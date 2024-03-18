@@ -76,16 +76,37 @@ void MetalDisconnector::disconnect(RWMol &mol) {
   BOOST_LOG(rdInfoLog) << "Running MetalDisconnector\n";
   std::list<ROMOL_SPTR> metalList = {dp_metal_nof, dp_metal_non};
   std::map<int, NonMetal> nonMetals;
-  std::map<int, int> metalChargeExcess;
+  std::map<int, Metal> metals;
+  // identify the bonds that are subject to disconnection
   for (auto &query : metalList) {
     std::vector<MatchVectType> matches;
     SubstructMatch(mol, *query, matches);
 
     for (const auto &match : matches) {
       int metal_idx = match[0].second;
-      metalChargeExcess[metal_idx] = 0;
-      auto metal = mol.getAtomWithIdx(metal_idx);
       int non_idx = match[1].second;
+      metals[metal_idx].boundNonMetalIndices.push_back(non_idx);
+    }
+  }
+  // if partial disconnection of the interested metal atoms is
+  // not allowed, check that all the previously identified metals
+  // will be fully disconnected, or return without applying any
+  // changes
+  if (!d_options.allowPartialDisconnections) {
+    for (auto &metalInfo : metals) {
+      int metal_idx = metalInfo.first;
+      auto metal = mol.getAtomWithIdx(metal_idx);
+      bool partial = metalInfo.second.boundNonMetalIndices.size() != mol.getAtomDegree(metal);
+      if (partial) {
+        return;
+      }
+    }
+  }
+  // perform the planned disconnections
+  for (auto &metalInfo : metals) {
+    int metal_idx = metalInfo.first;
+    auto metal = mol.getAtomWithIdx(metal_idx);
+    for (auto non_idx : metalInfo.second.boundNonMetalIndices) {
       auto nonMetal = mol.getAtomWithIdx(non_idx);
 
       Bond *b = mol.getBondBetweenAtoms(metal_idx, non_idx);
@@ -98,23 +119,22 @@ void MetalDisconnector::disconnect(RWMol &mol) {
       // increment the cut bond count for this non-metal atom
       // and store the metal it was bonded to. We will need this
       // later to adjust the metal charge
-      auto &value = nonMetals[non_idx];
-      value.cutBonds += order;
-      auto it = std::lower_bound(value.boundMetalIndices.begin(),
-                                 value.boundMetalIndices.end(), metal_idx);
-      if (it == value.boundMetalIndices.end() || *it != metal_idx) {
-        value.boundMetalIndices.insert(it, metal_idx);
+      auto &nonMetalInfo = nonMetals[non_idx];
+      nonMetalInfo.cutBonds += order;
+      auto it = std::lower_bound(nonMetalInfo.boundMetalIndices.begin(),
+                                 nonMetalInfo.boundMetalIndices.end(), metal_idx);
+      if (it == nonMetalInfo.boundMetalIndices.end() || *it != metal_idx) {
+        nonMetalInfo.boundMetalIndices.insert(it, metal_idx);
       }
 
       BOOST_LOG(rdInfoLog) << "Removed covalent bond between "
                            << metal->getSymbol() << " and "
                            << nonMetal->getSymbol() << "\n";
+
     }
-    //	std::cout << "After removing bond and charge adjustment: " <<
-    // MolToSmiles(mol) << std::endl;
   }
   if (d_options.adjustCharges) {
-    adjust_charges(mol, nonMetals, metalChargeExcess);
+    adjust_charges(mol, nonMetals, metals);
   }
   if (d_options.removeHapticDummies) {
     remove_haptic_dummies(mol);
@@ -123,7 +143,7 @@ void MetalDisconnector::disconnect(RWMol &mol) {
 
 void MetalDisconnector::adjust_charges(RDKit::RWMol &mol,
                                        std::map<int, NonMetal> &nonMetals,
-                                       std::map<int, int> &metalChargeExcess) {
+                                       std::map<int, Metal> &metals) {
   for (auto it = nonMetals.begin(); it != nonMetals.end(); ++it) {
     auto a = mol.getAtomWithIdx(it->first);
     // do not blindly trust the original formal charge as it is often wrong
@@ -178,8 +198,8 @@ void MetalDisconnector::adjust_charges(RDKit::RWMol &mol,
     }
     std::sort(it->second.boundMetalIndices.begin(),
               it->second.boundMetalIndices.end(),
-              [&metalChargeExcess](int a, int b) {
-                return (metalChargeExcess.at(a) < metalChargeExcess.at(b));
+              [&metals](int a, int b) {
+                return (metals.at(a).chargeExcess < metals.at(b).chargeExcess);
               });
     fcAfterCut += loneElectrons;
     while (fcAfterCut < 0) {
@@ -190,13 +210,13 @@ void MetalDisconnector::adjust_charges(RDKit::RWMol &mol,
         if (fcAfterCut++ >= 0) {
           break;
         }
-        ++metalChargeExcess[i];
+        ++metals[i].chargeExcess;
       }
     }
     a->updatePropertyCache();
   }
   // adjust formal charges of metal atoms
-  for (auto it = metalChargeExcess.begin(); it != metalChargeExcess.end();
+  for (auto it = metals.begin(); it != metals.end();
        ++it) {
     auto a = mol.getAtomWithIdx(it->first);
     auto currentFc = a->getFormalCharge();
@@ -209,7 +229,7 @@ void MetalDisconnector::adjust_charges(RDKit::RWMol &mol,
     if (max_valence != -1 && currentFc >= max_valence) {
       continue;
     }
-    int fcAfterCut = it->second;
+    int fcAfterCut = it->second.chargeExcess;
     if (currentFc > 0) {
       // if the original formal charge on the metal was positive, we trust it
       // and add it to the charge excess
