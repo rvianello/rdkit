@@ -122,9 +122,6 @@ RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result
       "Could not instantiate a valid molecule from input"
     );
   }
-  else {
-    Chirality::reapplyMolBlockWedging(*mol);
-  }
 
   return mol;
 }
@@ -132,28 +129,41 @@ RWMOL_SPTR Pipeline::parse(const std::string & molblock, PipelineResult & result
 RWMOL_SPTR Pipeline::prepareForValidation(RWMOL_SPTR mol, PipelineResult & result) const
 {
   // Prepare the mol for validation.
-  //
-  // The general intention is about validating the original input, and therefore
-  // limit the sanitization to the minimum, but it's not very useful to record a
-  // valence validation error for issues like a badly drawn nitro group that will
-  // be later fixed during by the normalization step.
 
   try {
     // convert to smiles and later check if the structure was modified
     auto reference = MolToSmiles(*mol);
+
+    // The general intention is about validating the original input, and therefore
+    // limit the sanitization to the minimum, but it's not very useful to record a
+    // valence validation error for issues like a badly drawn nitro group that would
+    // be later fixed during by the normalization step.
+    //
+    // Some sanitization also needs to be performed in order to assign the stereochemistry
+    // (which needs to happen prior to reapplying the wedging, see below), and we need
+    // to find radicals, in order to support the corresponding validation criterion.
     constexpr unsigned int sanitizeOps = (
       MolOps::SANITIZE_CLEANUP
+      | MolOps::SANITIZE_SYMMRINGS
       | MolOps::SANITIZE_CLEANUP_ORGANOMETALLICS
       | MolOps::SANITIZE_FINDRADICALS
     );
     unsigned int failedOp = 0;
     MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
+
     auto smiles = MolToSmiles(*mol);
     if (reference != smiles) {
       result.append(
         SANITIZATION_APPLIED,
         "Some traits in the representation of the chemical structure were updated in a pre-validation cleanup step.");
     }
+
+    // We want to restore the original MolBlock wedging, but this step may in some cases overwrite the
+    // ENDDOWNRIGHT/ENDUPRIGHT info that describes the configuration of double bonds adjacent to stereocenters.
+    // We therefore need to assign the double bond stereochemistry now, so that they are not marked as
+    // EITHERDOUBLE in the output MolBlocks.
+    MolOps::assignStereochemistry(*mol, true, true, true);
+    Chirality::reapplyMolBlockWedging(*mol);
   }
   catch (MolSanitizeException &) {
     result.append(
