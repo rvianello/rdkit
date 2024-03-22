@@ -39,6 +39,7 @@ void wrap_pipeline() {
         .def_readwrite("minMedianBondLength", &MolStandardize::PipelineOptions::minMedianBondLength)
         .def_readwrite("bondLengthLimit", &MolStandardize::PipelineOptions::bondLengthLimit)
         .def_readwrite("allowLongBondsInRings", &MolStandardize::PipelineOptions::allowLongBondsInRings)
+        .def_readwrite("allowAtomBondClashExemption", &MolStandardize::PipelineOptions::allowAtomBondClashExemption)
         .def_readwrite("metalNof", &MolStandardize::PipelineOptions::metalNof)
         .def_readwrite("metalNon", &MolStandardize::PipelineOptions::metalNon)
         .def_readwrite("allowPartialDisconnections", &MolStandardize::PipelineOptions::allowPartialDisconnections)

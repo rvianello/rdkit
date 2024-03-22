@@ -191,6 +191,7 @@ struct validate_wrapper {
         .def(python::init<double, double>())
         .def(python::init<double, double, bool>())
         .def(python::init<double, double, bool, double>())
+        .def(python::init<double, double, bool, bool, double>())
       ;
 
     python::class_<

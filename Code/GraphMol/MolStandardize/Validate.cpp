@@ -498,9 +498,9 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
       return errors;
     }
   }
-  auto atomClashThreshold = clashLimit*clashLimit*reference;
-  auto bondLengthThreshold = bondLengthLimit*bondLengthLimit*reference;
 
+  // check for atoms clashing w/ other atoms
+  auto atomClashThreshold = clashLimit*clashLimit*reference;
   for (unsigned int i = 0; i < natoms - 1; ++i) {
     const auto & pi = conf.getAtomPos(i);
     for (unsigned int j = i + 1; j < natoms; ++j) {
@@ -520,8 +520,7 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
   }
 
   // make sure we have the required rings info available
-  // if needed
-  if (allowLongBondsInRings) {
+  if (allowLongBondsInRings || allowAtomBondClashExemption) {
     if (!mol.getRingInfo()->isInitialized()) {
       RDKit::MolOps::fastFindRings(mol);
     }
@@ -533,8 +532,11 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
     unsigned int j = bond->getEndAtomIdx();
     const auto & pj = conf.getAtomPos(j);
 
+    auto ll = (pi.x - pj.x)*(pi.x - pj.x) + (pi.y - pj.y)*(pi.y - pj.y);
+
+    // check for exceedingly long bonds
+    auto bondLengthThreshold = bondLengthLimit*bondLengthLimit*reference;
     if (!allowLongBondsInRings || mol.getRingInfo()->numBondRings(bond->getIdx()) == 0) {
-      auto ll = (pi.x - pj.x)*(pi.x - pj.x) + (pi.y - pj.y)*(pi.y - pj.y);
       if (ll > bondLengthThreshold) {
         errors.push_back(
           "ERROR: [Layout2DValidation] The length of bond " + std::to_string(bond->getIdx())
@@ -546,6 +548,14 @@ std::vector<ValidationErrorInfo> Layout2DValidation::validate(
       }
     }
 
+    if (allowAtomBondClashExemption) {
+      // is this bond exempted from atom-bond collision detection?
+      if ((ll > 5.*5.*reference) &&  mol.getRingInfo()->numBondRings(bond->getIdx()) != 0) {
+        continue;
+      }
+    }
+
+    // check for atoms clashing with this bond
     for (unsigned int k = 0; k < natoms; ++k) {
       if (k == i || k ==j) {
         continue;

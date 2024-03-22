@@ -250,10 +250,12 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation
     : public ValidationMethod {
  public:
   Layout2DValidation(
-    double clashLimit=0.15, double bondLengthLimit=10, bool allowLongBondsInRings=true,
-    double minMedianBondLength=1e-3)
+    double clashLimit=0.15, double bondLengthLimit=25., bool allowLongBondsInRings=true,
+    bool allowAtomBondClashExemption=true, double minMedianBondLength=1e-3)
     : clashLimit(clashLimit), bondLengthLimit(bondLengthLimit),
-      allowLongBondsInRings(allowLongBondsInRings), minMedianBondLength(minMedianBondLength) {};
+      allowLongBondsInRings(allowLongBondsInRings),
+      allowAtomBondClashExemption(allowAtomBondClashExemption),
+      minMedianBondLength(minMedianBondLength) {};
   std::vector<ValidationErrorInfo> validate(
       const ROMol &mol, bool reportAllFailures) const override;
   std::shared_ptr<ValidationMethod> copy() const override {
@@ -265,6 +267,7 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation
   double clashLimit;
   double bondLengthLimit;
   bool allowLongBondsInRings;
+  bool allowAtomBondClashExemption;
   double minMedianBondLength;
 };
 
