@@ -97,8 +97,12 @@ M  END
     REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
-    REQUIRE((result.status & MolStandardize::STANDARDIZATION_ERROR) == MolStandardize::NO_EVENT);
-    REQUIRE(result.status == MolStandardize::BASIC_VALIDATION_ERROR);
+    REQUIRE((result.status & MolStandardize::STANDARDIZATION_ERROR) == MolStandardize::NORMALIZER_STANDARDIZATION_ERROR);
+    REQUIRE(result.status == (
+      MolStandardize::BASIC_VALIDATION_ERROR |
+      MolStandardize::PREPARE_FOR_STANDARDIZATION_ERROR |
+      MolStandardize::NORMALIZER_STANDARDIZATION_ERROR
+      ));
   }
 
   SECTION("failing Isotopes validation") {

@@ -65,13 +65,12 @@ PipelineResult Pipeline::run(const std::string & molblock) const
       return result;
     }
 
-    // further sanitize the validated structure
+    // re-read and sanitize the validated structure
     result.stage = PREPARE_FOR_STANDARDIZATION;
     mol = parse(molblock, result);
     if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
       return result;
     }
-    // further sanitize the validated structure
     mol = prepareForStandardization(mol, result);
     if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
       return result;
@@ -250,24 +249,9 @@ RWMOL_SPTR Pipeline::validate(RWMOL_SPTR mol, PipelineResult & result) const
 RWMOL_SPTR Pipeline::prepareForStandardization(RWMOL_SPTR mol, PipelineResult & result) const
 {
   // Prepare the mol for standardization.
-  //
-  // Complement the validated molecule with information that is required during the
-  // next standardization steps.
 
   try {
-#if 0
-    // convert to smiles and later check if the structure was modified
-    constexpr unsigned int sanitizeOps = (
-      MolOps::SANITIZE_ALL ^
-      MolOps::SANITIZE_CLEANUP ^
-      MolOps::SANITIZE_PROPERTIES
-    );
-    unsigned int failedOp = 0;
-    MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
-#else
     MolOps::sanitizeMol(*mol);
-    MolOps::assignStereochemistry(*mol, true, true, true);
-#endif
   }
   catch (MolSanitizeException &) {
     result.append(
@@ -318,8 +302,6 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
       normalizer.reset(new Normalizer(sstr, options.normalizerMaxRestarts));
     }
     normalizer->normalizeInPlace(*mol);
-    // TODO/FIXME
-    MolOps::assignStereochemistry(*mol, true, true, true);
   }
   catch (...) {
     result.append(
@@ -355,6 +337,12 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
       "One or more disconnected fragments (e.g., counterions) were removed.");
   }
 
+  // The stereochemistry is not assigned until after we are done modifying the
+  // molecular graph:
+  MolOps::assignStereochemistry(*mol, true, true, true);
+  // restore the original wedging from the MolBlock
+  Chirality::reapplyMolBlockWedging(*mol);
+
   // scale the atoms coordinates
   // and make sure that z coords are set to 0 (some z coords may be non-null
   // albeit smaller than the validation threshold - these noisy coords may in some cases
@@ -373,8 +361,6 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
     }
   }
 
-  // restore the original wedging from the MolBlock
-  Chirality::reapplyMolBlockWedging(*mol);
 
   return mol;
 }
