@@ -302,6 +302,7 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
       normalizer.reset(new Normalizer(sstr, options.normalizerMaxRestarts));
     }
     normalizer->normalizeInPlace(*mol);
+    mol->updatePropertyCache(false);
   }
   catch (...) {
     result.append(
