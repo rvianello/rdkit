@@ -55,7 +55,8 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
     // Note: the transformation below was ported from STRUCHK and it's not part of the default
     // Normalizer configuration
     "[SH](=O)(=O) to S(=O)O\t[c,C,N,O,F,Cl,Br,I:1][SH+0:2](=[O:3])=[O:4]>>[*:1][*:2]([*:3])=[*:4]\n"
-    "Phosphate to P(O-)=O\t[O,S,Se,Te;-1:1][P+;D4:2][O,S,Se,Te;-1:3]>>[*+0:1]=[P+0;D5:2][*-1:3]\n"
+    "Phosphate to P(O-)=O\t[O-:1][P+;D4:2][O,S,Se,Te;-1:3]>>[O+0:1]=[P+0;D5:2][*-1:3]\n"
+    "Generalized phosphate to P(X-)=Y\t[S,Se,Te;-1:1][P+;D4:2][S,Se,Te;-1:3]>>[*+0:1]=[P+0;D5:2][*-1:3]\n"
     "C/S+N to C/S=N+\t[C,S&!$([S+]-[O-]);X3+1:1]([NX3:2])[NX3!H0:3]>>[*+0:1]([N:2])=[N+:3]\n"
     "P+N to P=N+\t[P;X4+1:1]([NX3:2])[NX3!H0:3]>>[*+0:1]([N:2])=[N+:3]\n"
     "Recombine 1,3-separated charges\t[N,P,As,Sb,O,S,Se,Te;-1:1]-[A+0:2]=[N,P,As,Sb,O,S,Se,Te;+1:3]>>[*-0:1]=[*:2]-[*+0:3]\n"

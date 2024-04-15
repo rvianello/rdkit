@@ -686,7 +686,7 @@ M  END
     REQUIRE(outputMol);
     std::string outputSmiles {MolToSmiles(*outputMol)};
     REQUIRE(outputSmiles == "CC(=O)O");
-}
+  }
 
   SECTION("normalize nitro") {
     const char * molblock = R"(
@@ -728,6 +728,95 @@ M  END
 
     std::string smiles {MolToSmiles(*mol)};
     REQUIRE(smiles == "C[N+](=O)[O-]");
+  }
+
+  SECTION("Phosphate normalization") {
+
+    const char * molblock_a = R"(
+  Mrv2311 04152413292D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 P -15.6247 3.9575 0 0 CHG=1
+M  V30 2 C -16.9583 3.1875 0 0
+M  V30 3 O -15.6247 5.4975 0 0 CHG=-1
+M  V30 4 S -14.291 3.1875 0 0 CHG=-1
+M  V30 5 C -15.6247 2.4175 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 1 5
+M  V30 3 1 1 3
+M  V30 4 1 1 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result_a = pipeline.run(molblock_a);
+
+    for (auto & info : result_a.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    // nitro groups are sanitized in a pre-validation step.
+    // this test case is not expected to register any errors.
+    REQUIRE(result_a.stage == MolStandardize::COMPLETED);
+    REQUIRE((result_a.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result_a.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(result_a.status & MolStandardize::NORMALIZATION_APPLIED);
+    REQUIRE(result_a.status & MolStandardize::PROTONATION_CHANGED);
+
+    std::unique_ptr<RWMol> mol_a(MolBlockToMol(result_a.outputMolBlock, false, false));
+    REQUIRE(mol_a);
+
+    std::string smiles_a {MolToSmiles(*mol_a)};
+    REQUIRE(smiles_a == "CP(C)(=O)S");
+
+    const char * molblock_b = R"(
+  Mrv2311 04152413292D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 P -15.6247 3.9575 0 0 CHG=1
+M  V30 2 C -16.9583 3.1875 0 0
+M  V30 3 S -15.6247 5.4975 0 0 CHG=-1
+M  V30 4 O -14.291 3.1875 0 0 CHG=-1
+M  V30 5 C -15.6247 2.4175 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 1 5
+M  V30 3 1 1 3
+M  V30 4 1 1 4
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result_b = pipeline.run(molblock_b);
+
+    for (auto & info : result_b.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    // nitro groups are sanitized in a pre-validation step.
+    // this test case is not expected to register any errors.
+    REQUIRE(result_b.stage == MolStandardize::COMPLETED);
+    REQUIRE((result_b.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result_b.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(result_b.status & MolStandardize::NORMALIZATION_APPLIED);
+    REQUIRE(result_b.status & MolStandardize::PROTONATION_CHANGED);
+
+    std::unique_ptr<RWMol> mol_b(MolBlockToMol(result_b.outputMolBlock, false, false));
+    REQUIRE(mol_b);
+
+    std::string smiles_b {MolToSmiles(*mol_b)};
+    REQUIRE(smiles_b == "CP(C)(=O)S");
   }
 
   SECTION("normalize w/ RDKit's default normalizer transformations") {
