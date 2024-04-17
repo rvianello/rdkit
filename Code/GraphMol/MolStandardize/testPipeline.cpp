@@ -1419,6 +1419,73 @@ M  END
     REQUIRE(endAtom->getDegree() == 1);
   }
 
+  SECTION("standardize removes wavy bonds from double bonds w/ stereo type 'either'") {
+    const char * molblock = R"(
+  Mrv2311 04172413232D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -13.9163 3.9158 0 0
+M  V30 2 C -15.25 3.1458 0 0
+M  V30 3 C -13.9163 5.4558 0 0
+M  V30 4 C -15.25 6.2258 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 2 1 3
+M  V30 3 1 3 4 CFG=2
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NORMALIZATION_APPLIED
+    );
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "CC=CC");
+  
+    Chirality::reapplyMolBlockWedging(*parentMol);
+
+    // no wavy bond is expected to be found
+    const Bond * wavy = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondDir = bond->getBondDir();
+      if (bondDir == Bond::BondDir::UNKNOWN) {
+        wavy = bond;
+        break;
+      }
+    }
+    REQUIRE(wavy == nullptr);
+
+    // the double bond should have stereo type STEREOANY
+    const Bond * doubleBond = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondType = bond->getBondType();
+      if (bondType == Bond::DOUBLE) {
+        doubleBond = bond;
+        break;
+      }
+    }
+    REQUIRE(doubleBond != nullptr);
+    REQUIRE(doubleBond->getStereo() == Bond::STEREOANY);
+  }
+
   SECTION("pipeline doesn't remove stereo bonds from biaryls") {
     const char * molblock = R"(
   Mrv2311 02092409022D          

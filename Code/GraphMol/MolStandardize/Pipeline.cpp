@@ -82,6 +82,8 @@ PipelineResult Pipeline::run(const std::string & molblock) const
     if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
       return result;
     }
+    mol = reapplyWedging(mol, result);
+    mol = cleanup2D(mol, result);
     output = makeParent(mol, result);
     if (!output.first || !output.second
         || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
@@ -341,9 +343,87 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
   // The stereochemistry is not assigned until after we are done modifying the
   // molecular graph:
   MolOps::assignStereochemistry(*mol, true, true, true);
-  // restore the original wedging from the MolBlock
+
+  return mol;
+}
+
+RWMOL_SPTR Pipeline::reapplyWedging(RWMOL_SPTR mol, PipelineResult & result) const
+{
+  // in general, we want to restore the bond wedging from the input molblock,
+  // but we prefer to represent double bonds with undefined/unknown stereochemistry
+  // with a "either" bond stereo type also when they were originally specified using
+  // adjacent wavy bonds.
+
+  // we therefore proceed in two steps, we first reapply the molblock wedging and then
+  // revert the changes related to double bonds with undefined/unknown stereochemistry.
+  // in order to do so, we need to keep track of the current bond configuration settings.
+  using BondInfo = std::tuple<Bond::BondType, Bond::BondDir, Bond::BondStereo>;
+  std::map<unsigned int, BondInfo> oldBonds;
+  for (auto bond : mol->bonds()) {
+    oldBonds[bond->getIdx()]
+      = {bond->getBondType(), bond->getBondDir(), bond->getStereo()};
+  }
+
+  // 1) restore the original wedging from the input MolBlock
   Chirality::reapplyMolBlockWedging(*mol);
 
+  // 2) revert the changes related to double bonds with stereo type "either", that is:
+  //    - double bonds changing stereo type from STEREOANY to STEREONONE
+  //    - single bonds adjacent to these double bonds and that changed direction
+  //      from NONE to UNKNOWN
+  auto revertDoubleBond = [&oldBonds](Bond * bond) -> bool {
+    if (bond->getBondType() != Bond::DOUBLE) {
+      return false;
+    }
+    BondInfo oldDoubleBond = oldBonds[bond->getIdx()];
+    Bond::BondStereo oldStereo = std::get<2>(oldDoubleBond);
+    Bond::BondStereo newStereo = bond->getStereo();
+    if (oldStereo != Bond::STEREOANY || newStereo != Bond::STEREONONE) {
+      return false;
+    }
+    // restore the double bond's stereo settings
+    bond->setStereo(Bond::STEREOANY);
+    return true;
+  };
+
+  auto revertSingleBond = [&oldBonds](Bond * bond) -> bool {
+    if (bond->getBondType() != Bond::SINGLE) {
+      return false;
+    }
+    BondInfo oldSingleBond = oldBonds[bond->getIdx()];
+    Bond::BondDir oldDir = std::get<1>(oldSingleBond);
+    Bond::BondDir newDir = bond->getBondDir();
+    if (oldDir != Bond::NONE || newDir != Bond::UNKNOWN) {
+      return false;
+    }
+    // restore the single bond's direction settings
+    bond->setBondDir(Bond::NONE);
+    return true;
+  };
+
+  for (auto doubleBond : mol->bonds()) {
+    // check for double bonds with unknown stereo
+    if (!revertDoubleBond(doubleBond)) {
+      continue;
+    }
+    // check for wavy bonds at the double bond's ends
+    for (auto singleBond : mol->atomBonds(doubleBond->getBeginAtom())) {
+      revertSingleBond(singleBond);
+    }
+    for (auto singleBond : mol->atomBonds(doubleBond->getEndAtom())) {
+      revertSingleBond(singleBond);
+    }
+    result.append(
+      NORMALIZATION_APPLIED,
+      "The internal representation of the stereochemistry of double bond "
+      + std::to_string(doubleBond->getIdx()) + " was standardized");
+  }
+
+  return mol;
+}
+
+RWMOL_SPTR Pipeline::cleanup2D(RWMOL_SPTR mol, PipelineResult & /*result*/) const
+{
   // scale the atoms coordinates
   // and make sure that z coords are set to 0 (some z coords may be non-null
   // albeit smaller than the validation threshold - these noisy coords may in some cases
@@ -361,7 +441,6 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
       }
     }
   }
-
 
   return mol;
 }

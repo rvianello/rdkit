@@ -175,6 +175,8 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Pipeline {
   RWMOL_SPTR validate(RWMOL_SPTR mol, PipelineResult & result) const;
   RWMOL_SPTR prepareForStandardization(RWMOL_SPTR mol, PipelineResult & result) const;
   RWMOL_SPTR standardize(RWMOL_SPTR mol, PipelineResult & result) const;
+  RWMOL_SPTR reapplyWedging(RWMOL_SPTR mol, PipelineResult & result) const;
+  RWMOL_SPTR cleanup2D(RWMOL_SPTR mol, PipelineResult & result) const;
   using RWMOL_SPTR_PAIR = std::pair<RWMOL_SPTR, RWMOL_SPTR>;
   RWMOL_SPTR_PAIR makeParent(RWMOL_SPTR mol, PipelineResult & result) const;
   void serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const;
