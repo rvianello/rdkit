@@ -1229,6 +1229,46 @@ M  END
     errmsg ==
     "ERROR: [StereoValidation] Atom 3 has both unknown and wedged/dashed stereo bonds.");
 
+  // Non-single bond with stereo bond orientation
+
+// 
+  mblock = R"(
+  Mrv2311 04232413302D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 S -11.583 11.3533 0 0
+M  V30 2 C -12.9167 10.5833 0 0
+M  V30 3 O -11.583 12.8933 0 0
+M  V30 4 C -10.2493 10.5833 0 0
+M  V30 5 C -10.2493 9.0433 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 4 5
+M  V30 2 1 2 1
+M  V30 3 1 1 4
+M  V30 4 2 1 3 CFG=1
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+  mol.reset(MolBlockToMol(mblock, false, false));
+  Chirality::reapplyMolBlockWedging(*mol);
+  errout = stereo.validate(*mol, true);
+  cerr << "here" << endl;
+  for (auto msg: errout) {
+    cerr << msg << endl;
+  }
+  cerr << "there" << endl;
+  TEST_ASSERT(errout.size() == 1);
+  errmsg = errout[0];
+  TEST_ASSERT(
+    errmsg ==
+    "ERROR: [StereoValidation] Bond 3 has assigned stereo type, but unexpected bond order.");
+
   // Badly drawn perspective diagram
   mblock = R"(
   Mrv2311 02022413502D          

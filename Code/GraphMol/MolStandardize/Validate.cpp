@@ -880,6 +880,46 @@ namespace {
     const ROMol &mol, const Atom * atom,  bool reportAllFailures,
     std::vector<ValidationErrorInfo> & errors)
   {
+    NeighborsInfo neighborsInfo(mol, atom);
+
+    if (neighborsInfo.dirCount.other) {
+      errors.push_back(
+        "ERROR: [StereoValidation] one or more bonds incident to atom "
+        + std::to_string(atom->getIdx())
+        + " have unexpected direction settings");
+      // this is an unlikely condition and it would make little sense to
+      // continue the analysis also when reportAllFailures were set.
+      return;
+    }
+
+    if (neighborsInfo.dirCount.unknown) {
+      if (neighborsInfo.dirCount.dash || neighborsInfo.dirCount.wedge) {
+        errors.push_back(
+          "ERROR: [StereoValidation] Atom " + std::to_string(atom->getIdx())
+          + " has both unknown and wedged/dashed stereo bonds.");
+      }
+      // else: if the only stereo bonds have either/unknown direction,
+      // we can return here.
+      return;
+    }
+
+    for (const auto & bondInfo : neighborsInfo.bonds) {
+      bool isStereo =
+        bondInfo.bondDir == Bond::BondDir::BEGINDASH ||
+        bondInfo.bondDir == Bond::BondDir::BEGINWEDGE ||
+        bondInfo.bondDir == Bond::BondDir::UNKNOWN;
+      if (isStereo && !canHaveDirection(*bondInfo.bond)) {
+        errors.push_back(
+          "ERROR: [StereoValidation] Bond " + std::to_string(bondInfo.bond->getIdx())
+          + " has assigned stereo type, but unexpected bond order.");
+        if (!reportAllFailures) {
+          return;
+        }
+      }
+    }
+
+    // The validation is currently limited to some specific categories of
+    // stereocenters
     bool multipleBondFound {}, possibleAllene {};
     for (auto bond: mol.atomBonds(atom)) {
       auto bondType = bond->getBondType();
@@ -912,29 +952,6 @@ namespace {
       // incident to double bonds of undefined/unknown configuration, and atropisomers).
       //
       // Validation of these use cases is not currently implemented.
-      return;
-    }
-
-    NeighborsInfo neighborsInfo(mol, atom);
-
-    if (neighborsInfo.dirCount.other) {
-      errors.push_back(
-        "ERROR: [StereoValidation] one or more bonds incident to atom "
-        + std::to_string(atom->getIdx())
-        + " have unexpected direction settings");
-      // this is an unlikely condition and it would make little sense to
-      // continue the analysis also when reportAllFailures were set.
-      return;
-    }
-
-    if (neighborsInfo.dirCount.unknown) {
-      if (neighborsInfo.dirCount.dash || neighborsInfo.dirCount.wedge) {
-        errors.push_back(
-          "ERROR: [StereoValidation] Atom " + std::to_string(atom->getIdx())
-          + " has both unknown and wedged/dashed stereo bonds.");
-      }
-      // else: if the only stereo bonds have either/unknown direction,
-      // we can return here.
       return;
     }
 
