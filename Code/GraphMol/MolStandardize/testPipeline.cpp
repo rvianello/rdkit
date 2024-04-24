@@ -1072,7 +1072,6 @@ M  END
       (result.status & MolStandardize::STRUCTURE_MODIFICATION)
       == (
         MolStandardize::METALS_DISCONNECTED
-        | MolStandardize::NORMALIZATION_APPLIED
         | MolStandardize::FRAGMENTS_REMOVED
         | MolStandardize::PROTONATION_CHANGED
         )
@@ -1082,7 +1081,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "[H][C@](C)(F)CCCS(=O)C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "[H][C@](C)(F)CCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
   }
 
   SECTION("standardize preserves isotopically marked explicit Hs") {
@@ -1147,7 +1146,7 @@ M  END
       (result.status & MolStandardize::STRUCTURE_MODIFICATION)
       == (
         MolStandardize::METALS_DISCONNECTED
-        | MolStandardize::NORMALIZATION_APPLIED
+        //| MolStandardize::NORMALIZATION_APPLIED
         | MolStandardize::FRAGMENTS_REMOVED
         | MolStandardize::PROTONATION_CHANGED
         )
@@ -1157,7 +1156,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "[2H]CCCCS(=O)C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "[2H]CCCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
   }
 
   SECTION("standardize preserves generic explicit Hs") {
@@ -1222,7 +1221,6 @@ M  END
       (result.status & MolStandardize::STRUCTURE_MODIFICATION)
       == (
         MolStandardize::METALS_DISCONNECTED
-        | MolStandardize::NORMALIZATION_APPLIED
         | MolStandardize::FRAGMENTS_REMOVED
         | MolStandardize::PROTONATION_CHANGED
         )
@@ -1232,7 +1230,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "[H]CCCCS(=O)C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "[H]CCCC[S+]([O-])C1=CC=C(C(=O)O)C=C1");
   }
 
   SECTION("standardize doesn't remove wedged bonds from non-stereogenic centers") {
@@ -1295,7 +1293,6 @@ M  END
       (result.status & MolStandardize::STRUCTURE_MODIFICATION)
       == (
         MolStandardize::METALS_DISCONNECTED
-        | MolStandardize::NORMALIZATION_APPLIED
         | MolStandardize::FRAGMENTS_REMOVED
         | MolStandardize::PROTONATION_CHANGED
         )
@@ -1305,7 +1302,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "CC(C)CS(=O)C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "CC(C)C[S+]([O-])C1=CC=C(C(=O)O)C=C1");
   
     Chirality::reapplyMolBlockWedging(*parentMol);
 
@@ -1387,7 +1384,6 @@ M  END
       (result.status & MolStandardize::STRUCTURE_MODIFICATION)
       == (
         MolStandardize::METALS_DISCONNECTED
-        | MolStandardize::NORMALIZATION_APPLIED
         | MolStandardize::FRAGMENTS_REMOVED
         | MolStandardize::PROTONATION_CHANGED
         )
@@ -1397,7 +1393,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "CC(C)CS(=O)C1=CC=C(C(=O)O)C=C1");
+    REQUIRE(parentSmiles == "CC(C)C[S+]([O-])C1=CC=C(C(=O)O)C=C1");
   
     Chirality::reapplyMolBlockWedging(*parentMol);
 

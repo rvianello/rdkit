@@ -49,9 +49,8 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
     "Pyridine oxide to n+O-\t[nH0+0:1]=[OH0+0:2]>>[n+:1][O-:2]\n"
     "Azide to N=N+=N-\t[*:1][N:2]=[N:3]#[N:4]>>[*:1][N:2]=[N+:3]=[N-:4]\n"
     "Diazo/azo to =N+=N-\t[*:1]=[N:2]#[N:3]>>[*:1]=[N+:2]=[N-:3]\n"
-    // Note: the sulfoxide transformation below is the reverse of what is by default included
-    // in the Normalizer configuration
-    "-S+(O-) to sulfoxide\t[!O:1][S+1;X3:2]([O-:3])[!O:4]>>[*:1][S+0:2](=[O+0:3])[*:4]\n"
+    // Note: the sulfoxide transformation by default included in the Normalizer configuration
+    // was removed
     // Note: the transformation below was ported from STRUCHK and it's not part of the default
     // Normalizer configuration
     "[SH](=O)(=O) to S(=O)O\t[c,C,N,O,F,Cl,Br,I:1][SH+0:2](=[O:3])=[O:4]>>[*:1][*:2]([*:3])=[*:4]\n"
