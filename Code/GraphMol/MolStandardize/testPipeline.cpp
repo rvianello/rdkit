@@ -863,6 +863,209 @@ M  END
     REQUIRE(smiles == "C[S+](C)[O-]");
   }
 
+  SECTION("normalization of 1,3- 1,5- conjugated systems favors application within rings") {
+    const char * molblock {};
+    MolStandardize::PipelineResult result;
+    std::unique_ptr<RWMol> parentMol;
+    std::string parentSmiles;
+
+    // 1,3- conjugated cation - test a first ctab permutation
+    molblock = R"(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 8 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 N -11.833300 8.935800 0.000000 0 CHG=1
+M  V30 2 C -13.167100 8.165800 0.000000 0
+M  V30 3 C -11.833300 5.855800 0.000000 0
+M  V30 4 C -10.499600 6.625600 0.000000 0
+M  V30 5 C -10.499600 8.165800 0.000000 0
+M  V30 6 C -11.833300 10.475800 0.000000 0
+M  V30 7 N -13.167100 6.625600 0.000000 0
+M  V30 8 N -14.500700 8.935800 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 3 4
+M  V30 2 1 4 5
+M  V30 3 2 1 2
+M  V30 4 1 1 5
+M  V30 5 1 1 6
+M  V30 6 1 2 8
+M  V30 7 1 2 7
+M  V30 8 1 7 3
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (MolStandardize::NORMALIZATION_APPLIED | MolStandardize::PROTONATION_CHANGED)
+    );
+
+    parentMol.reset(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    parentSmiles = MolToSmiles(*parentMol);
+    REQUIRE(parentSmiles == "CN1CCCN=C1N");
+
+    // 1,3- conjugated cation - test a second ctab permutation
+    molblock = R"(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 8 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 N -11.833300 8.935800 0.000000 0 CHG=1
+M  V30 2 C -13.167100 8.165800 0.000000 0
+M  V30 3 C -11.833300 5.855800 0.000000 0
+M  V30 4 C -10.499600 6.625600 0.000000 0
+M  V30 5 C -10.499600 8.165800 0.000000 0
+M  V30 6 C -11.833300 10.475800 0.000000 0
+M  V30 7 N -14.500700 8.935800 0.000000 0
+M  V30 8 N -13.167100 6.625600 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 3 4
+M  V30 2 1 4 5
+M  V30 3 2 1 2
+M  V30 4 1 1 5
+M  V30 5 1 1 6
+M  V30 6 1 2 7
+M  V30 7 1 2 8
+M  V30 8 1 8 3
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (MolStandardize::NORMALIZATION_APPLIED | MolStandardize::PROTONATION_CHANGED)
+    );
+
+    parentMol.reset(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    parentSmiles = MolToSmiles(*parentMol);
+    REQUIRE(parentSmiles == "CN1CCCN=C1N");
+
+    // 1,5- conjugated cation - test a first ctab permutation
+    molblock = R"(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 8 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 N -3.958300 0.790000 0.000000 0 CHG=1
+M  V30 2 C -5.292100 0.020000 0.000000 0
+M  V30 3 C -5.292100 -1.520200 0.000000 0
+M  V30 4 C -3.958300 -2.290000 0.000000 0
+M  V30 5 C -2.624600 0.020000 0.000000 0
+M  V30 6 N -2.624600 -1.520200 0.000000 0
+M  V30 7 C -3.958300 2.330000 0.000000 0
+M  V30 8 N -3.958300 -3.830000 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 3
+M  V30 2 2 3 4
+M  V30 3 2 1 2
+M  V30 4 1 1 5
+M  V30 5 1 1 7
+M  V30 6 1 4 8
+M  V30 7 1 6 5
+M  V30 8 1 4 6
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (MolStandardize::NORMALIZATION_APPLIED | MolStandardize::PROTONATION_CHANGED)
+    );
+
+    parentMol.reset(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    parentSmiles = MolToSmiles(*parentMol);
+    REQUIRE(parentSmiles == "CN1C=CC(N)=NC1");
+
+    // 1,5- conjugated cation - test a second ctab permutation
+    molblock = R"(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 8 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 N -3.958300 0.790000 0.000000 0 CHG=1
+M  V30 2 C -5.292100 0.020000 0.000000 0
+M  V30 3 C -5.292100 -1.520200 0.000000 0
+M  V30 4 C -3.958300 -2.290000 0.000000 0
+M  V30 5 C -2.624600 0.020000 0.000000 0
+M  V30 6 N -3.958300 -3.830000 0.000000 0
+M  V30 7 N -2.624600 -1.520200 0.000000 0
+M  V30 8 C -3.958300 2.330000 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 3
+M  V30 2 2 3 4
+M  V30 3 2 1 2
+M  V30 4 1 1 5
+M  V30 5 1 1 8
+M  V30 6 1 4 6
+M  V30 7 1 7 5
+M  V30 8 1 4 7
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION)
+      == (MolStandardize::NORMALIZATION_APPLIED | MolStandardize::PROTONATION_CHANGED)
+    );
+
+    parentMol.reset(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    parentSmiles = MolToSmiles(*parentMol);
+    REQUIRE(parentSmiles == "CN1C=CC(N)=NC1");
+  }
+
   SECTION("standardize zwitterion") {
     const char * molblock = R"(
           10282320572D          
