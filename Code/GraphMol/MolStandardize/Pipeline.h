@@ -38,7 +38,7 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
 
   // cleanup/standardization
   // metal disconnector options
-  std::string metalNof {"[Li,Na,K,Rb,Cs,Fr,Be,Mg,Ca,Sr,Ba,Ra]~[#7,#8,F]"};
+  std::string metalNof {"[Li,Na,K,Rb,Cs,Fr]~[#7,#8,F]"};
   std::string metalNon {};
   bool allowPartialDisconnections {false};
   // normalizer options

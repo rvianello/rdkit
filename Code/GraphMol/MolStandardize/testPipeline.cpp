@@ -1805,6 +1805,14 @@ M  END
   }
 
   SECTION("Partial disconnection of metals") {
+
+    // This test requires handling the disconnection of
+    // bivalent metals
+    MolStandardize::PipelineOptions options;
+    options.metalNof = "[Li,Na,K,Be,Mg,Ca]~[#7,#8,F]";
+    MolStandardize::Pipeline pipeline(options);
+
+
     const char * molblock = R"(
   Mrv2311 03182415572D          
 
