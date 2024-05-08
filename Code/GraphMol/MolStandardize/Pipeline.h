@@ -83,7 +83,7 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT PipelineOptions {
   double scaledMedianBondLength {1.};
 
   // serialization
-  bool ouputV2000 {false};
+  bool outputV2000 {false};
 };
 
 enum RDKIT_MOLSTANDARDIZE_EXPORT PipelineStatus {

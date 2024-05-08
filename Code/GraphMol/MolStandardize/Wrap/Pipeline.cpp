@@ -46,7 +46,7 @@ void wrap_pipeline() {
         .def_readwrite("normalizerData", &MolStandardize::PipelineOptions::normalizerData)
         .def_readwrite("normalizerMaxRestarts", &MolStandardize::PipelineOptions::normalizerMaxRestarts)
         .def_readwrite("scaledMedianBondLength", &MolStandardize::PipelineOptions::scaledMedianBondLength)
-        .def_readwrite("outputV2000", &MolStandardize::PipelineOptions::ouputV2000)
+        .def_readwrite("outputV2000", &MolStandardize::PipelineOptions::outputV2000)
         ;
 
     python::enum_<MolStandardize::PipelineStatus>("PipelineStatus")

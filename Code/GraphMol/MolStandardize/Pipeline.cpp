@@ -549,7 +549,7 @@ void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const
   const ROMol & parentMol = *output.second;
   
   try {
-    if (!options.ouputV2000) {
+    if (!options.outputV2000) {
       result.outputMolBlock = MolToV3KMolBlock(outputMol);
       result.parentMolBlock = MolToV3KMolBlock(parentMol);
     }
