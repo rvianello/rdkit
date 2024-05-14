@@ -350,12 +350,13 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
 RWMOL_SPTR Pipeline::reapplyWedging(RWMOL_SPTR mol, PipelineResult & result) const
 {
   // in general, we want to restore the bond wedging from the input molblock,
-  // but we prefer to represent double bonds with undefined/unknown stereochemistry
-  // with a "either" bond stereo type also when they were originally specified using
-  // adjacent wavy bonds.
+  // but we prefer to not use any wavy bonds, because of their ambiguity
+  // in some configurations.
 
   // we therefore proceed in two steps, we first reapply the molblock wedging and then
-  // revert the changes related to double bonds with undefined/unknown stereochemistry.
+  // revert the changes related to double bonds with undefined/unknown stereochemistry
+  // and change single bonds with "unknown" direction into plain single bonds.
+
   // in order to do so, we need to keep track of the current bond configuration settings.
   using BondInfo = std::tuple<Bond::BondType, Bond::BondDir, Bond::BondStereo>;
   std::map<unsigned int, BondInfo> oldBonds;
@@ -367,56 +368,28 @@ RWMOL_SPTR Pipeline::reapplyWedging(RWMOL_SPTR mol, PipelineResult & result) con
   // 1) restore the original wedging from the input MolBlock
   Chirality::reapplyMolBlockWedging(*mol);
 
-  // 2) revert the changes related to double bonds with stereo type "either", that is:
-  //    - double bonds changing stereo type from STEREOANY to STEREONONE
-  //    - single bonds adjacent to these double bonds and that changed direction
-  //      from NONE to UNKNOWN
-  auto revertDoubleBond = [&oldBonds](Bond * bond) -> bool {
-    if (bond->getBondType() != Bond::DOUBLE) {
-      return false;
+  for (auto bond : mol->bonds()) {
+    if (bond->getBondType() == Bond::DOUBLE) {
+      // 2) revert the changes related to double bonds with stereo type "either":
+      //    restore the STEREOANY direction of double bonds that are now STEREONONE
+      Bond::BondStereo oldStereo = std::get<2>(oldBonds[bond->getIdx()]);
+      Bond::BondStereo newStereo = bond->getStereo();
+      if (oldStereo == Bond::STEREOANY && newStereo == Bond::STEREONONE) {
+        bond->setStereo(Bond::STEREOANY);
+        result.append(
+          NORMALIZATION_APPLIED,
+          "Double bond " + std::to_string(bond->getIdx())
+          + " was assigned an undefined/unknown stereochemical configuration");
+      }
     }
-    BondInfo oldDoubleBond = oldBonds[bond->getIdx()];
-    Bond::BondStereo oldStereo = std::get<2>(oldDoubleBond);
-    Bond::BondStereo newStereo = bond->getStereo();
-    if (oldStereo != Bond::STEREOANY || newStereo != Bond::STEREONONE) {
-      return false;
+    else if (bond->getBondDir() == Bond::UNKNOWN) {
+      // 3) set the bond direction to NONE for bonds with direction UNKNOWN
+      bond->setBondDir(Bond::NONE);
+      result.append(
+        NORMALIZATION_APPLIED,
+        "The \"wavy\" style of bond " + std::to_string(bond->getIdx())
+        + " was removed");
     }
-    // restore the double bond's stereo settings
-    bond->setStereo(Bond::STEREOANY);
-    return true;
-  };
-
-  auto revertSingleBond = [&oldBonds](Bond * bond) -> bool {
-    if (bond->getBondType() != Bond::SINGLE) {
-      return false;
-    }
-    BondInfo oldSingleBond = oldBonds[bond->getIdx()];
-    Bond::BondDir oldDir = std::get<1>(oldSingleBond);
-    Bond::BondDir newDir = bond->getBondDir();
-    if (oldDir != Bond::NONE || newDir != Bond::UNKNOWN) {
-      return false;
-    }
-    // restore the single bond's direction settings
-    bond->setBondDir(Bond::NONE);
-    return true;
-  };
-
-  for (auto doubleBond : mol->bonds()) {
-    // check for double bonds with unknown stereo
-    if (!revertDoubleBond(doubleBond)) {
-      continue;
-    }
-    // check for wavy bonds at the double bond's ends
-    for (auto singleBond : mol->atomBonds(doubleBond->getBeginAtom())) {
-      revertSingleBond(singleBond);
-    }
-    for (auto singleBond : mol->atomBonds(doubleBond->getEndAtom())) {
-      revertSingleBond(singleBond);
-    }
-    result.append(
-      NORMALIZATION_APPLIED,
-      "The internal representation of the stereochemistry of double bond "
-      + std::to_string(doubleBond->getIdx()) + " was standardized");
   }
 
   return mol;
