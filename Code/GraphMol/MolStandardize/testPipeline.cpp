@@ -1527,23 +1527,27 @@ M  END
     REQUIRE(endAtom->getDegree() == 1);
   }
 
-  SECTION("standardize removes wavy bonds from double bonds w/ stereo type 'either'") {
+  SECTION("standardize removes wavy bonds from tetrahedral centers") {
     const char * molblock = R"(
-  Mrv2311 04172413232D          
+  Mrv2311 05172413472D          
 
   0  0  0     0  0            999 V3000
 M  V30 BEGIN CTAB
-M  V30 COUNTS 4 3 0 0 0
+M  V30 COUNTS 6 5 0 0 0
 M  V30 BEGIN ATOM
-M  V30 1 C -13.9163 3.9158 0 0
-M  V30 2 C -15.25 3.1458 0 0
-M  V30 3 C -13.9163 5.4558 0 0
-M  V30 4 C -15.25 6.2258 0 0
+M  V30 1 Cl -7.1663 10.5408 0 0
+M  V30 2 C -8.5 9.7708 0 0 CFG=3
+M  V30 3 F -9.8337 10.5408 0 0
+M  V30 4 C -8.5 8.2308 0 0
+M  V30 5 C -7.1663 9.0008 0 0
+M  V30 6 C -9.8337 7.4608 0 0
 M  V30 END ATOM
 M  V30 BEGIN BOND
-M  V30 1 1 2 1
-M  V30 2 2 1 3
-M  V30 3 1 3 4 CFG=2
+M  V30 1 1 2 4
+M  V30 2 1 2 5
+M  V30 3 1 2 3
+M  V30 4 1 4 6
+M  V30 5 1 2 1 CFG=2
 M  V30 END BOND
 M  V30 END CTAB
 M  END
@@ -1566,7 +1570,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "CC=CC");
+    REQUIRE(parentSmiles == "CCC(C)(F)Cl");
   
     Chirality::reapplyMolBlockWedging(*parentMol);
 
@@ -1580,9 +1584,366 @@ M  END
       }
     }
     REQUIRE(wavy == nullptr);
+  }
+
+  SECTION("standardize replaces wavy bonds with double bonds w/ stereo type 'either'") {
+    const char * molblock;
+    MolStandardize::PipelineResult result;
+    std::unique_ptr<RWMol> parentMol;
+    std::string parentSmiles;
+    const Bond * wavy;
+    const Bond * doubleBond;
+
+    // simplest case: wavy bond adjacent a double bond
+    molblock = R"(
+  Mrv2311 04172413232D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -13.9163 3.9158 0 0
+M  V30 2 C -15.25 3.1458 0 0
+M  V30 3 C -13.9163 5.4558 0 0
+M  V30 4 C -15.25 6.2258 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 2 1 3
+M  V30 3 1 3 4 CFG=2
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NORMALIZATION_APPLIED
+    );
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    parentMol.reset(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    parentSmiles = MolToSmiles(*parentMol);
+    REQUIRE(parentSmiles == "CC=CC");
+  
+    Chirality::reapplyMolBlockWedging(*parentMol);
+
+    // no wavy bond is expected to be found
+    wavy = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondDir = bond->getBondDir();
+      if (bondDir == Bond::BondDir::UNKNOWN) {
+        wavy = bond;
+        break;
+      }
+    }
+    REQUIRE(wavy == nullptr);
 
     // the double bond should have stereo type STEREOANY
-    const Bond * doubleBond = nullptr;
+    doubleBond = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondType = bond->getBondType();
+      if (bondType == Bond::DOUBLE) {
+        doubleBond = bond;
+        break;
+      }
+    }
+    REQUIRE(doubleBond != nullptr);
+    REQUIRE(doubleBond->getStereo() == Bond::STEREOANY);
+
+    // wavy bond between stereo center and double bond
+    molblock = R"(
+  Mrv2311 05172414272D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 6 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -5.3747 8.9992 0 0
+M  V30 2 F -6.7083 8.2292 0 0
+M  V30 3 Cl -5.3747 10.5392 0 0
+M  V30 4 C -4.041 8.2292 0 0
+M  V30 5 C -5.3747 7.4592 0 0
+M  V30 6 C -6.7083 6.6892 0 0
+M  V30 7 C -6.7083 5.1492 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 4
+M  V30 2 1 5 1 CFG=2
+M  V30 3 2 5 6
+M  V30 4 1 6 7
+M  V30 5 1 2 1
+M  V30 6 1 1 3
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NORMALIZATION_APPLIED
+    );
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    parentMol.reset(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    parentSmiles = MolToSmiles(*parentMol);
+    REQUIRE(parentSmiles == "CC=CC(C)(F)Cl");
+  
+    Chirality::reapplyMolBlockWedging(*parentMol);
+
+    // no wavy bond is expected to be found
+    wavy = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondDir = bond->getBondDir();
+      if (bondDir == Bond::BondDir::UNKNOWN) {
+        wavy = bond;
+        break;
+      }
+    }
+    REQUIRE(wavy == nullptr);
+
+    // the double bond should have stereo type STEREOANY
+    doubleBond = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondType = bond->getBondType();
+      if (bondType == Bond::DOUBLE) {
+        doubleBond = bond;
+        break;
+      }
+    }
+    REQUIRE(doubleBond != nullptr);
+    REQUIRE(doubleBond->getStereo() == Bond::STEREOANY);
+
+    // wavy bond between stereo center and double bond again
+    // same as previous test case, but with the wavy bond going
+    // from the stereocenter to the double bond
+    // (make sure the direction of the wavy bond is not significant)
+    molblock = R"(
+  Mrv2311 05172414322D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 6 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -5.3747 8.9992 0 0 CFG=3
+M  V30 2 F -6.7083 8.2292 0 0
+M  V30 3 Cl -5.3747 10.5392 0 0
+M  V30 4 C -4.041 8.2292 0 0
+M  V30 5 C -5.3747 7.4592 0 0
+M  V30 6 C -6.7083 6.6892 0 0
+M  V30 7 C -6.7083 5.1492 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 4
+M  V30 2 1 1 5 CFG=2
+M  V30 3 2 5 6
+M  V30 4 1 6 7
+M  V30 5 1 2 1
+M  V30 6 1 1 3
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NORMALIZATION_APPLIED
+    );
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    parentMol.reset(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    parentSmiles = MolToSmiles(*parentMol);
+    REQUIRE(parentSmiles == "CC=CC(C)(F)Cl");
+  
+    Chirality::reapplyMolBlockWedging(*parentMol);
+
+    // no wavy bond is expected to be found
+    wavy = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondDir = bond->getBondDir();
+      if (bondDir == Bond::BondDir::UNKNOWN) {
+        wavy = bond;
+        break;
+      }
+    }
+    REQUIRE(wavy == nullptr);
+
+    // the double bond should have stereo type STEREOANY
+    doubleBond = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondType = bond->getBondType();
+      if (bondType == Bond::DOUBLE) {
+        doubleBond = bond;
+        break;
+      }
+    }
+    REQUIRE(doubleBond != nullptr);
+    REQUIRE(doubleBond->getStereo() == Bond::STEREOANY);
+
+    // the wavy bond is removed, but no crossed/either double bond
+    // in small rings (7 is currently the largest size for a ring
+    // that is considered too small to allow a trans configuration)
+    molblock = R"(
+  Mrv2311 05172414462D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 8 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -15.7363 3.017 0 0
+M  V30 2 C -14.3488 3.6852 0 0
+M  V30 3 C -12.9613 3.017 0 0
+M  V30 4 C -12.6186 1.5156 0 0
+M  V30 5 C -13.5788 0.3116 0 0
+M  V30 6 C -16.0789 1.5156 0 0
+M  V30 7 C -14.3488 5.2252 0 0
+M  V30 8 C -15.1188 0.3116 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 1 6
+M  V30 3 2 2 3
+M  V30 4 1 3 4
+M  V30 5 1 2 7 CFG=2
+M  V30 6 1 6 8
+M  V30 7 1 8 5
+M  V30 8 1 4 5
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NORMALIZATION_APPLIED
+    );
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    parentMol.reset(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    parentSmiles = MolToSmiles(*parentMol);
+    REQUIRE(parentSmiles == "CC1=CCCCCC1");
+  
+    Chirality::reapplyMolBlockWedging(*parentMol);
+
+    // no wavy bond is expected to be found
+    wavy = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondDir = bond->getBondDir();
+      if (bondDir == Bond::BondDir::UNKNOWN) {
+        wavy = bond;
+        break;
+      }
+    }
+    REQUIRE(wavy == nullptr);
+
+    // the double bond should have stereo type STEREONONE
+    doubleBond = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondType = bond->getBondType();
+      if (bondType == Bond::DOUBLE) {
+        doubleBond = bond;
+        break;
+      }
+    }
+    REQUIRE(doubleBond != nullptr);
+    REQUIRE(doubleBond->getStereo() == Bond::STEREONONE);
+
+    // do we get a crossed/either double bond if the double bond
+    // has identical substituents at one end? this is apparently
+    // the case. 
+    molblock = R"(
+  Mrv2311 05172414492D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -6.4997 8.0408 0 0
+M  V30 2 C -7.8333 7.2708 0 0
+M  V30 3 C -9.167 8.0408 0 0
+M  V30 4 C -7.8333 5.7308 0 0
+M  V30 5 C -9.167 4.9608 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 2 3
+M  V30 3 2 2 4
+M  V30 4 1 4 5 CFG=2
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
+    REQUIRE(
+      (result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NORMALIZATION_APPLIED
+    );
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    parentMol.reset(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    parentSmiles = MolToSmiles(*parentMol);
+    REQUIRE(parentSmiles == "CC=C(C)C");
+  
+    Chirality::reapplyMolBlockWedging(*parentMol);
+
+    // no wavy bond is expected to be found
+    wavy = nullptr;
+    for (auto bond: parentMol->bonds()) {
+      auto bondDir = bond->getBondDir();
+      if (bondDir == Bond::BondDir::UNKNOWN) {
+        wavy = bond;
+        break;
+      }
+    }
+    REQUIRE(wavy == nullptr);
+
+    // the double bond should have stereo type STEREOANY
+    doubleBond = nullptr;
     for (auto bond: parentMol->bonds()) {
       auto bondType = bond->getBondType();
       if (bondType == Bond::DOUBLE) {
