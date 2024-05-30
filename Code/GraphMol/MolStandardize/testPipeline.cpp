@@ -97,11 +97,9 @@ M  END
     REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) != MolStandardize::NO_EVENT);
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
-    REQUIRE((result.status & MolStandardize::STANDARDIZATION_ERROR) == MolStandardize::NORMALIZER_STANDARDIZATION_ERROR);
     REQUIRE(result.status == (
       MolStandardize::BASIC_VALIDATION_ERROR |
-      MolStandardize::PREPARE_FOR_STANDARDIZATION_ERROR |
-      MolStandardize::NORMALIZER_STANDARDIZATION_ERROR
+      MolStandardize::PREPARE_FOR_STANDARDIZATION_ERROR
       ));
   }
 
@@ -2150,6 +2148,49 @@ M  END
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
     REQUIRE(parentSmiles == "CCO[Mg]C1CCCCC1CCC(=O)O[Na]");
+  }
+
+  SECTION("Handling of failing normalization") {
+
+    // Test that the failing application of some normalization transform
+    // doesn't result in unexpected changes to the input
+    // (test case based on GitHub #7189)
+    const char * molblock = R"(
+  Mrv2311 05292413242D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 6 6 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 O -12.375 9.3308 0 0
+M  V30 2 C -13.6208 8.4255 0 0
+M  V30 3 N -13.145 6.9609 0 0 CHG=1
+M  V30 4 C -11.605 6.9609 0 0
+M  V30 5 C -11.1292 8.4255 0 0
+M  V30 6 O -10.6998 5.715 0 0 CHG=-1
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 2 4 5
+M  V30 2 2 2 3
+M  V30 3 1 3 4
+M  V30 4 1 4 6
+M  V30 5 1 1 2
+M  V30 6 1 1 5
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NO_EVENT);
+
   }
 }
 

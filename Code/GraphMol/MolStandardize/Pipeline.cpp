@@ -303,7 +303,10 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
       std::istringstream sstr(options.normalizerData);
       normalizer.reset(new Normalizer(sstr, options.normalizerMaxRestarts));
     }
-    normalizer->normalizeInPlace(*mol);
+    // normalizeInPlace() may return an ill-formed molecule if
+    // the sanitization of a transformed structure failed
+    // => use normalize() instead (also see GitHub #7189)
+    mol.reset(static_cast<RWMol *>(normalizer->normalize(*mol)));
     mol->updatePropertyCache(false);
   }
   catch (...) {
