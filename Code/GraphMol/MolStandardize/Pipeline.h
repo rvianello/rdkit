@@ -171,20 +171,21 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Pipeline {
  public:
   Pipeline() = default;
   explicit Pipeline(const PipelineOptions & o) : options(o) {};
+  virtual ~Pipeline() = default;
 
   PipelineResult run(const std::string & molblock) const;
 
  private:
-  RWMOL_SPTR parse(const std::string & molblock, PipelineResult & result) const;
-  RWMOL_SPTR prepareForValidation(RWMOL_SPTR mol, PipelineResult & result) const;
-  RWMOL_SPTR validate(RWMOL_SPTR mol, PipelineResult & result) const;
-  RWMOL_SPTR prepareForStandardization(RWMOL_SPTR mol, PipelineResult & result) const;
-  RWMOL_SPTR standardize(RWMOL_SPTR mol, PipelineResult & result) const;
-  RWMOL_SPTR reapplyWedging(RWMOL_SPTR mol, PipelineResult & result) const;
-  RWMOL_SPTR cleanup2D(RWMOL_SPTR mol, PipelineResult & result) const;
+  virtual RWMOL_SPTR parse(const std::string & molblock, PipelineResult & result) const;
+  virtual RWMOL_SPTR prepareForValidation(RWMOL_SPTR mol, PipelineResult & result) const;
+  virtual RWMOL_SPTR validate(RWMOL_SPTR mol, PipelineResult & result) const;
+  virtual RWMOL_SPTR prepareForStandardization(RWMOL_SPTR mol, PipelineResult & result) const;
+  virtual RWMOL_SPTR standardize(RWMOL_SPTR mol, PipelineResult & result) const;
+  virtual RWMOL_SPTR reapplyWedging(RWMOL_SPTR mol, PipelineResult & result) const;
+  virtual RWMOL_SPTR cleanup2D(RWMOL_SPTR mol, PipelineResult & result) const;
   using RWMOL_SPTR_PAIR = std::pair<RWMOL_SPTR, RWMOL_SPTR>;
-  RWMOL_SPTR_PAIR makeParent(RWMOL_SPTR mol, PipelineResult & result) const;
-  void serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const;
+  virtual RWMOL_SPTR_PAIR makeParent(RWMOL_SPTR mol, PipelineResult & result) const;
+  virtual void serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const;
 };
 
 }  // namespace MolStandardize
