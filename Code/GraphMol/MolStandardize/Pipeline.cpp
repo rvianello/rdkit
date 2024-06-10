@@ -422,6 +422,23 @@ RWMOL_SPTR Pipeline::cleanup2D(RWMOL_SPTR mol, PipelineResult & /*result*/) cons
 }
 
 namespace {
+  void replaceDativeBonds(RWMOL_SPTR mol) {
+    bool modified {false};
+    for (auto bond : mol->bonds()) {
+      if (bond->getBondType() != Bond::BondType::DATIVE) {
+        continue;
+      }
+      auto donor = bond->getBeginAtom();
+      donor->setFormalCharge(donor->getFormalCharge()+1);
+      auto acceptor = bond->getEndAtom();
+      acceptor->setFormalCharge(acceptor->getFormalCharge()-1);
+      bond->setBondType(Bond::BondType::SINGLE);
+      modified = true;
+    }
+    if (modified) {
+      mol->updatePropertyCache(false);
+    }
+  }
 
   void removeHsAtProtonatedSites(RWMOL_SPTR mol) {
     boost::dynamic_bitset<> protons{mol->getNumAtoms(), 0};
@@ -458,6 +475,17 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
   auto reference = MolToSmiles(*mol);
 
   RWMOL_SPTR parent {new RWMol(*mol)};
+
+  // A "parent" structure is constructed here, in order to provide a representation of the
+  // original input that may be more suitable for identification purposes even though it may
+  // not reflect the most common state or nicest representation for the compound. If the input
+  // was submitted in an unsuitable ionization state
+  //
+  // The two steps that are currently implemented for this procedure consist in normalizing
+  // the overall charge status and replacing any explicit dative bonds.
+  //
+  // If the input was submitted in an unsuitable protonation status, the neutralized parent
+  // structure may become the actual output from the standardization.
 
   // overall charge status
   try {
@@ -506,6 +534,9 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
     result.append(PROTONATION_CHANGED, "The protonation state was adjusted.");
   }
   reference = smiles;
+
+  // normalize the dative bonds
+  replaceDativeBonds(parent);
 
   // updating the property cache was observed to be required, in order to clear the explicit valence
   // property (CTab's VAL) from deprotonated quaternary nitrogens, that could be specified in the
