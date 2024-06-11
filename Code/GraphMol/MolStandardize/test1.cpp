@@ -168,17 +168,6 @@ void testMetalDisconnector() {
     TEST_ASSERT(MolToSmiles(*m) == "CC[O-].O=C([O-])CCc1ccccc1[Mg+].[Na+]");
   }
 
-  // test partial disconnection (disallowed)
-  {
-    RWMOL_SPTR m("CCO[Mg]c1ccccc1CCC(=O)O[Na]"_smiles);
-    TEST_ASSERT(m);
-    MolStandardize::MetalDisconnectorOptions opts;
-    opts.allowPartialDisconnections = false;
-    MolStandardize::MetalDisconnector md2(opts);
-    md2.disconnect(*m);
-    TEST_ASSERT(MolToSmiles(*m) == "CCO[Mg]c1ccccc1CCC(=O)O[Na]");
-  }
-
   // test input own dp_metal_non, dp_metal_nof
   // missing out Na
   {

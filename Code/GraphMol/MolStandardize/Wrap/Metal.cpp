@@ -32,8 +32,6 @@ class MetalDisconnectorWrap {
           python::extract<bool>(options.attr("adjustCharges"));
       md_opts.removeHapticDummies =
           python::extract<bool>(options.attr("removeHapticDummies"));
-      md_opts.allowPartialDisconnections =
-          python::extract<bool>(options.attr("allowPartialDisconnections"));
       md_.reset(new RDKit::MolStandardize::MetalDisconnector(md_opts));
     }
   }
@@ -98,14 +96,7 @@ struct metal_wrapper {
                        "Whether to remove the dummy atoms representing haptic"
                        " bonds.  Such dummies are bonded to the metal with a"
                        " bond that has the MolFileBondEndPts prop set."
-                       "  Default false.")
-        .def_readwrite("allowPartialDisconnections",
-                       &RDKit::MolStandardize::MetalDisconnectorOptions::
-                           allowPartialDisconnections,
-                       "Whether to allow disconnecting only some of the bonds to the"
-                       " same metal or leave the atom unmodified unless it's fully"
-                       " disconnected."
-                       "  Default true.");
+                       "  Default false.");
 
     docString =
         "a class to disconnect metals that are defined as covalently bonded to"

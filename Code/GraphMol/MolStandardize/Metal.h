@@ -39,18 +39,14 @@ struct RDKIT_MOLSTANDARDIZE_EXPORT MetalDisconnectorOptions {
       false;  // Whether to remove the dummy atoms representing haptic bonds.
               // Such dummies are bonded to the metal with a bond
               // that has the _MolFileBondEndPts prop set.
-  bool allowPartialDisconnections =
-      true;  // Whether to allow disconnecting only some of the bonds to the
-             // same metal or leave the atom unmodified unless it's fully
-             // disconnected. 
 };
 
 class RDKIT_MOLSTANDARDIZE_EXPORT MetalDisconnector {
  public:
   MetalDisconnector(
       const MetalDisconnectorOptions &options = MetalDisconnectorOptions());
-  MetalDisconnector(const MetalDisconnector &other) = default;
-  ~MetalDisconnector() = default;
+  MetalDisconnector(const MetalDisconnector &other);
+  ~MetalDisconnector();
 
   ROMol *getMetalNof();  // {return dp_metal_nof;}
   ROMol *getMetalNon();  // {return dp_metal_non;}
@@ -76,12 +72,8 @@ accordingly.
 
  private:
   struct NonMetal {
-    int cutBonds {0};
+    int cutBonds{0};
     std::vector<int> boundMetalIndices;
-  };
-  struct Metal {
-    int chargeExcess {0};
-    std::vector<int> boundNonMetalIndices;
   };
   int chargeAdjustment(const Atom *a, int order);
   ROMOL_SPTR dp_metal_nof;
@@ -91,7 +83,7 @@ accordingly.
   const MetalDisconnectorOptions d_options;
 
   void adjust_charges(RDKit::RWMol &mol, std::map<int, NonMetal> &nonMetals,
-                      std::map<int, Metal> &metals);
+                      std::map<int, int> &metalChargeExcess);
   // Remove any dummy atoms that are bonded to a metal and have the ENDPTS
   // prop.  These are assumed to marking a haptic bond from the aotms in
   // ENDPTS to the metal, e.g. in ferrocene.

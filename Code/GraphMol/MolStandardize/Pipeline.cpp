@@ -272,7 +272,6 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
   // bonding to metals
   try {
     MetalDisconnectorOptions mdOpts;
-    mdOpts.allowPartialDisconnections = options.allowPartialDisconnections;
     MetalDisconnector metalDisconnector(mdOpts);
     std::unique_ptr<ROMol> metalNof {SmartsToMol(options.metalNof)};
     metalDisconnector.setMetalNof(*metalNof);

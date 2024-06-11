@@ -42,7 +42,6 @@ void wrap_pipeline() {
         .def_readwrite("allowAtomBondClashExemption", &MolStandardize::PipelineOptions::allowAtomBondClashExemption)
         .def_readwrite("metalNof", &MolStandardize::PipelineOptions::metalNof)
         .def_readwrite("metalNon", &MolStandardize::PipelineOptions::metalNon)
-        .def_readwrite("allowPartialDisconnections", &MolStandardize::PipelineOptions::allowPartialDisconnections)
         .def_readwrite("normalizerData", &MolStandardize::PipelineOptions::normalizerData)
         .def_readwrite("normalizerMaxRestarts", &MolStandardize::PipelineOptions::normalizerMaxRestarts)
         .def_readwrite("scaledMedianBondLength", &MolStandardize::PipelineOptions::scaledMedianBondLength)
