@@ -478,8 +478,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
 
   // A "parent" structure is constructed here, in order to provide a representation of the
   // original input that may be more suitable for identification purposes even though it may
-  // not reflect the most common state or nicest representation for the compound. If the input
-  // was submitted in an unsuitable ionization state
+  // not reflect the most stable physical state or nicest representation for the compound.
   //
   // The two steps that are currently implemented for this procedure consist in normalizing
   // the overall charge status and replacing any explicit dative bonds.
