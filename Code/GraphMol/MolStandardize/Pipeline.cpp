@@ -559,15 +559,16 @@ void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const
       result.outputMolBlock = MolToV3KMolBlock(outputMol);
       result.parentMolBlock = MolToV3KMolBlock(parentMol);
     }
-    else if (
-        outputMol.getNumAtoms() > 999 || outputMol.getNumBonds() > 999 ||
-        parentMol.getNumAtoms() > 999 || parentMol.getNumBonds() > 999
-        ) {
-      result.append(OUTPUT_ERROR, "The molecule is too large for V2000 format.");
-    }
     else {
-      result.outputMolBlock = MolToMolBlock(outputMol);
-      result.parentMolBlock = MolToMolBlock(parentMol);
+      try {
+        result.outputMolBlock = MolToV2KMolBlock(outputMol);
+        result.parentMolBlock = MolToV2KMolBlock(parentMol);
+      }
+      catch (ValueErrorException & e) {
+        result.append(
+          OUTPUT_ERROR,
+          "Can't write molecule to V2000 output format: " + std::string(e.what()));
+      }
     }
   }
   catch (const std::exception & e) {
