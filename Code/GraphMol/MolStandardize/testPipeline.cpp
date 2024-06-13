@@ -2072,6 +2072,54 @@ M  END
     REQUIRE(parentSmiles == "CS(=O)O");
   }
 
+  SECTION("Neutralization of carbocations") {
+    // verify that carbocations are not uncharged
+    const char * molblock = R"(
+  Mrv2311 06132416082D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -29.8095 9.8338 0 0 CHG=1
+M  V30 2 C -28.422 9.1656 0 0
+M  V30 3 C -28.0793 7.6642 0 0
+M  V30 4 C -29.0395 6.4602 0 0
+M  V30 5 C -30.5795 6.4602 0 0
+M  V30 6 C -31.5396 7.6642 0 0
+M  V30 7 C -31.197 9.1656 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 2 2 3
+M  V30 3 1 3 4
+M  V30 4 2 4 5
+M  V30 5 1 5 6
+M  V30 6 1 1 7
+M  V30 7 2 7 6
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
+
+    MolStandardize::PipelineResult result = pipeline.run(molblock);
+
+    for (auto & info : result.log) {
+      std::cerr << info.status << " " << info.detail << std::endl;
+    }
+
+    REQUIRE(result.stage == MolStandardize::COMPLETED);
+    REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NO_EVENT);
+
+    REQUIRE(result.outputMolBlock == result.parentMolBlock);
+
+    std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
+    REQUIRE(parentMol);
+    std::string parentSmiles {MolToSmiles(*parentMol)};
+    REQUIRE(parentSmiles == "C1=CC=C[CH3+]C=C1");
+  }
+
   SECTION("Handling of failing normalization") {
 
     // Test that the failing application of some normalization transform

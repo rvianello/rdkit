@@ -498,7 +498,8 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
 
     static const bool canonicalOrdering = false;
     static const bool force = true;
-    Uncharger uncharger(canonicalOrdering, force);
+    static const bool protonationOnly = true;
+    Uncharger uncharger(canonicalOrdering, force, protonationOnly);
     uncharger.unchargeInPlace(*parent);
   }
   catch (...) {
