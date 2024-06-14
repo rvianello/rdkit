@@ -66,6 +66,9 @@ PipelineResult Pipeline::run(const std::string & molblock) const
     }
 
     // re-read and sanitize the validated structure
+    // starting the standardization process from parsing the original input again is required
+    // because it's otherwise not always possible to fully preserve the original stereochemistry
+    // if reapplyMolBlockWedging() was called during the validation phase
     result.stage = PREPARE_FOR_STANDARDIZATION;
     mol = parse(molblock, result);
     if (!mol || ((result.status & PIPELINE_ERROR) != NO_EVENT && !options.reportAllFailures)) {
@@ -137,9 +140,6 @@ RWMOL_SPTR Pipeline::prepareForValidation(RWMOL_SPTR mol, PipelineResult & resul
   // Prepare the mol for validation.
 
   try {
-    // convert to smiles and later check if the structure was modified
-    auto reference = MolToSmiles(*mol);
-
     // The general intention is about validating the original input, and therefore
     // limit the sanitization to the minimum, but it's not very useful to record a
     // valence validation error for issues like a badly drawn nitro group that would
@@ -157,17 +157,9 @@ RWMOL_SPTR Pipeline::prepareForValidation(RWMOL_SPTR mol, PipelineResult & resul
     unsigned int failedOp = 0;
     MolOps::sanitizeMol(*mol, failedOp, sanitizeOps);
 
-    auto smiles = MolToSmiles(*mol);
-    if (reference != smiles) {
-      result.append(
-        SANITIZATION_APPLIED,
-        "Some traits in the representation of the chemical structure were updated in a pre-validation cleanup step.");
-    }
-
     // We want to restore the original MolBlock wedging, but this step may in some cases overwrite the
     // ENDDOWNRIGHT/ENDUPRIGHT info that describes the configuration of double bonds adjacent to stereocenters.
-    // We therefore need to assign the double bond stereochemistry now, so that they are not marked as
-    // EITHERDOUBLE in the output MolBlocks.
+    // We therefore first assign the stereochemistry, and then restore the wedging.
     MolOps::assignStereochemistry(*mol, true, true, true);
     Chirality::reapplyMolBlockWedging(*mol);
   }

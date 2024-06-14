@@ -1639,10 +1639,9 @@ M  END
 
     result = pipeline.run(molblock)
     self.assertEqual(result.stage, rdMolStandardize.PipelineStage.COMPLETED)
-    # nitro groups are cleaned-up in a pre-validation step
+    # nitro groups are cleaned-up in a pre-standardization step
     self.assertEqual((result.status & rdMolStandardize.PipelineStatus.PIPELINE_ERROR), rdMolStandardize.PipelineStatus.NO_EVENT)
-    self.assertNotEqual((result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION), rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION)
-    self.assertEqual((result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION), rdMolStandardize.PipelineStatus.SANITIZATION_APPLIED)
+    self.assertEqual((result.status & rdMolStandardize.PipelineStatus.STRUCTURE_MODIFICATION), rdMolStandardize.PipelineStatus.NO_EVENT)
 
     parentMol = Chem.MolFromMolBlock(result.parentMolBlock, sanitize=False)
     parentSmiles = Chem.MolToSmiles(parentMol)

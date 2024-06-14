@@ -714,12 +714,10 @@ M  END
       std::cerr << info.status << " " << info.detail << std::endl;
     }
 
-    // nitro groups are sanitized in a pre-validation step.
-    // this test case is not expected to register any errors.
+    // nitro groups are cleaned-up in a pre-standardization sanitization step.
     REQUIRE(result.stage == MolStandardize::COMPLETED);
     REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
-    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) != MolStandardize::NO_EVENT);
-    REQUIRE(result.status & MolStandardize::SANITIZATION_APPLIED);
+    REQUIRE((result.status & MolStandardize::STRUCTURE_MODIFICATION) == MolStandardize::NO_EVENT);
 
     std::unique_ptr<RWMol> mol(MolBlockToMol(result.outputMolBlock, false, false));
     REQUIRE(mol);
@@ -759,7 +757,6 @@ M  END
       std::cerr << info.status << " " << info.detail << std::endl;
     }
 
-    // nitro groups are sanitized in a pre-validation step.
     // this test case is not expected to register any errors.
     REQUIRE(result_a.stage == MolStandardize::COMPLETED);
     REQUIRE((result_a.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);
@@ -802,7 +799,6 @@ M  END
       std::cerr << info.status << " " << info.detail << std::endl;
     }
 
-    // nitro groups are sanitized in a pre-validation step.
     // this test case is not expected to register any errors.
     REQUIRE(result_b.stage == MolStandardize::COMPLETED);
     REQUIRE((result_b.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::NO_EVENT);

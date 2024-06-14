@@ -66,7 +66,6 @@ void wrap_pipeline() {
         .value("STANDARDIZATION_ERROR", MolStandardize::STANDARDIZATION_ERROR)
         .value("OUTPUT_ERROR", MolStandardize::OUTPUT_ERROR)
         .value("PIPELINE_ERROR", MolStandardize::PIPELINE_ERROR)
-        .value("SANITIZATION_APPLIED", MolStandardize::SANITIZATION_APPLIED)
         .value("METALS_DISCONNECTED", MolStandardize::METALS_DISCONNECTED)
         .value("NORMALIZATION_APPLIED", MolStandardize::NORMALIZATION_APPLIED)
         .value("FRAGMENTS_REMOVED", MolStandardize::FRAGMENTS_REMOVED)
