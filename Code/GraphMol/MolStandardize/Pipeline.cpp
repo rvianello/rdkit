@@ -362,28 +362,45 @@ RWMOL_SPTR Pipeline::reapplyWedging(RWMOL_SPTR mol, PipelineResult & result) con
   // 1) restore the original wedging from the input MolBlock
   Chirality::reapplyMolBlockWedging(*mol);
 
+  // 2) revert the changes related to double bonds with stereo type "either":
+  //    restore the STEREOANY direction of double bonds that have a substituent
+  //    with direction UNKNOWN and are now STEREONONE
   for (auto bond : mol->bonds()) {
-    if (bond->getBondType() == Bond::DOUBLE) {
-      // 2) revert the changes related to double bonds with stereo type "either":
-      //    restore the STEREOANY direction of double bonds that are now STEREONONE
-      Bond::BondStereo oldStereo = std::get<2>(oldBonds[bond->getIdx()]);
-      Bond::BondStereo newStereo = bond->getStereo();
-      if (oldStereo == Bond::STEREOANY && newStereo == Bond::STEREONONE) {
-        bond->setStereo(Bond::STEREOANY);
-        result.append(
-          NORMALIZATION_APPLIED,
-          "Double bond " + std::to_string(bond->getIdx())
-          + " was assigned an undefined/unknown stereochemical configuration");
+    if (bond->getBondType() != Bond::DOUBLE) {
+      continue;
+    }
+    Bond::BondStereo oldStereo = std::get<2>(oldBonds[bond->getIdx()]);
+    Bond::BondStereo newStereo = bond->getStereo();
+    bool hasAdjacentWavy {false};
+    for (auto atom : {bond->getBeginAtom(), bond->getEndAtom()}) {
+      for (auto adjacentBond : mol->atomBonds(atom)) {
+        if (adjacentBond == bond) {
+          continue;
+        }
+        if (adjacentBond->getBondDir() == Bond::UNKNOWN) {
+          hasAdjacentWavy = true;
+        }
       }
     }
-    else if (bond->getBondDir() == Bond::UNKNOWN) {
-      // 3) set the bond direction to NONE for bonds with direction UNKNOWN
-      bond->setBondDir(Bond::NONE);
+    if (hasAdjacentWavy && oldStereo == Bond::STEREOANY && newStereo == Bond::STEREONONE) {
+      bond->setStereo(Bond::STEREOANY);
       result.append(
         NORMALIZATION_APPLIED,
-        "The \"wavy\" style of bond " + std::to_string(bond->getIdx())
-        + " was removed");
+        "Double bond " + std::to_string(bond->getIdx())
+        + " was assigned an undefined/unknown stereochemical configuration");
     }
+  }
+
+  // 3) set the bond direction to NONE for bonds with direction UNKNOWN
+  for (auto bond : mol->bonds()) {
+    if (bond->getBondDir() != Bond::UNKNOWN) {
+      continue;
+    }
+    bond->setBondDir(Bond::NONE);
+    result.append(
+      NORMALIZATION_APPLIED,
+      "The \"wavy\" style of bond " + std::to_string(bond->getIdx())
+      + " was removed");
   }
 
   return mol;
