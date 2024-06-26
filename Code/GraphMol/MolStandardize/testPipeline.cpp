@@ -2113,7 +2113,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-    REQUIRE(parentSmiles == "C1=CC=C[CH3+]C=C1");
+    REQUIRE(parentSmiles == "C1=CC=C[CH+]C=C1");
   }
 
   SECTION("Handling of failing normalization") {
