@@ -546,15 +546,6 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
   // normalize the dative bonds
   replaceDativeBonds(parent);
 
-  // updating the property cache was observed to be required, in order to clear the explicit valence
-  // property (CTab's VAL) from deprotonated quaternary nitrogens, that could be specified in the
-  // original input and otherwise persisted in the output MolBlock, resulting in an invalid molecule.
-  //
-  // needsUpdatePropertyCache() returns false
-  //if (mol->needsUpdatePropertyCache()) {
-  mol->updatePropertyCache(false);
-  parent->updatePropertyCache(false);
-
   return {mol, parent};
 }
 
