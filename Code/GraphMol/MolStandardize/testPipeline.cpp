@@ -132,7 +132,7 @@ M  END
     REQUIRE(result.status & MolStandardize::VALIDATION_ERROR);
     REQUIRE((result.status & MolStandardize::PIPELINE_ERROR) == MolStandardize::BASIC_VALIDATION_ERROR);
   }
-  
+
   SECTION("failing features validation, query atom") {
     const char * molblock = R"(
   Mrv2311 01162413552D          
@@ -1500,7 +1500,7 @@ M  END
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
     REQUIRE(parentSmiles == "CC(C)C[S+]([O-])C1=CC=C(C(=O)O)C=C1");
-  
+
     Chirality::reapplyMolBlockWedging(*parentMol);
 
     const Bond * wedged = nullptr;
@@ -1565,7 +1565,7 @@ M  END
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
     REQUIRE(parentSmiles == "CCC(C)(F)Cl");
-  
+
     Chirality::reapplyMolBlockWedging(*parentMol);
 
     // no wavy bond is expected to be found
@@ -1628,7 +1628,7 @@ M  END
     REQUIRE(parentMol);
     parentSmiles = MolToSmiles(*parentMol);
     REQUIRE(parentSmiles == "CC=CC");
-  
+
     Chirality::reapplyMolBlockWedging(*parentMol);
 
     // no wavy bond is expected to be found
@@ -1700,7 +1700,7 @@ M  END
     REQUIRE(parentMol);
     parentSmiles = MolToSmiles(*parentMol);
     REQUIRE(parentSmiles == "CC=CC(C)(F)Cl");
-  
+
     Chirality::reapplyMolBlockWedging(*parentMol);
 
     // no wavy bond is expected to be found
@@ -1775,7 +1775,7 @@ M  END
     REQUIRE(parentMol);
     parentSmiles = MolToSmiles(*parentMol);
     REQUIRE(parentSmiles == "CC=CC(C)(F)Cl");
-  
+
     Chirality::reapplyMolBlockWedging(*parentMol);
 
     // no wavy bond is expected to be found
@@ -1852,7 +1852,7 @@ M  END
     REQUIRE(parentMol);
     parentSmiles = MolToSmiles(*parentMol);
     REQUIRE(parentSmiles == "CC1=CCCCCC1");
-  
+
     Chirality::reapplyMolBlockWedging(*parentMol);
 
     // no wavy bond is expected to be found
@@ -1880,7 +1880,7 @@ M  END
 
     // do we get a crossed/either double bond if the double bond
     // has identical substituents at one end? this is apparently
-    // the case. 
+    // the case.
     molblock = R"(
   Mrv2311 05172414492D          
 
@@ -1922,7 +1922,7 @@ M  END
     REQUIRE(parentMol);
     parentSmiles = MolToSmiles(*parentMol);
     REQUIRE(parentSmiles == "CC=C(C)C");
-  
+
     Chirality::reapplyMolBlockWedging(*parentMol);
 
     // no wavy bond is expected to be found
@@ -2002,7 +2002,7 @@ M  END
     std::unique_ptr<RWMol> parentMol(MolBlockToMol(result.parentMolBlock, false, false));
     REQUIRE(parentMol);
     std::string parentSmiles {MolToSmiles(*parentMol)};
-  
+
     Chirality::reapplyMolBlockWedging(*parentMol);
 
     const Bond * wedged = nullptr;

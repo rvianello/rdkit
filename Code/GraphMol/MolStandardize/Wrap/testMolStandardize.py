@@ -1179,12 +1179,12 @@ M  V30 END BOND
 M  V30 END CTAB
 M  END
 ''', sanitize=False)
-    
+
     validator = rdMolStandardize.FeaturesValidation()
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
     self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Query atom 0 is not allowed")
-    
+
     mol = Chem.MolFromMolBlock('''
   Mrv2311 01162411552D          
 
@@ -1253,12 +1253,12 @@ M  END
     errinfo = validator.validate(mol, True)
     self.assertEqual(len(errinfo), 6)
     self.assertEqual(errinfo[0], "ERROR: [FeaturesValidation] Bond 0 of aromatic type is not allowed")
-    
+
     # allow aromatic bonds
     validator = rdMolStandardize.FeaturesValidation(False, True)
     errinfo = validator.validate(mol, True)
     self.assertEqual(len(errinfo), 0)
-    
+
     # disallowedRadicalValidation
     mol = Chem.MolFromMolBlock('''
   Mrv2311 02082417212D          
@@ -1314,11 +1314,11 @@ M  END
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 1)
     self.assertEqual(errinfo[0], "ERROR: [Is2DValidation] The molecule includes non-null Z coordinates")
-    
+
     validator = rdMolStandardize.Is2DValidation(0.2)
     errinfo = validator.validate(mol)
     self.assertEqual(len(errinfo), 0)
-    
+
     mol = Chem.MolFromMolBlock('''
                     2D          
 

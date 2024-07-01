@@ -17,7 +17,7 @@ namespace MolStandardize {
 
 bool operator==(const PipelineLogEntry & lhs, const PipelineLogEntry & rhs)
 {
-  return (lhs.status == rhs.status) && (lhs.detail == rhs.detail); 
+  return (lhs.status == rhs.status) && (lhs.detail == rhs.detail);
 }
 
 }

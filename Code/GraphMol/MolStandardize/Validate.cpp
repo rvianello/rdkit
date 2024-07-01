@@ -414,7 +414,7 @@ std::vector<ValidationErrorInfo> Is2DValidation::validate(
   // verify that the atoms are not all in the same position (this often happens
   // because no coordinates were assigned and all atoms appear to be placed in
   // the origin)
-  
+
   double min_x {}, max_x {};
   double min_y {}, max_y {};
   for (const auto & p : conf.getPositions()) {
@@ -426,7 +426,7 @@ std::vector<ValidationErrorInfo> Is2DValidation::validate(
   auto delta_x = max_x - min_x;
   auto delta_y = max_y - min_y;
   auto max_delta = std::max(delta_x, delta_y);
-  
+
   if (max_delta < threshold) {
     errors.emplace_back("ERROR: [Is2DValidation] All atoms have the same (x,y) coordinates");
     if (!reportAllFailures) {
@@ -718,7 +718,7 @@ namespace {
 
       auto angle = va.angleTo(vb);
 
-      static constexpr auto ANGLE_EPSILON = (M_PI*5./180.); // 5 degrees 
+      static constexpr auto ANGLE_EPSILON = (M_PI*5./180.); // 5 degrees
       if (angle < ANGLE_EPSILON || (M_PI - angle) < ANGLE_EPSILON) {
         errors.push_back(
           "ERROR: [StereoValidation] Colinearity of non-stereo bonds at atom " + std::to_string(atom->getIdx())
@@ -770,7 +770,7 @@ namespace {
         if (!reportAllFailures) {
           return;
         }
-      }    
+      }
     }
 
     for (unsigned int i=0; i<4; ++i) {
@@ -788,8 +788,8 @@ namespace {
         }
         // it doesn't make sense to output this alert multiple times for the same atom
         // we therefore exit the loop also when reportAllFailures is not set.
-        break; 
-      }    
+        break;
+      }
     }
 
     if (neighborsInfo.dirCount.dash + neighborsInfo.dirCount.wedge == 1) {

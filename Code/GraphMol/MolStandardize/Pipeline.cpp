@@ -302,7 +302,7 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
   }
   catch (...) {
     result.append(
-      NORMALIZER_STANDARDIZATION_ERROR, 
+      NORMALIZER_STANDARDIZATION_ERROR,
       "An unexpected error occurred while normalizing the representation of some functional groups");
     return mol;
   }
@@ -322,7 +322,7 @@ RWMOL_SPTR Pipeline::standardize(RWMOL_SPTR mol, PipelineResult & result) const
   }
   catch (...) {
     result.append(
-      FRAGMENT_STANDARDIZATION_ERROR, 
+      FRAGMENT_STANDARDIZATION_ERROR,
       "An unexpected error occurred while removing the disconnected fragments");
     return mol;
   }
@@ -513,7 +513,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
   }
   catch (...) {
     result.append(
-      CHARGE_STANDARDIZATION_ERROR, 
+      CHARGE_STANDARDIZATION_ERROR,
       "An unexpected error occurred while normalizing the compound's charge status");
     return {{}, {}};
   }
@@ -550,7 +550,7 @@ Pipeline::RWMOL_SPTR_PAIR Pipeline::makeParent(RWMOL_SPTR mol, PipelineResult & 
   // property (CTab's VAL) from deprotonated quaternary nitrogens, that could be specified in the
   // original input and otherwise persisted in the output MolBlock, resulting in an invalid molecule.
   //
-  // needsUpdatePropertyCache() returns false 
+  // needsUpdatePropertyCache() returns false
   //if (mol->needsUpdatePropertyCache()) {
   mol->updatePropertyCache(false);
   parent->updatePropertyCache(false);
@@ -562,7 +562,7 @@ void Pipeline::serialize(RWMOL_SPTR_PAIR output, PipelineResult & result) const
 {
   const ROMol & outputMol = *output.first;
   const ROMol & parentMol = *output.second;
-  
+
   try {
     if (!options.outputV2000) {
       result.outputMolBlock = MolToV3KMolBlock(outputMol);

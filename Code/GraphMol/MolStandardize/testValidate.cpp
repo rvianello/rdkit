@@ -537,7 +537,7 @@ M  END
   errout = radicalValidation.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == 
+  TEST_ASSERT(errmsg ==
     "ERROR: [DisallowedRadicalValidation] The radical at atom 0 is not allowed");
 
 
@@ -596,7 +596,7 @@ M  END
   errout = is2D.validate(*mol, true);
   TEST_ASSERT(errout.size() == 1);
   errmsg = errout[0];
-  TEST_ASSERT(errmsg == 
+  TEST_ASSERT(errmsg ==
     "ERROR: [Is2DValidation] The molecule includes non-null Z coordinates");
 
   mblock = R"(
@@ -1231,7 +1231,6 @@ M  END
 
   // Non-single bond with stereo bond orientation
 
-// 
   mblock = R"(
   Mrv2311 04232413302D          
 

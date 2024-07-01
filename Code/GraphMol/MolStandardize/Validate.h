@@ -230,7 +230,7 @@ class RDKIT_MOLSTANDARDIZE_EXPORT FeaturesValidation
 /// molecule representation is designated as 3D or if it includes
 /// non-null Z coordinates, and in case all atoms are assigned the
 /// same coordinates.
-class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation 
+class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation
     : public ValidationMethod {
  public:
   Is2DValidation(double threshold=1.e-3) : threshold(threshold) {};
@@ -246,7 +246,7 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Is2DValidation
 //! The Layout2DValidation class reports an error if any atoms are
 /// too close to any other atoms or bonds, and in case any bonds are
 /// too long.
-class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation 
+class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation
     : public ValidationMethod {
  public:
   Layout2DValidation(
@@ -276,7 +276,7 @@ class RDKIT_MOLSTANDARDIZE_EXPORT Layout2DValidation
 /// in an attempt to ensure that the associated stereochemical configuration
 /// can be interpreted unambiguously.
 /// These validation criteria were ported from the AvalonTools STRUCHK software.
-class RDKIT_MOLSTANDARDIZE_EXPORT StereoValidation 
+class RDKIT_MOLSTANDARDIZE_EXPORT StereoValidation
     : public ValidationMethod {
  public:
   std::vector<ValidationErrorInfo> validate(
