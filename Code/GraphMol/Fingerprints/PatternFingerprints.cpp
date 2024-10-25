@@ -38,7 +38,7 @@
 namespace {
 class ss_matcher {
  public:
-  ss_matcher(){};
+  ss_matcher() {};
   ss_matcher(const std::string &pattern) {
     RDKit::RWMol *p = RDKit::SmartsToMol(pattern);
     TEST_ASSERT(p);
@@ -204,7 +204,7 @@ void updatePatternFingerprint(const ROMol &mol, ExplicitBitVect &fp,
     patts.push_back(matcher);
   }
 
-  if (!mol.getRingInfo()->isInitialized()) {
+  if (!mol.getRingInfo()->isFindFastOrBetter()) {
     MolOps::fastFindRings(mol);
   }
 

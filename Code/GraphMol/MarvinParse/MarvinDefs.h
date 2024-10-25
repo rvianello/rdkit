@@ -18,7 +18,6 @@
 
 #include <GraphMol/RDKitBase.h>
 #include <GraphMol/FileParsers/FileParsers.h>
-#include <GraphMol/FileParsers/MolSGroupParsing.h>
 #include <RDGeneral/FileParseException.h>
 #include <RDGeneral/BadFileException.h>
 #include <RDGeneral/LocaleSwitcher.h>
@@ -62,7 +61,7 @@ enum IsSgroupInAtomSetResult {
 class MarvinWriterException : public std::runtime_error {
  public:
   explicit MarvinWriterException(std::string message)
-      : std::runtime_error(message){};
+      : std::runtime_error(message) {};
 };
 
 class MarvinArrow {
@@ -141,7 +140,6 @@ class MarvinAtom {
 
   MarvinAtom();
   MarvinAtom(const MarvinAtom &atomToCopy, std::string newId);
-  ~MarvinAtom() {}
 
   bool operator==(const MarvinAtom &rhs) const;
 
@@ -150,7 +148,7 @@ class MarvinAtom {
   bool isElement() const;
 
   std::string toString() const;
-  ptree toPtree() const;
+  ptree toPtree(unsigned int coordinatePrecision = 6) const;
 };
 
 class MarvinBondStereo {
@@ -247,13 +245,9 @@ class MarvinMolBase {
  public:
   std::string molID;
   std::string id;  // used in all sGroups
-
-  // these atoms and bonds are only owned by this mol if it is a MarvinMol or
-  // MarvinSuperatomSgroup all other derived classes have atoms that are owned
-  // by the actual parent, and are references
-  std::vector<MarvinAtom *> atoms;
-  std::vector<MarvinBond *> bonds;
-
+  unsigned int coordinatePrecision = 6;
+  std::vector<MarvinAtom *> atoms;  // owned by parent MarvinMol
+  std::vector<MarvinBond *> bonds;  // owned by parent MarvinMol
   std::vector<std::unique_ptr<MarvinMolBase>> sgroups;
   MarvinMolBase *parent;
 
@@ -269,6 +263,8 @@ class MarvinMolBase {
 
   virtual void removeOwnedAtom(MarvinAtom *atom);
   virtual void removeOwnedBond(MarvinBond *bond);
+
+  void setPrecision(unsigned int precision);
 
   int getExplicitValence(const MarvinAtom &marvinAtom) const;
 
@@ -335,8 +331,6 @@ class MarvinMolBase {
   MarvinAtom *findAtomByRef(std::string atomId);
   MarvinBond *findBondByRef(std::string atomId);
 
-  void clearMaps();
-
   void prepSgroupsForRDKit();
   void processSgroupsFromRDKit();
 
@@ -362,10 +356,9 @@ class MarvinSruCoModSgroup : public MarvinMolBase {
   std::string roleName;  // could be MarvinSruSgroup, MarvinCopolymerSgroup or
                          // MarvinModificationSgroup
  public:
+  MarvinMolBase *copyMol(const std::string &idAppend) const override;
   MarvinSruCoModSgroup(std::string type, MarvinMolBase *parent);
   MarvinSruCoModSgroup(MarvinMolBase *parent, std::string role, ptree &molTree);
-
-  MarvinMolBase *copyMol(const std::string &idAppend) const override;
 
   std::string title;
   std::string connect;

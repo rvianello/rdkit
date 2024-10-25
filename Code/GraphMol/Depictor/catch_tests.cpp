@@ -9,7 +9,7 @@
 //
 
 #include <catch2/catch_all.hpp>
-
+#include <GraphMol/MolAlign/AlignMolecules.h>
 #include <GraphMol/RDKitBase.h>
 #include <GraphMol/Chirality.h>
 #include "RDDepictor.h"
@@ -225,6 +225,58 @@ TEST_CASE("use ring system templates") {
   diff =
       mol->getConformer().getAtomPos(10) - mol->getConformer().getAtomPos(11);
   TEST_ASSERT(RDKit::feq(diff.length(), 1.0, .1))
+}
+
+TEST_CASE("find core rings") {
+  // perhydroanthracene and perhydrophenalene, and their
+  // expected number of core rings
+  std::map<std::string, unsigned int> examples = {
+      {"C1CCC2CC3CCCCC3CC2C1", 1u}, {"C1CC2CCCC3C2C(C1)CCC3", 3u}};
+  for (auto example : examples) {
+    auto mol = v2::SmilesParse::MolFromSmiles(example.first);
+    RDKit::VECT_INT_VECT arings;
+    bool includeDativeBonds = true;
+    RDKit::MolOps::symmetrizeSSSR(*mol, arings, includeDativeBonds);
+    CHECK(arings.size() == 3);
+    RDKit::INT_VECT coreRingsIds;
+    auto coreRings = RDDepict::findCoreRings(arings, coreRingsIds, *mol);
+    CHECK(coreRings.size() == example.second);
+  }
+}
+
+TEST_CASE("match template with added rings") {
+  // this is a molecule we have a template for
+  auto mol1 = "C1C2CC3CC1CC3C2"_smiles;
+  // and this is the same molecule with an extra ring added
+  auto mol2 = "C1C2CC3C1CC1(C2)NC31"_smiles;
+  // generate coordinates
+  RDDepict::Compute2DCoordParameters params;
+  params.useRingTemplates = true;
+  RDDepict::compute2DCoords(*mol1, params);
+  RDDepict::compute2DCoords(*mol2, params);
+
+  // align the two molecules
+  auto rmsd = MolAlign::getBestRMS(*mol1, *mol2);
+  CHECK(rmsd < 0.2);
+}
+
+TEST_CASE("templates are aware of E/Z stereochemistry") {
+  // this is a molecule we have a template for
+  auto mol1 =
+      "CCC1C2=N[C@@](C)(C3N/C(=C(/C)C4=N/C(=C\\C5=N/C(=C\\2C)[C@@](C)(CC(N)=O)C5CCC(N)=O)C(C)(C)C4CCC(N)=O)[C@](C)(CCC(=O)NC)C3C)C1(C)C"_smiles;
+  // and this is the same molecule with different stereochemistry on double
+  // bonds
+  auto mol2 =
+      "CCC1C2=N[C@@](C)(C3N/C(=C(\\C)C4=N/C(=C/C5=N/C(=C/2C)[C@@](C)(CC(N)=O)C5CCC(N)=O)C(C)(C)C4CCC(N)=O)[C@](C)(CCC(=O)NC)C3C)C1(C)C"_smiles;
+
+  // generate coordinates for the two molecules, they should be different
+  // because only the first one matches the template
+  RDDepict::Compute2DCoordParameters params;
+  params.useRingTemplates = true;
+  RDDepict::compute2DCoords(*mol1, params);
+  RDDepict::compute2DCoords(*mol2, params);
+  auto rmsd = MolAlign::getBestRMS(*mol1, *mol2);
+  CHECK(rmsd > 1.);
 }
 
 TEST_CASE("dative bonds and rings") {
@@ -1097,7 +1149,7 @@ M  END
 
 TEST_CASE("generate aligned coords R group match") {
   auto templateRef = R"CTAB(
-  MJ201100                      
+  MJ201100
 
   7  7  0  0  0  0  0  0  0  0999 V2000
    -0.5804    1.2045    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
@@ -1295,9 +1347,9 @@ M  END
     0.0000    0.6187    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
     0.7144    0.2062    0.0000 F   0  0  0  0  0  0  0  0  0  0  0  0
    -0.7144   -0.6187    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-  1  2  2  3      
-  2  3  1  4      
-  1  4  1  4      
+  1  2  2  3
+  2  3  1  4
+  1  4  1  4
 M  END
 )CTAB"_ctab;
     REQUIRE(mol);
@@ -1506,9 +1558,9 @@ M  END
     0.3572    0.2062    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
     1.0716    0.6187    0.0000 F   0  0  0  0  0  0  0  0  0  0  0  0
    -1.0716   -0.6187    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
-  1  2  2  3      
-  2  3  1  4      
-  1  4  1  4      
+  1  2  2  3
+  2  3  1  4
+  1  4  1  4
 M  END
 )CTAB"_ctab;
     REQUIRE(mol);
@@ -1757,13 +1809,13 @@ M  END
    -0.9971    1.0600    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
     0.7282    0.2855    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
     0.9971    1.0270    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
-  1  2  1  0      
-  2  3  1  0      
-  3  4  1  0      
-  2  5  2  3      
-  5  6  1  4      
-  3  7  2  0      
-  7  8  1  4      
+  1  2  1  0
+  2  3  1  0
+  3  4  1  0
+  2  5  2  3
+  5  6  1  4
+  3  7  2  0
+  7  8  1  4
 M  END
 )CTAB"_ctab;
     REQUIRE(mol);
@@ -2048,9 +2100,173 @@ M  END
     }
     {
       std::unique_ptr<RWMol> mol(MolBlockToMol(molblockIn, false));
-      reapplyMolBlockWedging(*mol);
+      RDKit::Chirality::reapplyMolBlockWedging(*mol);
       auto molblockOut = MolToMolBlock(*mol);
       CHECK(molblockIn == molblockOut);
     }
   }
+}
+
+TEST_CASE("test GitHub6952") {
+  auto methotrexate = R"CTAB(
+     RDKit          2D
+
+ 33 35  0  0  0  0  0  0  0  0999 V2000
+    9.6907   -4.0059    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    9.7594   -1.2647    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    7.3558   -2.5828    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    8.1529   -1.2392    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    8.1064   -3.9607    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   10.5157   -2.6141    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    5.7874   -2.5470    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -3.6071    0.3538    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    7.4061    0.1262    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -4.3656    1.7364    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    5.0321   -1.1768    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -6.7519    0.4301    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    2.6721    0.2392    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -5.9466    1.7689    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -9.0366    4.5624    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.0167    0.3375    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    3.4339   -1.1557    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.0736    0.2603    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -4.4076   -0.9769    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+  -10.9286    4.6884    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+   -5.9966   -0.9397    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    5.8226    0.1920    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -8.2221    5.9171    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    7.3253   -5.3137    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.2570   -1.0243    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.2450    1.6744    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.3066   -1.0682    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.3566    1.6406    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   12.1001   -2.6593    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -6.6878    3.1631    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -8.2654    3.1830    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -8.3214    0.4451    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    3.4912    1.6022    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+  2  6  2  0
+  3  5  1  0
+  4  2  1  0
+  5  1  2  0
+  6  1  1  0
+  7  3  2  0
+  8 16  1  0
+  9  4  2  0
+ 10  8  1  0
+ 11  7  1  0
+ 14 12  1  0
+ 13 17  1  0
+ 14 10  1  0
+ 15 31  1  0
+ 16 26  2  0
+ 17 11  1  0
+ 18 13  1  0
+ 19  8  2  0
+ 20 15  1  0
+ 21 12  2  0
+ 22  9  1  0
+ 23 15  2  0
+ 24  5  1  0
+ 25 27  2  0
+ 26 28  1  0
+ 27 18  1  0
+ 28 18  2  0
+ 29  6  1  0
+ 14 30  1  6
+ 31 30  1  0
+ 32 12  1  0
+ 33 13  1  0
+  4  3  1  0
+ 22 11  2  0
+ 16 25  1  0
+M  END
+)CTAB"_ctab;
+  REQUIRE(methotrexate);
+  auto methotrexateAnalog = R"CTAB(
+     RDKit          2D
+
+ 33 35  0  0  1  0  0  0  0  0999 V2000
+   -4.0189    0.3866    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.6792   -0.3866    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.6792   -1.9335    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -4.0189   -2.7069    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -4.0189   -4.2538    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -5.3584   -5.0273    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -6.6981   -4.2538    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -8.0378   -5.0273    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -9.3773   -4.2538    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+  -10.7169   -5.0273    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -9.3773   -2.7069    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -8.0378   -1.9335    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -8.0378   -0.3866    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -6.6981   -2.7069    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -5.3584   -1.9335    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.3395    0.3866    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.3395    1.9335    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.0000    2.7069    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.3395    1.9335    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    2.6792    2.7069    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    4.0189    1.9335    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    5.3584    2.7069    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    6.6981    1.9335    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    8.0378    2.7069    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    9.3773    1.9335    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   10.7169    2.7069    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    9.3773    0.3866    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    5.3584    4.2538    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    6.6981    5.0273    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    4.0189    5.0273    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    1.3395    0.3866    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.0000   -0.3866    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    4.0189    0.3866    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  2  0
+  2  3  1  0
+  3  4  1  0
+  4  5  2  0
+  5  6  1  0
+  6  7  2  0
+  7  8  1  0
+  8  9  2  0
+  9 10  1  0
+  9 11  1  0
+ 11 12  2  0
+ 12 13  1  0
+ 12 14  1  0
+  7 14  1  0
+ 14 15  2  0
+  4 15  1  0
+  2 16  1  0
+ 16 17  2  0
+ 17 18  1  0
+ 18 19  2  0
+ 22 23  1  0
+ 23 24  1  0
+ 24 25  1  0
+ 25 26  2  0
+ 25 27  1  0
+ 22 28  1  0
+ 28 29  2  0
+ 28 30  1  0
+ 19 31  1  0
+ 31 32  2  0
+ 16 32  1  0
+ 19 20  1  0
+ 22 21  1  0
+ 20 21  1  0
+ 21 33  2  0
+M  END
+)CTAB"_ctab;
+  REQUIRE(methotrexateAnalog);
+  auto refPatt =
+      "[#7]1:[#6](:[#7]:[#6](:[#6]2:[#6]:1:[#7]:[#6]:[#6](:[#7]:2)-[#6])-[#7])-[#7]"_smarts;
+  REQUIRE(refPatt);
+  MatchVectType expected{{1, 7},  {5, 8},   {0, 10}, {4, 11}, {2, 13},
+                         {3, 6},  {8, 5},   {21, 4}, {10, 3}, {6, 14},
+                         {16, 2}, {23, 12}, {28, 9}};
+  RDDepict::ConstrainedDepictionParams p;
+  p.alignOnly = true;
+  auto match = RDDepict::generateDepictionMatching2DStructure(
+      *methotrexateAnalog, *methotrexate, -1, refPatt.get(), p);
+  CHECK(match == expected);
 }

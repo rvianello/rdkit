@@ -566,11 +566,6 @@ void addHs(RWMol &mol, bool explicitOnly, bool addCoords,
           ++isoH;
         }
       }
-      // be very clear about implicits not being allowed in this
-      // representation
-      newAt->setProp(common_properties::origNoImplicit, newAt->getNoImplicit(),
-                     true);
-      newAt->setNoImplicit(true);
     }
     // update the atom's derived properties (valence count, etc.)
     // no sense in being strict here (was github #2782)
@@ -688,9 +683,7 @@ void molRemoveH(RWMol &mol, unsigned int idx, bool updateExplicitCount) {
     // atom.  We deal with that by explicitly checking here:
     if (heavyAtom->getChiralTag() != Atom::CHI_UNSPECIFIED) {
       INT_LIST neighborIndices;
-      for (const auto &nbri :
-           boost::make_iterator_range(mol.getAtomBonds(heavyAtom))) {
-        Bond *nbnd = mol[nbri];
+      for (const auto &nbnd : mol.atomBonds(heavyAtom)) {
         if (nbnd->getIdx() != bond->getIdx()) {
           neighborIndices.push_back(nbnd->getIdx());
         }
@@ -702,6 +695,20 @@ void molRemoveH(RWMol &mol, unsigned int idx, bool updateExplicitCount) {
       // "<<heavyAtom->getIdx()<<" swaps: " << nSwaps<<std::endl;
       if (nSwaps % 2) {
         heavyAtom->invertChirality();
+      }
+    }
+
+    // If we are removing a H atom that defines bond stereo (e.g. imines),
+    // Then also remove the bond stereo information, as it is no longer valid.
+    if (heavyAtom->getDegree() == 2) {
+      for (auto &nbnd : mol.atomBonds(heavyAtom)) {
+        if (nbnd != bond) {
+          if (nbnd->getStereo() > Bond::STEREOANY) {
+            nbnd->setStereo(Bond::STEREONONE);
+            nbnd->getStereoAtoms().clear();
+          }
+          break;
+        }
       }
     }
 
@@ -773,8 +780,9 @@ void molRemoveH(RWMol &mol, unsigned int idx, bool updateExplicitCount) {
       }
     }
   }
-
-  mol.removeAtom(atom);
+  // computed properties will be cleared after all hydrogens are removed
+  bool clearProps = false;
+  mol.removeAtom(atom, clearProps);
 }
 
 bool shouldRemoveH(const RWMol &mol, const Atom *atom,
@@ -995,6 +1003,7 @@ void removeHs(RWMol &mol, const RemoveHsParameters &ps, bool sanitize) {
       molRemoveH(mol, idx, ps.updateExplicitCount);
     }
   }
+  mol.clearComputedProps(true);
   //
   //  If we didn't only remove implicit Hs, which are guaranteed to
   //  be the highest numbered atoms, we may have altered atom indices.
@@ -1269,7 +1278,7 @@ bool needsHs(const ROMol &mol) {
   return false;
 }
 
-std::pair<bool,bool> hasQueryHs(const ROMol &mol) {
+std::pair<bool, bool> hasQueryHs(const ROMol &mol) {
   bool queryHs = false;
   // We don't care about announcing ORs or other items during isQueryH
   RDLog::LogStateSetter blocker;
@@ -1277,11 +1286,11 @@ std::pair<bool,bool> hasQueryHs(const ROMol &mol) {
   for (const auto atom : mol.atoms()) {
     switch (isQueryH(atom)) {
       case HydrogenType::UnMergableQueryHydrogen:
-          return std::make_pair(true, true);
+        return std::make_pair(true, true);
       case HydrogenType::QueryHydrogen:
         queryHs = true;
         break;
-    default: // HydrogenType::NotAHydrogen:
+      default:  // HydrogenType::NotAHydrogen:
         break;
     }
     if (atom->hasQuery()) {
@@ -1289,8 +1298,8 @@ std::pair<bool,bool> hasQueryHs(const ROMol &mol) {
         auto *rsq = dynamic_cast<RecursiveStructureQuery *>(atom->getQuery());
         CHECK_INVARIANT(rsq, "could not convert recursive structure query");
         auto res = hasQueryHs(*rsq->getQueryMol());
-        if(res.second) { // unmergableH implies queryH
-            return res;
+        if (res.second) {  // unmergableH implies queryH
+          return res;
         }
         queryHs |= res.first;
       }
@@ -1305,7 +1314,7 @@ std::pair<bool,bool> hasQueryHs(const ROMol &mol) {
           auto *rsq = dynamic_cast<RecursiveStructureQuery *>(qry.get());
           CHECK_INVARIANT(rsq, "could not convert recursive structure query");
           auto res = hasQueryHs(*rsq->getQueryMol());
-          if(res.second) {
+          if (res.second) {
             return res;
           }
           queryHs |= res.first;

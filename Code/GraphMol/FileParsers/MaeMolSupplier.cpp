@@ -10,7 +10,8 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
-#include <map>
+
+#include <boost/unordered_set.hpp>
 
 #include <RDGeneral/BadFileException.h>
 #include <RDGeneral/FileParseException.h>
@@ -18,6 +19,7 @@
 #include <GraphMol/MolOps.h>
 #include <GraphMol/MonomerInfo.h>
 #include <GraphMol/RWMol.h>
+#include <GraphMol/FileParsers/MaestroProperties.h>
 #include <GraphMol/FileParsers/MolSupplier.h>
 #include <GraphMol/FileParsers/FileParserUtils.h>
 
@@ -27,19 +29,14 @@
 #include <maeparser/Reader.hpp>
 
 using namespace schrodinger;
+using namespace RDKit::FileParsers::schrodinger;
 using RDKit::MolInterchange::bolookup;
 
 namespace RDKit {
 
+namespace v2 {
+namespace FileParsers {
 namespace {
-
-const std::string PDB_ATOM_NAME = "s_m_pdb_atom_name";
-const std::string PDB_RESIDUE_NAME = "s_m_pdb_residue_name";
-const std::string PDB_CHAIN_NAME = "s_m_chain_name";
-const std::string PDB_INSERTION_CODE = "s_m_insertion_code";
-const std::string PDB_RESIDUE_NUMBER = "i_m_residue_number";
-const std::string PDB_OCCUPANCY = "r_m_pdb_occupancy";
-const std::string PDB_TFACTOR = "r_m_pdb_tfactor";
 
 class PDBInfo {
  public:
@@ -210,17 +207,35 @@ void parseStereoBondLabel(RWMol &mol, const std::string &stereo_prop) {
 }
 
 std::string strip_prefix_from_mae_property(const std::string &propName) {
-  const char &first = propName[0];
-  if ((first == 'b' || first == 'i' || first == 'r' || first == 's') &&
-      (strncmp(&propName.c_str()[1], "_rdk_", 5) == 0)) {
-    return propName.substr(6);
+  const char *propNamePtr = propName.c_str();
+  if (*propNamePtr == 'b' || *propNamePtr == 'i' || *propNamePtr == 'r' ||
+      *propNamePtr == 's') {
+    ++propNamePtr;
+    if (strncmp(propNamePtr, "_rdk_", 5) == 0) {
+      return propName.substr(6);
+    } else if (strncmp(propNamePtr, "_rdkit_", 7) == 0) {
+      return propName.substr(8);
+    }
   }
   return propName;
+}
+
+bool is_ignored_property(const std::string &prop) {
+  static const boost::unordered_set<std::string> ignored_properties = {
+      MAE_ENHANCED_STEREO_STATUS,
+      MAE_STEREO_STATUS,
+  };
+
+  return ignored_properties.find(prop) != ignored_properties.end();
 }
 
 //! Copy over the structure properties, including stereochemistry.
 void set_mol_properties(RWMol &mol, const mae::Block &ct_block) {
   for (const auto &prop : ct_block.getProperties<std::string>()) {
+    if (is_ignored_property(prop.first)) {
+      continue;
+    }
+
     if (prop.first == mae::CT_TITLE) {
       mol.setProp(common_properties::_Name, prop.second);
     } else if (prop.first.find(mae::CT_CHIRALITY_PROP_PREFIX) == 0 ||
@@ -234,14 +249,26 @@ void set_mol_properties(RWMol &mol, const mae::Block &ct_block) {
     }
   }
   for (const auto &prop : ct_block.getProperties<double>()) {
+    if (is_ignored_property(prop.first)) {
+      continue;
+    }
+
     auto propName = strip_prefix_from_mae_property(prop.first);
     mol.setProp(propName, prop.second);
   }
   for (const auto &prop : ct_block.getProperties<int>()) {
+    if (is_ignored_property(prop.first)) {
+      continue;
+    }
+
     auto propName = strip_prefix_from_mae_property(prop.first);
     mol.setProp(propName, prop.second);
   }
   for (const auto &prop : ct_block.getProperties<mae::BoolProperty>()) {
+    if (is_ignored_property(prop.first)) {
+      continue;
+    }
+
     auto propName = strip_prefix_from_mae_property(prop.first);
     mol.setProp(propName, static_cast<bool>(prop.second));
   }
@@ -295,6 +322,10 @@ void set_atom_properties(Atom &atom, const mae::IndexedBlock &atom_block,
     if (prop.first == mae::ATOM_FORMAL_CHARGE) {
       // Formal charge has a specific setter
       atom.setFormalCharge(prop.second->at(i));
+    } else if (prop.first == MAE_RGROUP_LABEL) {
+      // Schrodinger adopted RDKit's Group label property,
+      // but with a "i_sd_" prefix instead of the usual "i_rdkit_"
+      atom.setProp(common_properties::_MolFileRLabel, prop.second->at(i));
     } else {
       auto propName = strip_prefix_from_mae_property(prop.first);
       atom.setProp(propName, prop.second->at(i));
@@ -310,15 +341,16 @@ void set_atom_properties(Atom &atom, const mae::IndexedBlock &atom_block,
   }
 }
 
-void addAtoms(const mae::IndexedBlock &atom_block, RWMol &mol) {
+void addAtoms(const mae::IndexedBlock &atom_block, RWMol &mol,
+              std::vector<unsigned int> &atomsToRemove) {
   // All atoms are guaranteed to have these three field names:
-  const auto atomic_numbers = atom_block.getIntProperty(mae::ATOM_ATOMIC_NUM);
+  const auto atomicNumbers = atom_block.getIntProperty(mae::ATOM_ATOMIC_NUM);
   const auto xs = atom_block.getRealProperty(mae::ATOM_X_COORD);
   const auto ys = atom_block.getRealProperty(mae::ATOM_Y_COORD);
   const auto zs = atom_block.getRealProperty(mae::ATOM_Z_COORD);
 
   // atomic numbers, and x, y, and z coordinates
-  const auto size = atomic_numbers->size();
+  const auto size = atomicNumbers->size();
   auto conf = new RDKit::Conformer(size);
   conf->setId(0);
 
@@ -326,11 +358,29 @@ void addAtoms(const mae::IndexedBlock &atom_block, RWMol &mol) {
 
   bool nonzeroZ = false;
   for (size_t i = 0; i < size; ++i) {
-    Atom *atom = new Atom(atomic_numbers->at(i));
-    mol.addAtom(atom, true, true);
+    bool removeAtom = false;
+    auto atomicNumber = atomicNumbers->at(i);
+    if (atomicNumber == 0 || atomicNumber == -1 || atomicNumber == -3) {
+      BOOST_LOG(rdWarningLog)
+          << "WARNING: atom " << (i + 1)
+          << " in input Maestro file has atomic number '" << atomicNumber
+          << "', which is reserved for internal use, and not allowed in inputs."
+          << " The atom will be ignored.";
 
-    pdb_info.addPDBData(atom, i);
-    set_atom_properties(*atom, atom_block, i);
+      // removing the atom now would be problematic for parsing the bonds
+      // (especially if the atom is bonded!), so we'll just add a dummy
+      // atom instead, and remove it again once we have finished parsing
+      // the file.
+      atomsToRemove.push_back(i);
+      removeAtom = true;
+      atomicNumber = 0;
+    } else if (atomicNumber == -2) {
+      // Maestro files use atomic number -2 to indicate a dummy atom.
+      atomicNumber = 0;
+    }
+
+    Atom *atom = new Atom(atomicNumber);
+    mol.addAtom(atom, true, true);
 
     RDGeom::Point3D pos;
     pos.x = xs->at(i);
@@ -338,7 +388,14 @@ void addAtoms(const mae::IndexedBlock &atom_block, RWMol &mol) {
     pos.z = zs->at(i);
     conf->setAtomPos(i, pos);
 
-    nonzeroZ |= (std::abs(pos.z) > 1.e-4);
+    // If the atom is going to be removed, don't bother with pdb info or
+    // properties, and also don't consider it for planarity
+    if (!removeAtom) {
+      pdb_info.addPDBData(atom, i);
+      set_atom_properties(*atom, atom_block, i);
+
+      nonzeroZ |= (std::abs(pos.z) > 1.e-4);
+    }
   }
 
   conf->set3D(nonzeroZ);
@@ -378,8 +435,9 @@ void addBonds(const mae::IndexedBlock &bond_block, RWMol &mol) {
 
 void build_mol(RWMol &mol, mae::Block &structure_block, bool sanitize,
                bool removeHs) {
+  std::vector<unsigned int> atomsToRemove;
   const auto &atom_block = structure_block.getIndexedBlock(mae::ATOM_BLOCK);
-  addAtoms(*atom_block, mol);
+  addAtoms(*atom_block, mol, atomsToRemove);
 
   std::shared_ptr<const mae::IndexedBlock> bond_block{nullptr};
   try {
@@ -429,6 +487,15 @@ void build_mol(RWMol &mol, mae::Block &structure_block, bool sanitize,
 
   // Assign labels, but don't replace the existing ones
   MolOps::assignStereochemistry(mol, replaceExistingTags);
+
+  // If we saw any invalid atoms, remove them now
+  if (!atomsToRemove.empty()) {
+    mol.beginBatchEdit();
+    for (auto aidx : atomsToRemove) {
+      mol.removeAtom(aidx);
+    }
+    mol.commitBatchEdit();
+  }
 }
 
 void throw_idx_error(unsigned idx) {
@@ -441,37 +508,34 @@ void throw_idx_error(unsigned idx) {
 }  // namespace
 
 MaeMolSupplier::MaeMolSupplier(std::shared_ptr<std::istream> inStream,
-                               bool sanitize, bool removeHs) {
+                               const MaeMolSupplierParams &params) {
   PRECONDITION(inStream, "bad stream");
   dp_sInStream = inStream;
   dp_inStream = inStream.get();
   df_owner = true;
-  df_sanitize = sanitize;
-  df_removeHs = removeHs;
+  d_params = params;
 
   init();
 }
 
 MaeMolSupplier::MaeMolSupplier(std::istream *inStream, bool takeOwnership,
-                               bool sanitize, bool removeHs) {
+                               const MaeMolSupplierParams &params) {
   PRECONDITION(inStream, "bad stream");
   PRECONDITION(takeOwnership, "takeOwnership is required for MaeMolSupplier");
   dp_inStream = inStream;
   dp_sInStream.reset(dp_inStream);
   df_owner = takeOwnership;  // always true
-  df_sanitize = sanitize;
-  df_removeHs = removeHs;
+  d_params = params;
 
   init();
 }
 
-MaeMolSupplier::MaeMolSupplier(const std::string &fileName, bool sanitize,
-                               bool removeHs) {
+MaeMolSupplier::MaeMolSupplier(const std::string &fileName,
+                               const MaeMolSupplierParams &params) {
   df_owner = true;
   dp_inStream = openAndCheckStream(fileName);
   dp_sInStream.reset(dp_inStream);
-  df_sanitize = sanitize;
-  df_removeHs = removeHs;
+  d_params = params;
 
   init();
 }
@@ -499,19 +563,17 @@ void MaeMolSupplier::reset() {
   d_length = length;
 }
 
-void MaeMolSupplier::setData(const std::string &text, bool sanitize,
-                             bool removeHs) {
+void MaeMolSupplier::setData(const std::string &text,
+                             const MaeMolSupplierParams &params) {
   dp_inStream = static_cast<std::istream *>(
       new std::istringstream(text, std::ios_base::binary));
   dp_sInStream.reset(dp_inStream);
   df_owner = true;  // maeparser requires ownership
-  df_sanitize = sanitize;
-  df_removeHs = removeHs;
-
+  d_params = params;
   init();
 }
 
-ROMol *MaeMolSupplier::next() {
+std::unique_ptr<RWMol> MaeMolSupplier::next() {
   PRECONDITION(dp_sInStream != nullptr, "no stream");
   if (!d_stored_exc.empty()) {
     throw FileParseException(d_stored_exc);
@@ -519,19 +581,18 @@ ROMol *MaeMolSupplier::next() {
     throw FileParseException("All structures read from Maestro file");
   }
 
-  auto mol = new RWMol;
+  auto mol = std::make_unique<RWMol>();
 
   try {
-    build_mol(*mol, *d_next_struct, df_sanitize, df_removeHs);
+    build_mol(*mol, *d_next_struct, d_params.sanitize, d_params.removeHs);
   } catch (const std::exception &e) {
-    delete mol;
     moveToNextBlock();
     throw FileParseException(e.what());
   }
 
   moveToNextBlock();
 
-  return static_cast<ROMol *>(mol);
+  return mol;
 }
 
 void MaeMolSupplier::moveToNextBlock() {
@@ -599,10 +660,12 @@ void MaeMolSupplier::moveTo(unsigned int idx) {
   }
 }
 
-ROMol *MaeMolSupplier::operator[](unsigned int idx) {
+std::unique_ptr<RWMol> MaeMolSupplier::operator[](unsigned int idx) {
   PRECONDITION(dp_inStream, "no stream");
   moveTo(idx);
   return next();
 }
 
+}  // namespace FileParsers
+}  // namespace v2
 }  // namespace RDKit

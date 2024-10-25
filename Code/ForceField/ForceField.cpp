@@ -96,7 +96,7 @@ void computeDihedral(const RDGeom::Point3D *p1, const RDGeom::Point3D *p2,
 namespace ForceFieldsHelper {
 class calcEnergy {
  public:
-  calcEnergy(ForceFields::ForceField *ffHolder) : mp_ffHolder(ffHolder){};
+  calcEnergy(ForceFields::ForceField *ffHolder) : mp_ffHolder(ffHolder) {};
   double operator()(double *pos) const { return mp_ffHolder->calcEnergy(pos); }
 
  private:
@@ -105,7 +105,7 @@ class calcEnergy {
 
 class calcGradient {
  public:
-  calcGradient(ForceFields::ForceField *ffHolder) : mp_ffHolder(ffHolder){};
+  calcGradient(ForceFields::ForceField *ffHolder) : mp_ffHolder(ffHolder) {};
   double operator()(double *pos, double *grad) const {
     double res = 1.0;
     // the contribs to the gradient function use +=, so we need
@@ -212,7 +212,8 @@ double ForceField::distance(unsigned int i, unsigned int j, double *pos) {
   return res;
 }
 
-double ForceField::distance(unsigned int i, unsigned int j, double *pos) const {
+double ForceField::distance2(unsigned int i, unsigned int j,
+                             double *pos) const {
   PRECONDITION(df_init, "not initialized");
   URANGE_CHECK(i, d_numPoints);
   URANGE_CHECK(j, d_numPoints);
@@ -244,7 +245,10 @@ double ForceField::distance(unsigned int i, unsigned int j, double *pos) const {
     }
 #endif
   }
-  res = sqrt(res);
+  return res;
+}
+double ForceField::distance(unsigned int i, unsigned int j, double *pos) const {
+  auto res = sqrt(distance2(i, j, pos));
   return res;
 }
 

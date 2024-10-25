@@ -53,17 +53,15 @@ using boost_adaptbx::python::streambuf;
 namespace RDKit {
 
 class RGroupDecompositionHelper {
-  RGroupDecomposition *decomp;
+  std::unique_ptr<RGroupDecomposition> decomp;
 
  public:
-  ~RGroupDecompositionHelper() { delete decomp; }
-
   RGroupDecompositionHelper(python::object cores,
                             const RGroupDecompositionParameters &params =
                                 RGroupDecompositionParameters()) {
     python::extract<ROMol> isROMol(cores);
     if (isROMol.check()) {
-      decomp = new RGroupDecomposition(isROMol(), params);
+      decomp.reset(new RGroupDecomposition(isROMol(), params));
     } else {
       MOL_SPTR_VECT coreMols;
       python::stl_input_iterator<ROMOL_SPTR> iter(cores), end;
@@ -74,7 +72,7 @@ class RGroupDecompositionHelper {
         coreMols.push_back(*iter);
         ++iter;
       }
-      decomp = new RGroupDecomposition(coreMols, params);
+      decomp.reset(new RGroupDecomposition(coreMols, params));
     }
   }
 
@@ -125,11 +123,11 @@ class RGroupDecompositionHelper {
 
     for (const auto &side_chains : groups) {
       python::dict dict;
-      for (const auto &side_chain : side_chains) {
+      for (const auto &[lbl, mol] : side_chains) {
         if (asSmiles) {
-          dict[side_chain.first] = MolToSmiles(*side_chain.second, true);
+          dict[lbl] = MolToSmiles(*mol, true);
         } else {
-          dict[side_chain.first] = side_chain.second;
+          dict[lbl] = mol;
         }
       }
       result.append(dict);
@@ -137,7 +135,7 @@ class RGroupDecompositionHelper {
     return result;
   }
 
-  python::dict GetRGroupsAsColumn(bool asSmiles = false) {
+  python::dict GetRGroupsAsColumns(bool asSmiles = false) {
     python::dict result;
 
     RGroupColumns groups = decomp->getRGroupsAsColumns();
@@ -185,7 +183,7 @@ python::object RGroupDecomp(python::object cores, python::object mols,
   if (asRows) {
     return make_tuple(decomp.GetRGroupsAsRows(asSmiles), unmatched);
   } else {
-    return make_tuple(decomp.GetRGroupsAsColumn(asSmiles), unmatched);
+    return make_tuple(decomp.GetRGroupsAsColumns(asSmiles), unmatched);
   }
 }
 
@@ -293,7 +291,7 @@ struct rgroupdecomp_wrapper {
         "be attached to an unlabelled core atom";
     python::class_<RDKit::RGroupDecompositionParameters>(
         "RGroupDecompositionParameters", docString.c_str(),
-        python::init<>("Constructor, takes no arguments"))
+        python::init<>(python::args("self"), "Constructor, takes no arguments"))
 
         .def_readwrite("labels", &RDKit::RGroupDecompositionParameters::labels)
         .def_readwrite("matchingStrategy",
@@ -341,39 +339,47 @@ struct rgroupdecomp_wrapper {
                        &RDKit::RGroupDecompositionParameters::
                            allowMultipleRGroupsOnUnlabelled)
         .def_readwrite("doTautomers",
-                       &RDKit::RGroupDecompositionParameters::
-                           doTautomers)
+                       &RDKit::RGroupDecompositionParameters::doTautomers)
         .def_readwrite("doEnumeration",
-                       &RDKit::RGroupDecompositionParameters::
-                           doEnumeration)
+                       &RDKit::RGroupDecompositionParameters::doEnumeration)
         .def_readonly(
             "substructMatchParams",
-            &RDKit::RGroupDecompositionParameters::substructmatchParams);
+            &RDKit::RGroupDecompositionParameters::substructmatchParams)
+        .def_readwrite(
+            "includeTargetMolInResults",
+            &RDKit::RGroupDecompositionParameters::includeTargetMolInResults);
 
     python::class_<RDKit::RGroupDecompositionHelper, boost::noncopyable>(
         "RGroupDecomposition", docString.c_str(),
         python::init<python::object>(
+            python::args("self", "cores"),
             "Construct from a molecule or sequence of molecules"))
         .def(
             python::init<python::object, const RGroupDecompositionParameters &>(
+                python::args("self", "cores", "params"),
                 "Construct from a molecule or sequence of molecules and a "
                 "parameters object"))
-        .def("Add", &RGroupDecompositionHelper::Add)
+        .def("Add", &RGroupDecompositionHelper::Add,
+             python::args("self", "mol"))
         .def("GetMatchingCoreIdx",
              &RGroupDecompositionHelper::GetMatchingCoreIdx,
-             (python::arg("mol"), python::arg("matches") = python::object()))
+             ((python::arg("self"), python::arg("mol")),
+              python::arg("matches") = python::object()))
         .def("Process", &RGroupDecompositionHelper::Process,
+             python::args("self"),
              "Process the rgroups (must be done prior to "
              "GetRGroupsAsRows/Columns and GetRGroupLabels)")
         .def("ProcessAndScore", &RGroupDecompositionHelper::ProcessAndScore,
+             python::args("self"),
              "Process the rgroups and returns the score (must be done prior to "
              "GetRGroupsAsRows/Columns and GetRGroupLabels)")
         .def("GetRGroupLabels", &RGroupDecompositionHelper::GetRGroupLabels,
+             python::args("self"),
              "Return the current list of found rgroups.\n"
              "Note, Process() should be called first")
         .def("GetRGroupsAsRows", &RGroupDecompositionHelper::GetRGroupsAsRows,
-             python::arg("asSmiles") = false,
-             "Return the rgroups as rows (note: can be fed directrly into a "
+             (python::arg("self"), python::arg("asSmiles") = false),
+             "Return the rgroups as rows (note: can be fed directly into a "
              "pandas datatable)\n"
              "  ARGUMENTS:\n"
              "   - asSmiles: if True return smiles strings, otherwise return "
@@ -381,9 +387,9 @@ struct rgroupdecomp_wrapper {
              "    Row structure:\n"
              "       rows[idx] = {rgroup_label: molecule_or_smiles}\n")
         .def("GetRGroupsAsColumns",
-             &RGroupDecompositionHelper::GetRGroupsAsColumn,
-             python::arg("asSmiles") = false,
-             "Return the rgroups as columns (note: can be fed directrly into a "
+             &RGroupDecompositionHelper::GetRGroupsAsColumns,
+             (python::arg("self"), python::arg("asSmiles") = false),
+             "Return the rgroups as columns (note: can be fed directly into a "
              "pandas datatable)\n"
              "  ARGUMENTS:\n"
              "   - asSmiles: if True return smiles strings, otherwise return "

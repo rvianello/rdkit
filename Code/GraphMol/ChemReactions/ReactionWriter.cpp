@@ -1,5 +1,5 @@
 //
-//  Copyright (c) 2010-2022, Novartis Institutes for BioMedical Research Inc.
+//  Copyright (c) 2010-2024, Novartis Institutes for BioMedical Research Inc.
 //  and other RDKit contributors
 //
 //  All rights reserved.
@@ -38,8 +38,10 @@
 #include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/FileParsers/FileParserUtils.h>
 #include <GraphMol/SmilesParse/SmartsWrite.h>
-#include <GraphMol/SmilesParse/SmilesWrite.h>
 #include <GraphMol/MolOps.h>
+#include <GraphMol/Chirality.h>
+#include <GraphMol/FileParsers/MolFileStereochem.h>
+
 #include <sstream>
 
 namespace {
@@ -52,12 +54,13 @@ void setRXNRoleOfAllMoleculeAtoms(RDKit::ROMol &mol, int role) {
   }
 }
 
-std::string molToString(RDKit::ROMol &mol, bool toSmiles) {
+std::string molToString(RDKit::ROMol &mol, bool toSmiles,
+                        const RDKit::SmilesWriteParams &params) {
   std::string res = "";
   if (toSmiles) {
-    res = MolToSmiles(mol, true);
+    res = MolToSmiles(mol, params);
   } else {
-    res = MolToSmarts(mol, true);
+    res = MolToSmarts(mol, params);
   }
   std::vector<int> mapping;
   if (RDKit::MolOps::getMolFrags(mol, mapping) > 1) {
@@ -68,15 +71,15 @@ std::string molToString(RDKit::ROMol &mol, bool toSmiles) {
 
 std::string chemicalReactionTemplatesToString(
     const RDKit::ChemicalReaction &rxn, RDKit::ReactionMoleculeType type,
-    bool toSmiles, bool canonical) {
+    bool toSmiles, const RDKit::SmilesWriteParams &params) {
   std::string res = "";
   std::vector<std::string> vfragsmi;
   auto begin = getStartIterator(rxn, type);
   auto end = getEndIterator(rxn, type);
   for (; begin != end; ++begin) {
-    vfragsmi.push_back(molToString(**begin, toSmiles));
+    vfragsmi.push_back(molToString(**begin, toSmiles, params));
   }
-  if (canonical) {
+  if (params.canonical) {
     std::sort(vfragsmi.begin(), vfragsmi.end());
   }
   for (unsigned i = 0; i < vfragsmi.size(); ++i) {
@@ -88,17 +91,17 @@ std::string chemicalReactionTemplatesToString(
   return res;
 }
 
-std::string chemicalReactionToRxnToString(const RDKit::ChemicalReaction &rxn,
-                                          bool toSmiles, bool canonical) {
+std::string chemicalReactionToRxnToString(
+    const RDKit::ChemicalReaction &rxn, bool toSmiles,
+    const RDKit::SmilesWriteParams &params) {
   std::string res = "";
-  res += chemicalReactionTemplatesToString(rxn, RDKit::Reactant, toSmiles,
-                                           canonical);
+  res +=
+      chemicalReactionTemplatesToString(rxn, RDKit::Reactant, toSmiles, params);
+  res += ">";
+  res += chemicalReactionTemplatesToString(rxn, RDKit::Agent, toSmiles, params);
   res += ">";
   res +=
-      chemicalReactionTemplatesToString(rxn, RDKit::Agent, toSmiles, canonical);
-  res += ">";
-  res += chemicalReactionTemplatesToString(rxn, RDKit::Product, toSmiles,
-                                           canonical);
+      chemicalReactionTemplatesToString(rxn, RDKit::Product, toSmiles, params);
   return res;
 }
 
@@ -107,10 +110,6 @@ void write_template(std::ostringstream &res, RDKit::ROMol &tpl) {
 
   if (trwmol.needsUpdatePropertyCache()) {
     trwmol.updatePropertyCache(false);
-  }
-  // to write the mol block, we need ring information:
-  if (!trwmol.getRingInfo()->isInitialized()) {
-    RDKit::MolOps::findSSSR(trwmol);
   }
   RDKit::FileParserUtils::moveAdditionalPropertiesToSGroups(trwmol);
 
@@ -122,14 +121,15 @@ void write_template(std::ostringstream &res, RDKit::ROMol &tpl) {
 namespace RDKit {
 
 //! returns the reaction SMARTS for a reaction
-std::string ChemicalReactionToRxnSmarts(const ChemicalReaction &rxn) {
-  return chemicalReactionToRxnToString(rxn, false, false);
+std::string ChemicalReactionToRxnSmarts(const ChemicalReaction &rxn,
+                                        const SmilesWriteParams &params) {
+  return chemicalReactionToRxnToString(rxn, false, params);
 };
 
 //! returns the reaction SMILES for a reaction
 std::string ChemicalReactionToRxnSmiles(const ChemicalReaction &rxn,
-                                        bool canonical) {
-  return chemicalReactionToRxnToString(rxn, true, canonical);
+                                        const SmilesWriteParams &params) {
+  return chemicalReactionToRxnToString(rxn, true, params);
 };
 
 //! returns an RXN block for a reaction
@@ -154,16 +154,16 @@ std::string ChemicalReactionToV3KRxnBlock(const ChemicalReaction &rxn,
     write_template(res, *rt);
   }
   if (!separateAgents) {
-    for (const auto &rt : boost::make_iterator_range(rxn.beginAgentTemplates(),
+    for (const auto &at : boost::make_iterator_range(rxn.beginAgentTemplates(),
                                                      rxn.endAgentTemplates())) {
-      write_template(res, *rt);
+      write_template(res, *at);
     }
   }
   res << "M  V30 END REACTANT\n";
   res << "M  V30 BEGIN PRODUCT\n";
-  for (const auto &rt : boost::make_iterator_range(rxn.beginProductTemplates(),
+  for (const auto &pt : boost::make_iterator_range(rxn.beginProductTemplates(),
                                                    rxn.endProductTemplates())) {
-    write_template(res, *rt);
+    write_template(res, *pt);
   }
   res << "M  V30 END PRODUCT\n";
   if (separateAgents) {
@@ -199,39 +199,24 @@ std::string ChemicalReactionToRxnBlock(const ChemicalReaction &rxn,
 
   for (auto iter = rxn.beginReactantTemplates();
        iter != rxn.endReactantTemplates(); ++iter) {
-    // to write the mol block, we need ring information:
-    if (!(*iter)->getRingInfo()->isInitialized()) {
-      MolOps::findSSSR(**iter);
-    }
-    MolOps::findSSSR(**iter);
     res << "$MOL\n";
     res << MolToMolBlock(**iter, true, -1, false);
   }
   if (!separateAgents) {
     for (auto iter = rxn.beginAgentTemplates(); iter != rxn.endAgentTemplates();
          ++iter) {
-      // to write the mol block, we need ring information:
-      if (!(*iter)->getRingInfo()->isInitialized()) {
-        MolOps::findSSSR(**iter);
-      }
       res << "$MOL\n";
       res << MolToMolBlock(**iter, true, -1, false);
     }
   }
   for (auto iter = rxn.beginProductTemplates();
        iter != rxn.endProductTemplates(); ++iter) {
-    // to write the mol block, we need ring information:
-    if (!(*iter)->getRingInfo()->isInitialized()) {
-      MolOps::findSSSR(**iter);
-    }
     res << "$MOL\n";
     res << MolToMolBlock(**iter, true, -1, false);
   }
   if (separateAgents) {
     for (auto iter = rxn.beginAgentTemplates(); iter != rxn.endAgentTemplates();
          ++iter) {
-      // to write the mol block, we need ring information:
-      MolOps::findSSSR(**iter);
       res << "$MOL\n";
       res << MolToMolBlock(**iter, true, -1, false);
     }

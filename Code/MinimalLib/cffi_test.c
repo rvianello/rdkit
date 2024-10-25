@@ -364,6 +364,7 @@ M  END",
   free(molblock);
   molblock = NULL;
 
+#ifdef RDK_BUILD_INCHI_SUPPORT
   //---------
   // InChI
   char *inchi = get_inchi(pkl, pkl_size, NULL);
@@ -385,6 +386,7 @@ M  END",
   assert(!strcmp(inchi, "InChI=1/C6H6O/c7-6-4-2-1-3-5-6/h1-5,7H"));
   free(inchi);
   free(molblock);
+#endif
 
   //---------
   // queries
@@ -2182,7 +2184,7 @@ void test_capture_logs() {
   } capture_test;
   capture_test tests[] = {{"tee", set_log_tee}, {"capture", set_log_capture}};
   for (size_t i = 0; i < sizeof(tests) / sizeof(capture_test); ++i) {
-    printf("%d. %s\n", i + 1, tests[i].type);
+    printf("%zu. %s\n", i + 1, tests[i].type);
     log_handle = tests[i].func("dummy");
     assert(!log_handle);
     log_handle = tests[i].func("rdApp.*");
@@ -2235,6 +2237,490 @@ void test_relabel_mapped_dummies() {
   free(mpkl);
 }
 
+unsigned int count_matches(const char *svg, const char **stereo_array,
+                           size_t stereo_array_len) {
+  char *svg_copy = strdup(svg);
+  unsigned int i = 0;
+  char *line = strtok(svg_copy, "\n");
+  while (line && i < stereo_array_len) {
+    if (strstr(line, stereo_array[i])) {
+      ++i;
+    } else if (i) {
+      break;
+    }
+    line = strtok(NULL, "\n");
+  }
+  free(svg_copy);
+  return i;
+}
+
+void test_assign_cip_labels() {
+  printf("--------------------------\n");
+  printf("  test_assign_cip_labels\n");
+  char *mpkl;
+  size_t mpkl_size;
+  char *svg;
+  static const char *STEREO_SMI = "C/C=C/c1ccccc1[S@@](C)=O";
+  static const char *S_STEREO[3] = {">(<", ">S<", ">)<"};
+  static const char *R_STEREO[3] = {">(<", ">R<", ">)<"};
+  short orig_setting = use_legacy_stereo_perception(1);
+  mpkl = get_mol(STEREO_SMI, &mpkl_size, "");
+  svg = get_svg(mpkl, mpkl_size,
+                "{\"noFreetype\":true,\"addStereoAnnotation\":true}");
+  assert(count_matches(svg, S_STEREO, 3) == 3);
+  assert(count_matches(svg, R_STEREO, 3) < 3);
+  free(svg);
+  free(mpkl);
+  use_legacy_stereo_perception(0);
+  mpkl = get_mol(STEREO_SMI, &mpkl_size, "");
+  svg = get_svg(mpkl, mpkl_size,
+                "{\"noFreetype\":true,\"addStereoAnnotation\":true}");
+  assert(count_matches(svg, S_STEREO, 3) < 3);
+  assert(count_matches(svg, R_STEREO, 3) < 3);
+  free(svg);
+  free(mpkl);
+  mpkl = get_mol(STEREO_SMI, &mpkl_size, "{\"assignCIPLabels\":true}");
+  svg = get_svg(mpkl, mpkl_size,
+                "{\"noFreetype\":true,\"addStereoAnnotation\":true}");
+  assert(count_matches(svg, S_STEREO, 3) < 3);
+  assert(count_matches(svg, R_STEREO, 3) == 3);
+  free(svg);
+  free(mpkl);
+  use_legacy_stereo_perception(orig_setting);
+}
+
+void test_assign_chiral_tags_from_mol_parity() {
+  printf("--------------------------\n");
+  printf("  test_assign_chiral_tags_from_mol_parity\n");
+  char *mpkl;
+  size_t mpkl_size;
+  char *smiles;
+  const char *artemisininCTAB =
+      "68827\n\
+  -OEChem-03262404452D\n\
+\n\
+ 20 23  0     1  0  0  0  0  0999 V2000\n\
+    4.3177    0.4203    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    5.7899    1.1100    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    6.4870   -0.3207    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    4.5402    1.3953    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    7.4004   -1.8275    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    4.6664   -0.2988    0.0000 C   0  0  2  0  0  0  0  0  0  0  0  0\n\
+    3.7655    0.1351    0.0000 C   0  0  2  0  0  0  0  0  0  0  0  0\n\
+    4.7603   -1.3362    0.0000 C   0  0  1  0  0  0  0  0  0  0  0  0\n\
+    2.8959   -0.4383    0.0000 C   0  0  1  0  0  0  0  0  0  0  0  0\n\
+    5.5674    0.1351    0.0000 C   0  0  1  0  0  0  0  0  0  0  0  0\n\
+    3.9042   -1.9296    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    3.5430    1.1100    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    2.9657   -1.4776    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    5.6389   -1.8668    0.0000 C   0  0  2  0  0  0  0  0  0  0  0  0\n\
+    5.1664    1.8919    0.0000 C   0  0  2  0  0  0  0  0  0  0  0  0\n\
+    4.1664    1.8919    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    2.0000    0.0059    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    6.5237   -1.3465    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    5.6330   -2.8668    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    5.3890    2.8668    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+  1  4  1  0  0  0  0\n\
+  6  1  1  0  0  0  0\n\
+  2 10  1  0  0  0  0\n\
+  2 15  1  0  0  0  0\n\
+  3 10  1  0  0  0  0\n\
+  3 18  1  0  0  0  0\n\
+  4 15  1  0  0  0  0\n\
+  5 18  2  0  0  0  0\n\
+  6  7  1  0  0  0  0\n\
+  6  8  1  0  0  0  0\n\
+  6 10  1  0  0  0  0\n\
+  7  9  1  0  0  0  0\n\
+  7 12  1  0  0  0  0\n\
+  8 11  1  0  0  0  0\n\
+  8 14  1  0  0  0  0\n\
+  9 13  1  0  0  0  0\n\
+  9 17  1  0  0  0  0\n\
+ 11 13  1  0  0  0  0\n\
+ 12 16  1  0  0  0  0\n\
+ 14 18  1  0  0  0  0\n\
+ 14 19  1  0  0  0  0\n\
+ 15 16  1  0  0  0  0\n\
+ 15 20  1  0  0  0  0\n\
+M  END\n\
+";
+  mpkl = get_mol(artemisininCTAB, &mpkl_size, "");
+  assert(mpkl);
+  smiles = get_smiles(mpkl, mpkl_size, NULL);
+  assert(!strcmp(smiles, "CC1CCC2C(C)C(=O)OC3OC4(C)CCC1C32OO4"));
+  free(smiles);
+  free(mpkl);
+  mpkl = get_mol(artemisininCTAB, &mpkl_size,
+                 "{\"assignChiralTypesFromMolParity\":true}");
+  assert(mpkl);
+  smiles = get_smiles(mpkl, mpkl_size, NULL);
+  assert(!strcmp(
+      smiles,
+      "C[C@@H]1CC[C@H]2[C@@H](C)C(=O)O[C@@H]3O[C@@]4(C)CC[C@@H]1[C@]32OO4"));
+  free(smiles);
+  free(mpkl);
+}
+
+void test_make_dummies_queries() {
+  printf("--------------------------\n");
+  printf("  test_make_dummies_queries\n");
+  char *mpkl;
+  size_t mpkl_size;
+  char *qpkl;
+  size_t qpkl_size;
+  char *json;
+  mpkl = get_mol("CN", &mpkl_size, "");
+  assert(mpkl);
+  qpkl = get_mol("*N", &qpkl_size, "");
+  assert(qpkl);
+  json = get_substruct_match(mpkl, mpkl_size, qpkl, qpkl_size, "");
+  assert(!strcmp(json, "{}"));
+  free(json);
+  free(qpkl);
+  qpkl = get_mol("*N", &qpkl_size, "{\"makeDummiesQueries\":true}");
+  assert(qpkl);
+  json = get_substruct_match(mpkl, mpkl_size, qpkl, qpkl_size, "");
+  assert(!strcmp(json, "{\"atoms\":[0,1],\"bonds\":[0]}"));
+  free(json);
+  free(qpkl);
+  free(mpkl);
+}
+
+void test_smiles_smarts_params() {
+  printf("--------------------------\n");
+  printf("  test_smiles_smarts_params\n");
+  const char *amoxicillin_pub_chem =
+      "CC1([C@@H](N2[C@H](S1)[C@@H](C2=O)NC(=O)[C@@H](C3=CC=C(C=C3)O)N)C(=O)O)C";
+  const char *bicyclo221heptane =
+      "\n\
+     RDKit          2D\n\
+\n\
+  9 10  0  0  1  0  0  0  0  0999 V2000\n\
+   -2.8237   -1.3088    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n\
+   -1.5723   -0.3996    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+   -1.5723    1.1473    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+   -0.1011    1.6253    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    1.3701    1.1474    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    1.3701   -0.3995    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    2.6217   -1.3087    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0\n\
+   -0.1009   -0.8775    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    0.8083    0.3739    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+  2  1  1  1\n\
+  2  3  1  0\n\
+  4  3  1  0\n\
+  4  5  1  0\n\
+  6  5  1  0\n\
+  6  7  1  1\n\
+  6  8  1  0\n\
+  8  9  1  1\n\
+  8  2  1  0\n\
+  4  9  1  1\n\
+M  END\n\
+";
+  const char *atom_prop = " |atomProp:1.atomProp.1&#46;234|";
+  const char *chiral_smarts = "N-[C@H](-C(-O)=O)-C(-C)-C";
+  const char *chiral_smarts_with_atom_prop =
+      "N-[C@H](-C(-O)=O)-C(-C)-C |atomProp:1.atomProp.1&#46;234|";
+  char *mpkl;
+  size_t mpkl_size;
+  char *mpkl_atom_prop;
+  size_t mpkl_atom_prop_size;
+  char *canonical_smiles;
+  char *non_canonical_smiles;
+  char *canonical_smiles_no_stereo;
+  char *non_canonical_smiles_no_stereo;
+  char *canonical_cxsmiles;
+  char *non_canonical_cxsmiles_no_stereo;
+  char *non_canonical_cxsmiles_no_stereo_atom_prop;
+  char *cxsmiles_with_atom_prop;
+  char *smarts;
+  char *ptr;
+  char *ptr_end;
+  unsigned int i;
+  mpkl = get_mol(amoxicillin_pub_chem, &mpkl_size, "");
+  assert(mpkl);
+  const char *empty_json[3] = {NULL, "", "{}"};
+  for (i = 0; i < 3; ++i) {
+    canonical_smiles = get_smiles(mpkl, mpkl_size, empty_json[i]);
+    assert(canonical_smiles);
+    assert(!strcmp(
+        canonical_smiles,
+        "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccc(O)cc3)C(=O)N2[C@H]1C(=O)O"));
+    free(canonical_smiles);
+  }
+  non_canonical_smiles =
+      get_smiles(mpkl, mpkl_size, "{\"canonical\":\"false\"}");
+  assert(non_canonical_smiles);
+  assert(!strcmp(
+      non_canonical_smiles,
+      "CC1(C)[C@H](C(=O)O)N2[C@H](S1)[C@H](NC(=O)[C@@H](c1ccc(O)cc1)N)C2=O"));
+  free(non_canonical_smiles);
+  canonical_smiles_no_stereo =
+      get_smiles(mpkl, mpkl_size, "{\"doIsomericSmiles\":false}");
+  assert(canonical_smiles_no_stereo);
+  assert(!strcmp(canonical_smiles_no_stereo,
+                 "CC1(C)SC2C(NC(=O)C(N)c3ccc(O)cc3)C(=O)N2C1C(=O)O"));
+  free(canonical_smiles_no_stereo);
+  non_canonical_smiles_no_stereo = get_smiles(
+      mpkl, mpkl_size, "{\"doIsomericSmiles\":false,\"canonical\":false}");
+  assert(non_canonical_smiles_no_stereo);
+  assert(!strcmp(non_canonical_smiles_no_stereo,
+                 "CC1(C)C(C(=O)O)N2C(S1)C(NC(=O)C(c1ccc(O)cc1)N)C2=O"));
+  free(non_canonical_smiles_no_stereo);
+  free(mpkl);
+  mpkl =
+      get_mol(bicyclo221heptane, &mpkl_size, "{\"useMolBlockWedging\":true}");
+  assert(mpkl);
+  for (i = 0; i < 3; ++i) {
+    canonical_cxsmiles = get_cxsmiles(mpkl, mpkl_size, empty_json[i]);
+    assert(canonical_cxsmiles);
+    ptr = strstr(canonical_cxsmiles, " |");
+    assert(ptr);
+    *ptr = '\0';
+    assert(!strcmp(canonical_cxsmiles, "N[C@@H]1C[C@@H]2C[C@H]1[C@@H](O)C2"));
+    ++ptr;
+    assert(*ptr == '|');
+    ptr = strstr(ptr, "),");
+    assert(ptr);
+    ptr += 2;
+    ptr_end = strstr(ptr, "|");
+    assert(ptr_end);
+    *ptr_end = '\0';
+    assert(!strcmp(ptr, "wD:3.9,wU:1.0,5.4,6.7"));
+    free(canonical_cxsmiles);
+  }
+  canonical_cxsmiles =
+      get_cxsmiles(mpkl, mpkl_size,
+                   "{\"restoreBondDirOption\":\"RestoreBondDirOptionTrue\"}");
+  assert(canonical_cxsmiles);
+  ptr = strstr(canonical_cxsmiles, " |");
+  assert(ptr);
+  *ptr = '\0';
+  assert(!strcmp(canonical_cxsmiles, "N[C@@H]1C[C@@H]2C[C@H]1[C@@H](O)C2"));
+  ++ptr;
+  assert(*ptr == '|');
+  ptr = strstr(ptr, "),");
+  assert(ptr);
+  ptr += 2;
+  ptr_end = strstr(ptr, "|");
+  assert(ptr_end);
+  *ptr_end = '\0';
+  assert(!strcmp(ptr, "wU:1.0,3.3,5.4,6.7"));
+  free(canonical_cxsmiles);
+  non_canonical_cxsmiles_no_stereo = get_cxsmiles(
+      mpkl, mpkl_size,
+      "{\"doIsomericSmiles\":false,\"canonical\":false,\"CX_ALL_BUT_COORDS\":true}");
+  assert(non_canonical_cxsmiles_no_stereo);
+  assert(!strcmp(non_canonical_cxsmiles_no_stereo, "OC1CC2CC(N)C1C2"));
+  non_canonical_cxsmiles_no_stereo_atom_prop =
+      realloc(non_canonical_cxsmiles_no_stereo,
+              strlen(non_canonical_cxsmiles_no_stereo) + strlen(atom_prop) + 1);
+  assert(non_canonical_cxsmiles_no_stereo_atom_prop);
+  assert(strcat(non_canonical_cxsmiles_no_stereo_atom_prop, atom_prop) ==
+         non_canonical_cxsmiles_no_stereo_atom_prop);
+  mpkl_atom_prop = get_mol(non_canonical_cxsmiles_no_stereo_atom_prop,
+                           &mpkl_atom_prop_size, "");
+  assert(mpkl_atom_prop);
+  free(non_canonical_cxsmiles_no_stereo_atom_prop);
+  cxsmiles_with_atom_prop = get_cxsmiles(mpkl_atom_prop, mpkl_atom_prop_size,
+                                         "{\"CX_ALL_BUT_COORDS\":true}");
+  assert(cxsmiles_with_atom_prop);
+  assert(!strcmp(cxsmiles_with_atom_prop,
+                 "NC1CC2CC(O)C1C2 |atomProp:5.atomProp.1&#46;234|"));
+  free(cxsmiles_with_atom_prop);
+  free(mpkl_atom_prop);
+  free(mpkl);
+  mpkl = get_qmol(chiral_smarts, &mpkl_size, "");
+  assert(mpkl);
+  for (i = 0; i < 3; ++i) {
+    smarts = get_smarts(mpkl, mpkl_size, empty_json[i]);
+    assert(smarts);
+    assert(!strcmp(smarts, "N-[C@&H1](-C(-O)=O)-C(-C)-C"));
+    free(smarts);
+  }
+  smarts = get_smarts(mpkl, mpkl_size, "{\"doIsomericSmiles\":false}");
+  assert(smarts);
+  assert(!strcmp(smarts, "N-[C&H1](-C(-O)=O)-C(-C)-C"));
+  free(smarts);
+  free(mpkl);
+  mpkl = get_qmol(chiral_smarts_with_atom_prop, &mpkl_size, "");
+  assert(mpkl);
+  for (i = 0; i < 3; ++i) {
+    smarts = get_cxsmarts(mpkl, mpkl_size, empty_json[i]);
+    assert(smarts);
+    assert(!strcmp(
+        smarts, "N-[C@&H1](-C(-O)=O)-C(-C)-C |atomProp:1.atomProp.1&#46;234|"));
+    free(smarts);
+  }
+  smarts = get_cxsmarts(mpkl, mpkl_size, "{\"doIsomericSmiles\":false}");
+  assert(smarts);
+  assert(!strcmp(smarts,
+                 "N-[C&H1](-C(-O)=O)-C(-C)-C |atomProp:1.atomProp.1&#46;234|"));
+  free(smarts);
+  free(mpkl);
+}
+
+void test_wedged_bond_atropisomer() {
+  printf("--------------------------\n");
+  printf("  test_wedged_bond_atropisomer\n");
+  const char *atropisomer =
+      "\n\
+  Mrv2311 05242408162D          \n\
+\n\
+  0  0  0     0  0            999 V3000\n\
+M  V30 BEGIN CTAB\n\
+M  V30 COUNTS 14 15 0 0 0\n\
+M  V30 BEGIN ATOM\n\
+M  V30 1 C 2.0006 -1.54 0 0\n\
+M  V30 2 N 2.0006 -3.08 0 0\n\
+M  V30 3 C 0.6669 -3.85 0 0\n\
+M  V30 4 C -0.6668 -3.08 0 0\n\
+M  V30 5 C -0.6668 -1.54 0 0\n\
+M  V30 6 C -2.0006 -0.77 0 0\n\
+M  V30 7 C 0.6669 -0.77 0 0\n\
+M  V30 8 C 0.6669 0.77 0 0\n\
+M  V30 9 C -0.6668 1.54 0 0\n\
+M  V30 10 C -2.0006 0.77 0 0\n\
+M  V30 11 C -0.6668 3.08 0 0\n\
+M  V30 12 C 0.6669 3.85 0 0\n\
+M  V30 13 C 2.0006 3.08 0 0\n\
+M  V30 14 C 2.0006 1.54 0 0\n\
+M  V30 END ATOM\n\
+M  V30 BEGIN BOND\n\
+M  V30 1 1 1 2\n\
+M  V30 2 2 2 3\n\
+M  V30 3 1 3 4\n\
+M  V30 4 2 4 5\n\
+M  V30 5 1 5 6\n\
+M  V30 6 1 7 5 CFG=3\n\
+M  V30 7 2 7 1\n\
+M  V30 8 1 7 8\n\
+M  V30 9 2 8 9\n\
+M  V30 10 1 9 10\n\
+M  V30 11 1 9 11\n\
+M  V30 12 2 11 12\n\
+M  V30 13 1 12 13\n\
+M  V30 14 2 13 14\n\
+M  V30 15 1 8 14\n\
+M  V30 END BOND\n\
+M  V30 END CTAB\n\
+M  END\n";
+  char *mpkl;
+  size_t mpkl_size;
+  char *svg;
+  mpkl = get_mol(atropisomer, &mpkl_size, "");
+  assert(mpkl);
+  svg = get_svg(mpkl, mpkl_size,
+                "{\"useMolBlockWedging\":true,\"noFreetype\":true}");
+  assert(svg);
+  char *line = strtok(svg, "\n");
+  char *str = NULL;
+  int n_matches = 0;
+  while (line) {
+    str = strstr(line, "<path class='bond-5 atom-6 atom-4'");
+    if (str) {
+      ++n_matches;
+      assert(strstr(
+          str,
+          "style='fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />"));
+      assert(!strstr(
+          str,
+          "style='fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />"));
+    }
+    line = strtok(NULL, "\n");
+  }
+  assert(n_matches > 6);
+  free(svg);
+  free(mpkl);
+}
+
+void test_get_molblock_use_molblock_wedging() {
+  printf("--------------------------\n");
+  printf("  test_get_molblock_use_molblock_wedging\n");
+  const char *mb =
+      "\n\
+     RDKit          2D\n\
+\n\
+  9 10  0  0  1  0  0  0  0  0999 V2000\n\
+    1.4885   -4.5513    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    2.0405   -3.9382    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    2.8610   -4.0244    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    3.1965   -3.2707    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    3.0250   -2.4637    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    2.2045   -2.3775    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    1.7920   -1.6630    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    1.8690   -3.1311    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+    2.5834   -2.7186    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n\
+  2  1  1  1\n\
+  2  3  1  0\n\
+  4  3  1  0\n\
+  4  5  1  0\n\
+  6  5  1  0\n\
+  6  7  1  1\n\
+  6  8  1  0\n\
+  8  9  1  1\n\
+  8  2  1  0\n\
+  4  9  1  1\n\
+M  END\n\
+";
+  char *mpkl;
+  char *mpkl_copy;
+  size_t mpkl_size;
+  char *mb_rdkit_wedging;
+  char *mb_rdkit_wedging_post_orig;
+  char *mb_orig_wedging;
+  mpkl = get_mol(mb, &mpkl_size, "");
+  assert(mpkl && mpkl_size);
+  mpkl_copy = malloc(mpkl_size);
+  assert(mpkl_copy);
+  memcpy(mpkl_copy, mpkl, mpkl_size);
+  mb_rdkit_wedging = get_molblock(mpkl, mpkl_size, NULL);
+  assert(strcmp(mb, mb_rdkit_wedging));
+  mb_orig_wedging =
+      get_molblock(mpkl, mpkl_size, "{\"useMolBlockWedging\":true}");
+  assert(!memcmp(mpkl, mpkl_copy, mpkl_size));
+  assert(!strcmp(mb, mb_orig_wedging));
+  mb_rdkit_wedging_post_orig = get_molblock(mpkl, mpkl_size, NULL);
+  assert(strcmp(mb, mb_rdkit_wedging_post_orig));
+  assert(!strcmp(mb_rdkit_wedging, mb_rdkit_wedging_post_orig));
+  free(mb_rdkit_wedging);
+  free(mb_rdkit_wedging_post_orig);
+  free(mb_orig_wedging);
+  free(mpkl);
+  free(mpkl_copy);
+}
+
+void test_multi_highlights() {
+  printf("--------------------------\n");
+  printf("  test_multi_highlights\n");
+  const char *smi =
+      "[H]c1cc2c(-c3ccnc(Nc4ccc(F)c(F)c4)n3)c(-c3cccc(C(F)(F)F)c3)nn2nc1C";
+  const char *details =
+      "{\"width\":250,\"height\":200,\"highlightAtomMultipleColors\":{\"15\":[[0.941,0.894,0.259]],\"17\":[[0,0.62,0.451]],\"21\":[[0.902,0.624,0]],\"22\":[[0.902,0.624,0]],\"23\":[[0.902,0.624,0]],\"24\":[[0.902,0.624,0]],\"25\":[[0.902,0.624,0]],\"26\":[[0.902,0.624,0]],\"27\":[[0.902,0.624,0]],\"28\":[[0.902,0.624,0]],\"29\":[[0.902,0.624,0]],\"30\":[[0.902,0.624,0]],\"35\":[[0.337,0.706,0.914]]},\"highlightBondMultipleColors\":{\"14\":[[0.941,0.894,0.259]],\"16\":[[0,0.62,0.451]],\"20\":[[0.902,0.624,0]],\"21\":[[0.902,0.624,0]],\"22\":[[0.902,0.624,0]],\"23\":[[0.902,0.624,0]],\"24\":[[0.902,0.624,0]],\"25\":[[0.902,0.624,0]],\"26\":[[0.902,0.624,0]],\"27\":[[0.902,0.624,0]],\"28\":[[0.902,0.624,0]],\"29\":[[0.902,0.624,0]],\"34\":[[0.337,0.706,0.914]],\"38\":[[0.902,0.624,0]]},\"highlightAtomRadii\":{\"15\":0.4,\"17\":0.4,\"21\":0.4,\"22\":0.4,\"23\":0.4,\"24\":0.4,\"25\":0.4,\"26\":0.4,\"27\":0.4,\"28\":0.4,\"29\":0.4,\"30\":0.4,\"35\":0.4},\"highlightLineWidthMultipliers\":{\"14\":2,\"16\":2,\"20\":2,\"21\":2,\"22\":2,\"23\":2,\"24\":2,\"25\":2,\"26\":2,\"27\":2,\"28\":2,\"29\":2,\"34\":2,\"38\":2}}";
+  const char *colors[] = {"#009E73", "#55B4E9", "#E69F00", "#EFE342", NULL};
+  char *mpkl;
+  char *svg_with_details;
+  char *svg_without_details;
+  size_t mpkl_size;
+  int i;
+  mpkl = get_mol(smi, &mpkl_size, "{\"removeHs\":false}");
+  assert(mpkl && mpkl_size);
+  svg_with_details = get_svg(mpkl, mpkl_size, details);
+  assert(strstr(svg_with_details, "ellipse"));
+  for (i = 0; colors[i]; ++i) {
+    assert(strstr(svg_with_details, colors[i]));
+  }
+  svg_without_details = get_svg(mpkl, mpkl_size, "");
+  assert(!strstr(svg_without_details, "ellipse"));
+  for (i = 0; colors[i]; ++i) {
+    assert(!strstr(svg_without_details, colors[i]));
+  }
+  free(svg_with_details);
+  free(svg_without_details);
+  free(mpkl);
+}
+
 int main() {
   enable_logging();
   char *vers = version();
@@ -2263,5 +2749,12 @@ int main() {
   test_partial_sanitization();
   test_capture_logs();
   test_relabel_mapped_dummies();
+  test_assign_cip_labels();
+  test_assign_chiral_tags_from_mol_parity();
+  test_make_dummies_queries();
+  test_smiles_smarts_params();
+  test_wedged_bond_atropisomer();
+  test_get_molblock_use_molblock_wedging();
+  test_multi_highlights();
   return 0;
 }

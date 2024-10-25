@@ -7,9 +7,10 @@ rdkit_library(GraphMol
         Matrices.cpp Chirality.cpp RingInfo.cpp Conformer.cpp
         Renumber.cpp AdjustQuery.cpp Resonance.cpp StereoGroup.cpp
         new_canon.cpp SubstanceGroup.cpp FindStereo.cpp MonomerInfo.cpp
-        NontetrahedralStereo.cpp WedgeBonds.cpp
+              NontetrahedralStereo.cpp Atropisomers.cpp
+              WedgeBonds.cpp MolProps.cpp
         SHARED
-        LINK_LIBRARIES RDGeometryLib RDGeneral)
+              LINK_LIBRARIES RDGeometryLib RDGeneral )
 target_compile_definitions(GraphMol PRIVATE RDKIT_GRAPHMOL_BUILD)
 if (RDK_USE_URF)
     target_link_libraries(GraphMol PUBLIC ${RDK_URF_LIBS})
@@ -21,6 +22,7 @@ endif ()
 rdkit_headers(Atom.h
         atomic_data.h
         AtomIterators.h
+        Atropisomers.h
         Bond.h
         BondIterators.h
         Canon.h
@@ -121,6 +123,7 @@ add_subdirectory(ScaffoldNetwork)
 add_subdirectory(MolEnumerator)
 add_subdirectory(Abbreviations)
 add_subdirectory(GeneralizedSubstruct)
+add_subdirectory(MolProcessing)
 
 
 rdkit_test(graphmolTest1 test1.cpp LINK_LIBRARIES FileParsers SmilesParse GraphMol
@@ -160,7 +163,7 @@ rdkit_test(molBundleTest testMolBundle.cpp
 
 rdkit_test(testSGroup testSGroup.cpp LINK_LIBRARIES FileParsers GraphMol)
 
-rdkit_test(test-valgrind test-valgrind.cpp LINK_LIBRARIES SmilesParse GraphMol)
+rdkit_test(test-valgrind test-valgrind.cpp LINK_LIBRARIES SmilesParse FileParsers GraphMol)
 
 rdkit_catch_test(graphmolTestsCatch catch_graphmol.cpp
         LINK_LIBRARIES SubstructMatch FileParsers SmilesParse GraphMol)
@@ -175,7 +178,7 @@ rdkit_catch_test(graphmolAdjustQueryCatch catch_adjustquery.cpp
         LINK_LIBRARIES SubstructMatch FileParsers SmilesParse GraphMol)
 
 rdkit_catch_test(chiralityTestsCatch catch_chirality.cpp
-        LINK_LIBRARIES FileParsers SmilesParse GraphMol)
+        LINK_LIBRARIES CIPLabeler FileParsers SmilesParse GraphMol)
 
 rdkit_catch_test(canonTestsCatch catch_canon.cpp
         LINK_LIBRARIES FileParsers SmilesParse GraphMol)
@@ -191,3 +194,10 @@ rdkit_catch_test(molbundleTestsCatch catch_molbundle.cpp
 
 rdkit_catch_test(pickleTestsCatch catch_pickles.cpp
         LINK_LIBRARIES FileParsers SmilesParse GraphMol)
+
+rdkit_catch_test(tableTestsCatch catch_periodictable.cpp
+        LINK_LIBRARIES GraphMol)
+
+rdkit_catch_test(molopsTestsCatch catch_molops.cpp
+        LINK_LIBRARIES SmilesParse GraphMol)
+

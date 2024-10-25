@@ -1,5 +1,5 @@
 //
-//  Copyright (C) 2011-2022 NextMove Software and other RDKit contributors
+//  Copyright (C) 2011-2024 NextMove Software and other RDKit contributors
 //
 //   @@ All Rights Reserved @@
 //  This file is part of the RDKit.
@@ -323,6 +323,7 @@ std::string AnonymousGraph(RWMol *mol, bool elem, bool useCXSmiles,
 
   for (auto bptr : mol->bonds()) {
     bptr->setBondType(Bond::SINGLE);
+    bptr->setIsAromatic(false);  // clear aromatic flags
   }
   MolOps::assignRadicals(*mol);
 
@@ -379,9 +380,12 @@ std::string MesomerHash(RWMol *mol, bool netq, bool useCXSmiles,
 
 namespace {
 // candidate atoms are either unsaturated or have implicit Hs
+// NOTE that being aromatic is not sufficient. The molecule
+//  Cn1cccc1 is a good example of this:
+//    - it should not be a tautomeric system
+//    - the N is not unsaturated, but it is aromatic
 bool isCandidateAtom(const Atom *aptr) {
-  return aptr->getTotalNumHs() || aptr->getIsAromatic() ||
-         queryAtomUnsaturated(aptr);
+  return aptr->getTotalNumHs() || queryAtomUnsaturated(aptr);
 }
 
 // atomic number > 1, not carbon
@@ -416,13 +420,13 @@ bool isPossibleStartingBond(const Bond *bptr) {
     return false;
   }
 
-  auto unsatBeg = bptr->getBeginAtom()->getIsAromatic() ||
-                  queryAtomUnsaturated(bptr->getBeginAtom());
-  auto unsatEnd = bptr->getEndAtom()->getIsAromatic() ||
-                  queryAtomUnsaturated(bptr->getEndAtom());
+  // Do not include a check for aromaticity here. See comment for
+  // isCandidateAtom() above.
+  auto unsatBeg = queryAtomUnsaturated(bptr->getBeginAtom());
+  auto unsatEnd = queryAtomUnsaturated(bptr->getEndAtom());
 
-  // at least one has to be unsaturated:
-  if (!unsatBeg && !unsatEnd) {
+  // both we need a heteroatom on one side and an unsaturated atom on the other:
+  if (!((heteroBeg && unsatEnd) || (heteroEnd && unsatBeg))) {
     return false;
   }
 
@@ -505,12 +509,23 @@ std::string TautomerHashv2(RWMol *mol, bool proto, bool useCXSmiles,
                   << atm->getIdx() << "-" << oatom->getIdx() << std::endl;
         std::cerr << "    " << bondsConsidered[nbrBond->getIdx()] << " icao "
                   << isCandidateAtom(oatom) << " hsbo "
-                  << hasStartBond(oatom, startBonds) << " unsat "
+                  << hasStartBond(oatom, startBonds) << " atomunsato "
+                  << queryAtomUnsaturated(oatom) << " atomunsat "
+                  << queryAtomUnsaturated(atm) << " bondunsat "
                   << isUnsaturatedBond(nbrBond) << " icaa "
                   << isCandidateAtom(atm) << " hsba "
                   << hasStartBond(atm, startBonds) << std::endl;
 #endif
+        // special case to prevent "overreach" with things like enamines.
+        // the logic here prevents the first bond in CNC=C from being included
+        // in the tautomeric system. So we get: [CH3]-[N]:[C] instead of
+        // [C]:[N]:[C]
+        if (startBonds[bptr->getIdx()] && isHeteroAtom(atm) &&
+            !isUnsaturatedBond(nbrBond)) {
+          continue;
+        }
 
+        // if both bonds are not eligible, then we can skip this neighbor
         if (skipNeighborBond(atm, oatom, nbrBond, startBonds) &&
             skipNeighborBond(oatom, atm, nbrBond, startBonds)) {
           continue;
@@ -578,6 +593,12 @@ std::string TautomerHashv2(RWMol *mol, bool proto, bool useCXSmiles,
           if (bondsConsidered[nbrBnd->getIdx()] ||
               (skipNeighborBond(atm, oatom, nbrBnd, startBonds) &&
                skipNeighborBond(oatom, atm, nbrBnd, startBonds))) {
+            // we won't add this bond for further traversal, but if both atoms
+            // are already in this system, then we should add the bond to the
+            // system
+            if (atomsInSystem[oatom->getIdx()]) {
+              conjSystem.set(nbrBnd->getIdx());
+            }
             continue;
           }
           bq.push_back(nbrBnd);
@@ -591,13 +612,13 @@ std::string TautomerHashv2(RWMol *mol, bool proto, bool useCXSmiles,
     if (conjSystem.count() > 1 && (activeHeteroHs || numDonorCs)) {
 #ifdef VERBOSE_HASH
       std::cerr << "CONJ: " << conjSystem << " hetero " << activeHeteroHs
-                << " donor " << possibleDonorCs << std::endl;
+                << " donor " << std::endl;
 #endif
       bondsToModify |= conjSystem;
     } else {
 #ifdef VERBOSE_HASH
       std::cerr << "REJECT CONJ: " << conjSystem << " hetero " << activeHeteroHs
-                << " donor " << possibleDonorCs << std::endl;
+                << " donor " << std::endl;
 #endif
     }
   }
@@ -773,7 +794,7 @@ bool HasNbrInScaffold(Atom *aptr, unsigned char *is_in_scaffold) {
 std::string ExtendedMurckoScaffold(RWMol *mol, bool useCXSmiles,
                                    unsigned cxFlagsToSkip = 0) {
   PRECONDITION(mol, "bad molecule");
-  if (!mol->getRingInfo()->isInitialized()) {
+  if (!mol->getRingInfo()->isFindFastOrBetter()) {
     MolOps::fastFindRings(*mol);
   }
 
@@ -994,7 +1015,7 @@ std::string RegioisomerHash(RWMol *mol, bool useCXSmiles,
   // we need a copy of the molecule so that we can loop over the bonds of
   // something while modifying something else
   RDKit::ROMol molcpy(*mol);
-  if (molcpy.getRingInfo()->isInitialized()) {
+  if (molcpy.getRingInfo()->isFindFastOrBetter()) {
     MolOps::fastFindRings(molcpy);
   }
   for (int i = molcpy.getNumBonds() - 1; i >= 0; --i) {
@@ -1205,6 +1226,9 @@ std::string MolHash(RWMol *mol, HashFunction func, bool useCXSmiles,
       break;
     case HashFunction::HetAtomProtomer:
       result = TautomerHash(mol, true, useCXSmiles, cxFlagsToSkip);
+      break;
+    case HashFunction::HetAtomProtomerv2:
+      result = TautomerHashv2(mol, true, useCXSmiles, cxFlagsToSkip);
       break;
     case HashFunction::MolFormula:
       result = NMMolecularFormula(mol);

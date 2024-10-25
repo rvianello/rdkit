@@ -10,6 +10,7 @@
 
 #include <GraphMol/MolDraw2D/MolDraw2DDetails.h>
 #include <GraphMol/MolDraw2D/StringRect.h>
+#include <GraphMol/Chirality.h>
 
 #include <cmath>
 #ifndef M_PI
@@ -43,71 +44,6 @@ void arcPoints(const Point2D &cds1, const Point2D &cds2,
     Point2D point(x + xScale * cos(angle), y - yScale * sin(angle));
     res.emplace_back(point);
     angle += step;
-  }
-}
-
-void addStereoAnnotation(const ROMol &mol, bool includeRelativeCIP) {
-  auto sgs = mol.getStereoGroups();
-  assignStereoGroupIds(sgs);
-  std::vector<unsigned int> doneAts(mol.getNumAtoms(), 0);
-  for (const auto &sg : sgs) {
-    for (const auto atom : sg.getAtoms()) {
-      if (doneAts[atom->getIdx()]) {
-        BOOST_LOG(rdWarningLog) << "Warning: atom " << atom->getIdx()
-                                << " is in more than one stereogroup. Only the "
-                                   "label from the first group will be used."
-                                << std::endl;
-        continue;
-      }
-      std::string lab;
-      std::string cip;
-      if (includeRelativeCIP ||
-          sg.getGroupType() == StereoGroupType::STEREO_ABSOLUTE) {
-        atom->getPropIfPresent(common_properties::_CIPCode, cip);
-      }
-      switch (sg.getGroupType()) {
-        case StereoGroupType::STEREO_ABSOLUTE:
-          lab = "abs";
-          break;
-        case StereoGroupType::STEREO_OR:
-          lab = (boost::format("or%d") % sg.getWriteId()).str();
-          break;
-        case StereoGroupType::STEREO_AND:
-          lab = (boost::format("and%d") % sg.getWriteId()).str();
-          break;
-        default:
-          break;
-      }
-      if (!lab.empty()) {
-        doneAts[atom->getIdx()] = 1;
-        if (!cip.empty()) {
-          lab += " (" + cip + ")";
-        }
-        atom->setProp(common_properties::atomNote, lab);
-      }
-    }
-  }
-  for (auto atom : mol.atoms()) {
-    std::string cip;
-    if (!doneAts[atom->getIdx()] &&
-        atom->getPropIfPresent(common_properties::_CIPCode, cip)) {
-      std::string lab = "(" + cip + ")";
-      atom->setProp(common_properties::atomNote, lab);
-    }
-  }
-  for (auto bond : mol.bonds()) {
-    std::string cip;
-    if (!bond->getPropIfPresent(common_properties::_CIPCode, cip)) {
-      if (bond->getStereo() == Bond::STEREOE) {
-        cip = "E";
-      } else if (bond->getStereo() == Bond::STEREOZ) {
-        cip = "Z";
-      }
-    }
-    if (!cip.empty()) {
-      std::string lab = "(" + cip + ")";
-      bond->setProp(common_properties::bondNote, lab);
-    }
   }
 }
 
@@ -449,7 +385,6 @@ void adjustLineEndForEllipse(const Point2D &centre, double xradius,
   double disc = B * B - 4.0 * A * C;
   if (disc < 0.0) {
     // no solutions, leave things as they are.  Bit crap, though.
-    p1 += centre;
     p2 += centre;
     return;
   } else if (fabs(disc) < 1.0e-6) {
@@ -476,7 +411,6 @@ void adjustLineEndForEllipse(const Point2D &centre, double xradius,
     } else {
       // the intersections are both outside the line between p1 and p2
       // so don't do anything.
-      p1 += centre;
       p2 += centre;
       return;
     }

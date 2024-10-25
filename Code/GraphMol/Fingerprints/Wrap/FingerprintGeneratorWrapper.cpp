@@ -14,6 +14,7 @@
 #include <boost/python.hpp>
 #include <RDBoost/boost_numpy.h>
 #include <numpy/npy_common.h>
+#include <numpy/ndarrayobject.h>
 #include <RDBoost/import_array.h>
 #include <GraphMol/RDKitBase.h>
 #include <GraphMol/Fingerprints/FingerprintGenerator.h>
@@ -449,7 +450,7 @@ python::object getBitPathsHelper(const AdditionalOutput &ao) {
     }
     res[pr.first] = python::tuple(local);
   }
-  return std::move(res);
+  return res;
 }
 python::object getBitInfoMapHelper(const AdditionalOutput &ao) {
   if (!ao.bitInfoMap) {
@@ -464,7 +465,7 @@ python::object getBitInfoMapHelper(const AdditionalOutput &ao) {
     }
     res[pr.first] = python::tuple(local);
   }
-  return std::move(res);
+  return res;
 }
 
 namespace {
@@ -473,7 +474,8 @@ void wrapGenerator(const std::string &nm) {
   python::class_<FingerprintGenerator<T>, boost::noncopyable>(nm.c_str(),
                                                               python::no_init)
       .def("GetSparseCountFingerprint", getSparseCountFingerprint<T>,
-           (python::arg("mol"), python::arg("fromAtoms") = python::list(),
+           ((python::arg("self"), python::arg("mol")),
+            python::arg("fromAtoms") = python::list(),
             python::arg("ignoreAtoms") = python::list(),
             python::arg("confId") = -1,
             python::arg("customAtomInvariants") = python::list(),
@@ -497,7 +499,8 @@ void wrapGenerator(const std::string &nm) {
            "  RETURNS: a SparseIntVect containing fingerprint\n\n",
            python::return_value_policy<python::manage_new_object>())
       .def("GetSparseFingerprint", getSparseFingerprint<T>,
-           (python::arg("mol"), python::arg("fromAtoms") = python::list(),
+           ((python::arg("self"), python::arg("mol")),
+            python::arg("fromAtoms") = python::list(),
             python::arg("ignoreAtoms") = python::list(),
             python::arg("confId") = -1,
             python::arg("customAtomInvariants") = python::list(),
@@ -521,7 +524,8 @@ void wrapGenerator(const std::string &nm) {
            "  RETURNS: a SparseBitVect containing fingerprint\n\n",
            python::return_value_policy<python::manage_new_object>())
       .def("GetCountFingerprint", getCountFingerprint<T>,
-           (python::arg("mol"), python::arg("fromAtoms") = python::list(),
+           ((python::arg("self"), python::arg("mol")),
+            python::arg("fromAtoms") = python::list(),
             python::arg("ignoreAtoms") = python::list(),
             python::arg("confId") = -1,
             python::arg("customAtomInvariants") = python::list(),
@@ -545,7 +549,8 @@ void wrapGenerator(const std::string &nm) {
            "  RETURNS: a SparseIntVect containing fingerprint\n\n",
            python::return_value_policy<python::manage_new_object>())
       .def("GetCountFingerprintAsNumPy", getNumPyCountFingerprint<T>,
-           (python::arg("mol"), python::arg("fromAtoms") = python::list(),
+           ((python::arg("self"), python::arg("mol")),
+            python::arg("fromAtoms") = python::list(),
             python::arg("ignoreAtoms") = python::list(),
             python::arg("confId") = -1,
             python::arg("customAtomInvariants") = python::list(),
@@ -568,7 +573,8 @@ void wrapGenerator(const std::string &nm) {
            "extra information about the bits\n\n"
            "  RETURNS: a numpy array containing the fingerprint\n\n")
       .def("GetFingerprint", getFingerprint<T>,
-           (python::arg("mol"), python::arg("fromAtoms") = python::list(),
+           ((python::arg("self"), python::arg("mol")),
+            python::arg("fromAtoms") = python::list(),
             python::arg("ignoreAtoms") = python::list(),
             python::arg("confId") = -1,
             python::arg("customAtomInvariants") = python::list(),
@@ -592,7 +598,8 @@ void wrapGenerator(const std::string &nm) {
            "  RETURNS: a ExplicitBitVect containing fingerprint\n\n",
            python::return_value_policy<python::manage_new_object>())
       .def("GetFingerprintAsNumPy", getNumPyFingerprint<T>,
-           (python::arg("mol"), python::arg("fromAtoms") = python::list(),
+           ((python::arg("self"), python::arg("mol")),
+            python::arg("fromAtoms") = python::list(),
             python::arg("ignoreAtoms") = python::list(),
             python::arg("confId") = -1,
             python::arg("customAtomInvariants") = python::list(),
@@ -615,40 +622,45 @@ void wrapGenerator(const std::string &nm) {
            "extra information about the bits\n\n"
            "  RETURNS: a numpy array containing the fingerprint\n\n")
       .def("GetFingerprints", getFingerprints<T>,
-           (python::arg("mols"), python::arg("numThreads") = 1),
+           ((python::arg("self"), python::arg("mols")),
+            python::arg("numThreads") = 1),
            "Generates fingerprints for a sequence of molecules\n\n"
            "  ARGUMENTS:\n"
            "    - mol: molecule to be fingerprinted\n"
            "    - numThreads: number of threads to use\n\n"
            "  RETURNS: a tuple of ExplicitBitVects\n\n")
       .def("GetCountFingerprints", getCountFingerprints<T>,
-           (python::arg("mols"), python::arg("numThreads") = 1),
+           ((python::arg("self"), python::arg("mols")),
+            python::arg("numThreads") = 1),
            "Generates count fingerprints for a sequence of molecules\n\n"
            "  ARGUMENTS:\n"
            "    - mol: molecule to be fingerprinted\n"
            "    - numThreads: number of threads to use\n\n"
            "  RETURNS: a tuple of SparseIntVects\n\n")
       .def("GetSparseFingerprints", getSparseFingerprints<T>,
-           (python::arg("mols"), python::arg("numThreads") = 1),
+           ((python::arg("self"), python::arg("mols")),
+            python::arg("numThreads") = 1),
            "Generates sparse fingerprints for a sequence of molecules\n\n"
            "  ARGUMENTS:\n"
            "    - mol: molecule to be fingerprinted\n"
            "    - numThreads: number of threads to use\n\n"
            "  RETURNS: a tuple of SparseBitVects\n\n")
       .def("GetSparseCountFingerprints", getSparseCountFingerprints<T>,
-           (python::arg("mols"), python::arg("numThreads") = 1),
+           ((python::arg("self"), python::arg("mols")),
+            python::arg("numThreads") = 1),
            "Generates sparse count fingerprints for a sequence of molecules\n\n"
            "  ARGUMENTS:\n"
            "    - mol: molecule to be fingerprinted\n"
            "    - numThreads: number of threads to use\n\n"
            "  RETURNS: a tuple of SparseIntVects\n\n")
-      .def("GetInfoString", getInfoString<T>,
+      .def("GetInfoString", getInfoString<T>, python::args("self"),
            "Returns a string containing information about the fingerprint "
            "generator\n\n"
            "  RETURNS: an information string\n\n")
       .def("GetOptions", getOptions<T>,
-           python::return_value_policy<python::reference_existing_object>(),
-           "return the fingerprint options object");
+           python::return_internal_reference<
+               1, python::with_custodian_and_ward_postcall<0, 1>>(),
+           python::args("self"), "return the fingerprint options object");
 }
 
 void setCountBoundsHelper(FingerprintArguments &opts, python::object bounds) {
@@ -666,29 +678,33 @@ BOOST_PYTHON_MODULE(rdFingerprintGenerator) {
 
   python::class_<AdditionalOutput, boost::noncopyable>("AdditionalOutput")
       .def("AllocateAtomToBits", &AdditionalOutput::allocateAtomToBits,
-           "synonym for CollectAtomToBits()")
+           python::args("self"), "synonym for CollectAtomToBits()")
       .def("AllocateBitInfoMap", &AdditionalOutput::allocateBitInfoMap,
-           "synonym for CollectBitInfoMap()")
+           python::args("self"), "synonym for CollectBitInfoMap()")
       .def("AllocateBitPaths", &AdditionalOutput::allocateBitPaths,
-           "synonym for CollectBitPaths()")
+           python::args("self"), "synonym for CollectBitPaths()")
       .def("AllocateAtomCounts", &AdditionalOutput::allocateAtomCounts,
-           "synonym for CollectAtomCounts()")
+           python::args("self"), "synonym for CollectAtomCounts()")
       .def(
           "CollectAtomToBits", &AdditionalOutput::allocateAtomToBits,
+          python::args("self"),
           "toggle collection of information mapping each atom to the bits it is involved in.")
       .def(
           "CollectBitInfoMap", &AdditionalOutput::allocateBitInfoMap,
+          python::args("self"),
           "toggles collection of information mapping each atom to more detail about the atom environment (not available from all fingerprints)")
       .def(
           "CollectBitPaths", &AdditionalOutput::allocateBitPaths,
+          python::args("self"),
           "toggles collection of information matching each atom to information about the paths it is involved in (not available from all fingerprints).")
       .def(
           "CollectAtomCounts", &AdditionalOutput::allocateAtomCounts,
+          python::args("self"),
           "toggles collection of information about the number of bits each atom is involved in")
-      .def("GetAtomToBits", &getAtomToBitsHelper)
-      .def("GetBitInfoMap", &getBitInfoMapHelper)
-      .def("GetBitPaths", &getBitPathsHelper)
-      .def("GetAtomCounts", &getAtomCountsHelper);
+      .def("GetAtomToBits", &getAtomToBitsHelper, python::args("self"))
+      .def("GetBitInfoMap", &getBitInfoMapHelper, python::args("self"))
+      .def("GetBitPaths", &getBitPathsHelper, python::args("self"))
+      .def("GetAtomCounts", &getAtomCountsHelper, python::args("self"));
 
   python::class_<FingerprintArguments, boost::noncopyable>("FingerprintOptions",
                                                            python::no_init)
@@ -704,10 +720,10 @@ BOOST_PYTHON_MODULE(rdFingerprintGenerator) {
                      &FingerprintArguments::d_numBitsPerFeature,
                      "number of bits to set for each feature")
       .def("SetCountBounds", &setCountBoundsHelper,
-           "set the bins for the count bounds");
+           python::args("self", "bounds"), "set the bins for the count bounds");
 
-  wrapGenerator<std::uint32_t>("FingeprintGenerator32");
-  wrapGenerator<std::uint64_t>("FingeprintGenerator64");
+  wrapGenerator<std::uint32_t>("FingerprintGenerator32");
+  wrapGenerator<std::uint64_t>("FingerprintGenerator64");
 
   python::enum_<FPType>("FPType")
       .value("RDKitFP", FPType::RDKitFP)

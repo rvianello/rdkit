@@ -8,10 +8,13 @@
 //  of the RDKit source tree.
 //
 #include <catch2/catch_all.hpp>
+#include <numeric>
+#include <random>
 
 #include <GraphMol/RDKitBase.h>
 
 #include <RDGeneral/hash/hash.hpp>
+#include <GraphMol/Chirality.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/MolDraw2D/MolDraw2D.h>
 #include <GraphMol/MolDraw2D/MolDraw2DSVG.h>
@@ -25,6 +28,7 @@
 #include <GraphMol/ChemReactions/ReactionParser.h>
 #include <GraphMol/CIPLabeler/CIPLabeler.h>
 #include <GraphMol/Depictor/RDDepictor.h>
+#include <Geometry/point.h>
 #include <regex>
 
 #ifdef RDK_BUILD_CAIRO_SUPPORT
@@ -44,12 +48,12 @@ namespace {
 // The hand-drawn pictures will fail this frequently due to the use
 // of random numbers to draw the lines.  As well as all the testHandDrawn
 // files, this includes testBrackets-5a.svg and testPositionVariation-1b.svg
-static const bool DELETE_WITH_GOOD_HASH = true;
+const bool DELETE_WITH_GOOD_HASH = true;
 // The expected hash code for a file may be included in these maps, or
 // provided in the call to check_file_hash().
 // These values are for a build with FreeType, so expect them all to be
 // wrong when building without.
-static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
+const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"testAtomTags_1.svg", 3187798125U},
     {"testAtomTags_2.svg", 822910240U},
     {"testAtomTags_3.svg", 2244078420U},
@@ -58,9 +62,9 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"contourMol_3.svg", 936771429U},
     {"contourMol_4.svg", 3302971362U},
     {"contourMol_5.svg", 2230414999U},
-    {"testDativeBonds_1.svg", 2877255976U},
+    {"testDativeBonds_1.svg", 3550231997U},
     {"testDativeBonds_2.svg", 2510476717U},
-    {"testDativeBonds_3.svg", 3256011686U},
+    {"testDativeBonds_3.svg", 1742381275U},
     {"testDativeBonds_2a.svg", 3936523099U},
     {"testDativeBonds_2b.svg", 1652957675U},
     {"testDativeBonds_2c.svg", 630355005U},
@@ -79,7 +83,7 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"testGithub3226_1.svg", 831257877U},
     {"testGithub3226_2.svg", 3517325227U},
     {"testGithub3226_3.svg", 3609721552U},
-    {"testGithub3369_1.svg", 3091976328U},
+    {"testGithub3369_1.svg", 2194263901U},
     {"testIncludeRadicals_1a.svg", 1829641340U},
     {"testIncludeRadicals_1b.svg", 4184066907U},
     {"testLegendsAndDrawing-1.svg", 3563802758U},
@@ -216,8 +220,8 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"testVariableLegend_3.svg", 2073034956U},
     {"testGithub_5061.svg", 83338095U},
     {"testGithub_5185.svg", 3800073130U},
-    {"testGithub_5269_1.svg", 3886922298U},
-    {"testGithub_5269_2.svg", 2890052584U},
+    {"testGithub_5269_1.svg", 4160868253U},
+    {"testGithub_5269_2.svg", 488926221U},
     {"test_classes_wavy_bonds.svg", 1694809514U},
     {"testGithub_5383_1.svg", 1391972140U},
     {"github5156_1.svg", 2145907703U},
@@ -245,7 +249,7 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"bond_highlights_3.svg", 851066096U},
     {"bond_highlights_4.svg", 851066096U},
     {"bond_highlights_5.svg", 2352169547U},
-    {"bond_highlights_6.svg", 4191585723U},
+    {"bond_highlights_6.svg", 2125370009U},
     {"bond_highlights_7.svg", 2160801877U},
     {"bond_highlights_8.svg", 2956924065U},
     {"bond_highlights_9.svg", 3999278931U},
@@ -258,7 +262,7 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"test_github5704_3.svg", 1303839406U},
     {"test_github5704_4.svg", 578468407U},
     {"test_github5943.svg", 1113511714U},
-    {"test_github5947.svg", 337972125U},
+    {"test_github5947.svg", 3122633523U},
     {"test_github5767.svg", 3943519724U},
     {"test_github5949.svg", 420848566U},
     {"test_github5974.svg", 1522014196U},
@@ -307,18 +311,44 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"github6504_2.svg", 2871662880U},
     {"github6569_1.svg", 116573839U},
     {"github6569_2.svg", 2367779037U},
-    {"lasso_highlights_1.svg", 689837467U},
-    {"lasso_highlights_2.svg", 348394942U},
-    {"lasso_highlights_3.svg", 2174136207U},
-    {"lasso_highlights_4.svg", 1265047504U},
-    {"lasso_highlights_5.svg", 35778943U},
-    {"lasso_highlights_6.svg", 1359376880U},
-    {"lasso_highlights_7.svg", 773081917U},
+    {"lasso_highlights_1.svg", 3709434534U},
+    {"lasso_highlights_2.svg", 757121560U},
+    {"lasso_highlights_3.svg", 556406365U},
+    {"lasso_highlights_4.svg", 4148844874U},
+    {"lasso_highlights_5.svg", 1281259383U},
+    {"lasso_highlights_6.svg", 2113147733U},
+    {"lasso_highlights_7.svg", 514868036U},
+    {"lasso_highlights_8.svg", 3231367552U},
     {"testGithub6685_1.svg", 1835717197U},
     {"testGithub6685_2.svg", 116380465U},
     {"testGithub6685_3.svg", 409385402U},
     {"testGithub6685_4.svg", 1239628830U},
-    {"bad_lasso_1.svg", 1183031575U}};
+    {"bad_lasso_1.svg", 726527516U},
+    {"AtropCanon1.svg", 526339583U},
+    {"AtropManyChiralsEnhanced.svg", 348414093U},
+    {"testGithub6968.svg", 1554428830U},
+    {"testGithub7036_1.svg", 3059737542U},
+    {"testGithub7036_2.svg", 3229829837U},
+    {"testWedgeNonSingleBonds-1.svg", 865601717U},
+    {"testWedgeNonSingleBonds-2.svg", 2960559495U},
+    {"testWedgeNonSingleBonds-3.svg", 1428196589U},
+    {"testWedgeNonSingleBonds-4.svg", 3897680387U},
+    {"testWedgeNonSingleBonds-5.svg", 2183530217U},
+    {"testWedgeNonSingleBonds-6.svg", 238313010U},
+    {"testWedgeNonSingleBonds-7.svg", 3641456570U},
+    {"testWedgeNonSingleBonds-8.svg", 3209701539U},
+    {"testWedgingShouldBeOnSingleBond.svg", 1002741488U},
+    {"testDuplicateEnhancedStereoLabelsAddAnnotationTrue.svg", 1462263453U},
+    {"testDuplicateEnhancedStereoLabelsAddAnnotationFalse.svg", 2980189527U},
+    {"testComplexQueryAtomMap.svg", 722421835U},
+    {"testGithub_7739_1.svg", 52079325U},
+    {"testGithub_7739_2.svg", 2531167697U},
+    {"testGithub_7739_3.svg", 1126644226U},
+    {"testGithub_7739_4.svg", 9844878U},
+    {"testGithub_7739_5.svg", 2541364166U},
+    {"testHighlightHeteroAtoms_1.svg", 1769258632U},
+    {"testHighlightHeteroAtoms_2.svg", 893937335U},
+};
 
 // These PNG hashes aren't completely reliable due to floating point cruft,
 // but they can still reduce the number of drawings that need visual
@@ -327,7 +357,7 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
 // give different results on my MBP and Ubuntu 20.04 VM.  The SVGs work
 // better because the floats are all output to only 1 decimal place so there
 // is a much smaller chance of different systems producing different files.
-static const std::map<std::string, std::hash_result_t> PNG_HASHES = {
+const std::map<std::string, std::hash_result_t> PNG_HASHES = {
     {"testGithub3226_1.png", 2350054896U},
     {"testGithub3226_2.png", 606206725U},
     {"testGithub3226_3.png", 2282880418U},
@@ -764,10 +794,10 @@ TEST_CASE("dative bonds", "[drawing][organometallics]") {
     std::regex d1(
         "<path class='bond-0 atom-0 atom-1' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)' style='fill:none;fill-rule:evenodd;stroke:#0000FF");
     auto dat1 = *std::sregex_iterator(text.begin(), text.end(), d1);
-    REQUIRE_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(122.3, 0.1));
-    REQUIRE_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(88.5, 0.1));
-    REQUIRE_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(85.7, 0.1));
-    REQUIRE_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(88.5, 0.1));
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(78.2, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(88.0, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(113.4, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(88.0, 0.1));
   }
   SECTION("more complex") {
     auto m1 = "N->1[C@@H]2CCCC[C@H]2N->[Pt]11OC(=O)C(=O)O1"_smiles;
@@ -785,10 +815,10 @@ TEST_CASE("dative bonds", "[drawing][organometallics]") {
     std::regex d1(
         "<path class='bond-7 atom-7 atom-8' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)' style='fill:none;fill-rule:evenodd;stroke:#0000FF");
     auto dat1 = *std::sregex_iterator(text.begin(), text.end(), d1);
-    REQUIRE_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(100.9, 0.1));
-    REQUIRE_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(77.5, 0.1));
-    REQUIRE_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(95.8, 0.1));
-    REQUIRE_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(84.7, 0.1));
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(100.9, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(77.5, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(95.8, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(84.7, 0.1));
   }
   SECTION("test colours") {
     // the dative bonds point the wrong way, but the point is to test
@@ -808,10 +838,10 @@ TEST_CASE("dative bonds", "[drawing][organometallics]") {
     std::regex d1(
         "<path class='bond-2 atom-3 atom-4' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)' style='fill:none;fill-rule:evenodd;stroke:#0000FF");
     auto dat1 = *std::sregex_iterator(text.begin(), text.end(), d1);
-    REQUIRE_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(50.9, 0.1));
-    REQUIRE_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(140.2, 0.1));
-    REQUIRE_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(78.1, 0.1));
-    REQUIRE_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(149.0, 0.1));
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(53.5, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(140.2, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(80.7, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(149.0, 0.1));
   }
   SECTION("dative series") {
     auto m1 = "N->1[C@@H]2CCCC[C@H]2N->[Pt]11OC(=O)C(=O)O1"_smiles;
@@ -1293,61 +1323,15 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "github #3369: support new CIP code and StereoGroups in "
-    "addStereoAnnotation()",
-    "[chirality]") {
+    "github #3369: support new CIP code and StereoGroups in addStereoAnnotations()") {
   auto m1 =
       "C[C@@H]1N[C@H](C)[C@@H]([C@H](C)[C@@H]1C)C1[C@@H](C)O[C@@H](C)[C@@H](C)[C@H]1C/C=C/C |a:5,o1:1,8,o2:14,16,&1:11,18,&2:3,6,r|"_smiles;
   REQUIRE(m1);
-  SECTION("defaults") {
-    ROMol m2(*m1);
-    MolDraw2D_detail::addStereoAnnotation(m2);
 
-    std::string txt;
-    CHECK(m2.getAtomWithIdx(5)->getPropIfPresent(common_properties::atomNote,
-                                                 txt));
-    CHECK(txt == "abs (S)");
-    CHECK(m2.getAtomWithIdx(3)->getPropIfPresent(common_properties::atomNote,
-                                                 txt));
-    CHECK(txt == "and2");
-  }
-  SECTION("including CIP with relative stereo") {
-    ROMol m2(*m1);
-    bool includeRelativeCIP = true;
-    MolDraw2D_detail::addStereoAnnotation(m2, includeRelativeCIP);
-
-    std::string txt;
-    CHECK(m2.getAtomWithIdx(5)->getPropIfPresent(common_properties::atomNote,
-                                                 txt));
-    CHECK(txt == "abs (S)");
-    CHECK(m2.getAtomWithIdx(3)->getPropIfPresent(common_properties::atomNote,
-                                                 txt));
-    CHECK(txt == "and2 (R)");
-  }
-  SECTION("new CIP labels") {
-    ROMol m2(*m1);
-    REQUIRE(m2.getBondBetweenAtoms(20, 21));
-    m2.getBondBetweenAtoms(20, 21)->setStereo(Bond::BondStereo::STEREOTRANS);
-    // initially no label is assigned since we have TRANS
-    MolDraw2D_detail::addStereoAnnotation(m2);
-    CHECK(
-        !m2.getBondBetweenAtoms(20, 21)->hasProp(common_properties::bondNote));
-
-    CIPLabeler::assignCIPLabels(m2);
-    std::string txt;
-    CHECK(m2.getBondBetweenAtoms(20, 21)->getPropIfPresent(
-        common_properties::_CIPCode, txt));
-    CHECK(txt == "E");
-    MolDraw2D_detail::addStereoAnnotation(m2);
-    CHECK(m2.getBondBetweenAtoms(20, 21)->getPropIfPresent(
-        common_properties::bondNote, txt));
-    CHECK(txt == "(E)");
-  }
   SECTION("works with the drawing code") {
     MolDraw2DSVG drawer(300, 250);
     RWMol dm1(*m1);
-    bool includeRelativeCIP = true;
-    MolDraw2D_detail::addStereoAnnotation(dm1, includeRelativeCIP);
+    Chirality::addStereoAnnotations(dm1);
     drawer.drawMolecule(dm1);
     drawer.finishDrawing();
     std::string text = drawer.getDrawingText();
@@ -3057,17 +3041,17 @@ M  END)CTAB"));
         "^.*d='M\\s+(\\d+\\.\\d+),(\\d+\\.\\d+)\\s+L\\s+(\\d+\\.\\d+),(\\d+\\."
         "\\d+)'.*$");
     std::smatch bond0OuterMatch;
-    REQUIRE(std::regex_match(bond0[0], bond0OuterMatch, regex));
-    REQUIRE(bond0OuterMatch.size() == 5);
+    CHECK(std::regex_match(bond0[0], bond0OuterMatch, regex));
+    CHECK(bond0OuterMatch.size() == 5);
     std::smatch bond0InnerMatch;
-    REQUIRE(std::regex_match(bond0[1], bond0InnerMatch, regex));
-    REQUIRE(bond0InnerMatch.size() == 5);
+    CHECK(std::regex_match(bond0[1], bond0InnerMatch, regex));
+    CHECK(bond0InnerMatch.size() == 5);
     std::smatch bond2OuterMatch;
-    REQUIRE(std::regex_match(bond2[0], bond2OuterMatch, regex));
-    REQUIRE(bond2OuterMatch.size() == 5);
+    CHECK(std::regex_match(bond2[0], bond2OuterMatch, regex));
+    CHECK(bond2OuterMatch.size() == 5);
     std::smatch bond2InnerMatch;
-    REQUIRE(std::regex_match(bond2[1], bond2InnerMatch, regex));
-    REQUIRE(bond2InnerMatch.size() == 5);
+    CHECK(std::regex_match(bond2[1], bond2InnerMatch, regex));
+    CHECK(bond2InnerMatch.size() == 5);
     RDGeom::Point2D bond0InnerCtd(
         RDGeom::Point2D(std::stof(bond0InnerMatch[1]),
                         std::stof(bond0InnerMatch[2])) +
@@ -3447,22 +3431,22 @@ M  END
     {
       std::regex regex("class='bond-0.*? d='M (\\d+\\.\\d+).* L (\\d+\\.\\d+)");
       std::smatch bondMatch;
-      REQUIRE(std::regex_search(txt, bondMatch, regex));
-      REQUIRE(bondMatch.size() == 3);  // match both halves of the bond
+      CHECK(std::regex_search(txt, bondMatch, regex));
+      CHECK(bondMatch.size() == 3);  // match both halves of the bond
       CHECK(bondMatch[1].str() == bondMatch[2].str());
     }
     {
       std::regex regex("class='bond-2.*? d='M (\\d+\\.\\d+).* L (\\d+\\.\\d+)");
       std::smatch bondMatch;
-      REQUIRE(std::regex_search(txt, bondMatch, regex));
-      REQUIRE(bondMatch.size() == 3);  // match both halves of the bond
+      CHECK(std::regex_search(txt, bondMatch, regex));
+      CHECK(bondMatch.size() == 3);  // match both halves of the bond
       CHECK(bondMatch[1].str() == bondMatch[2].str());
     }
     {
       std::regex regex("class='bond-4.*? d='M (\\d+\\.\\d+).* L (\\d+\\.\\d+)");
       std::smatch bondMatch;
-      REQUIRE(std::regex_search(txt, bondMatch, regex));
-      REQUIRE(bondMatch.size() == 3);  // match both halves of the bond
+      CHECK(std::regex_search(txt, bondMatch, regex));
+      CHECK(bondMatch.size() == 3);  // match both halves of the bond
       CHECK(bondMatch[1].str() == bondMatch[2].str());
     }
   }
@@ -3694,7 +3678,7 @@ M  END)CTAB"_ctab;
 
     // remove the sgroup-atom atom... the SGroup will not be drawn
     auto &sgs = getSubstanceGroups(*mol);
-    REQUIRE(sgs.size() == 1);
+    CHECK(sgs.size() == 1);
     sgs[0].setAtoms(std::vector<unsigned int>());
     {
       MolDraw2DSVG drawer(300, 250);
@@ -3756,7 +3740,7 @@ M  END)CTAB"_ctab;
 
     // remove the sgroup-atom atom... the SGroup will still be drawn
     auto &sgs = getSubstanceGroups(*mol);
-    REQUIRE(sgs.size() == 1);
+    CHECK(sgs.size() == 1);
     sgs[0].setAtoms(std::vector<unsigned int>());
     {
       MolDraw2DSVG drawer(300, 250);
@@ -5017,8 +5001,6 @@ TEST_CASE("github #5156") {
 TEST_CASE("ACS 1996 mode") {
   SECTION("basics") {
     std::string nameBase = "acs1996_";
-#if 1
-
     {
       auto m = R"CTAB(mol1
   ChemDraw05162216032D
@@ -5069,8 +5051,6 @@ M  END)CTAB"_ctab;
       }
 #endif
     }
-#endif
-#if 1
     {
       auto m = R"CTAB(mol2
   ChemDraw06062216302D
@@ -5130,8 +5110,6 @@ M  END
       }
 #endif
     }
-#endif
-#if 1
     {
       auto m = "C[C@H](I)CC(Cl)C[C@@H](F)C"_smiles;
       m->setProp<std::string>("_Name", "mol3");
@@ -5147,8 +5125,6 @@ M  END
       outs.close();
       check_file_hash(nameBase + "3.svg");
     }
-#endif
-#if 1
     {
       auto m = "CC(I)CC(Cl)CC(F)C"_smiles;
       m->setProp<std::string>("_Name", "mol4");
@@ -5165,8 +5141,6 @@ M  END
       outs.close();
       check_file_hash(nameBase + "4.svg");
     }
-#endif
-#if 1
     {
       auto m = R"CTAB(mol5
   ChemDraw06112209342D
@@ -5257,8 +5231,6 @@ M  END
       outs.close();
       check_file_hash(nameBase + "5.svg");
     }
-#endif
-#if 1
     {
       auto m = R"CTAB(mol6
   ChemDraw06132212082D
@@ -5315,8 +5287,6 @@ M  END
       outs.close();
       check_file_hash(nameBase + "6.svg");
     }
-#endif
-#if 1
     {
       auto m = R"CTAB(mol7
   ChemDraw06192209312D
@@ -5377,8 +5347,6 @@ M  END
       outs.close();
       check_file_hash(nameBase + "7.svg");
     }
-#endif
-#if 1
     {
       auto m = R"CTAB(mol8
   ChemDraw07042207302D
@@ -5442,8 +5410,6 @@ M  END
       outs.close();
       check_file_hash(nameBase + "8.svg");
     }
-#endif
-#if 1
     {
       auto m = R"CTAB(mol9
   ChemDraw06302215142D
@@ -5516,8 +5482,6 @@ M  END
       outs.close();
       check_file_hash(nameBase + "9.svg");
     }
-#endif
-#if 1
     {
       auto m = R"CTAB(mol10
   ChemDraw07062213362D
@@ -5558,8 +5522,6 @@ M  END
       outs.close();
       check_file_hash(nameBase + "10.svg");
     }
-#endif
-#if 1
     {
       auto m = "CCOC(=O)Nc1ccc(SCC2COC(Cn3ccnc3)(c3ccc(Cl)cc3Cl)O2)cc1"_smiles;
       REQUIRE(m);
@@ -5589,8 +5551,6 @@ M  END
       outs.close();
       check_file_hash(nameBase + "11.svg");
     }
-#endif
-#if 1
     auto drawnBondLength = [&](const std::string &r1,
                                const std::string &t) -> double {
       std::regex regex1(r1);
@@ -5624,14 +5584,13 @@ M  END
       double dbl = drawnBondLength(regex, text);
       // the bonds should all be 14.4 long, but the SVG is only written
       // to 1 decimal place, so rounding errors are largish.
-      REQUIRE(dbl == Catch::Approx(14.4253));
+      CHECK(dbl == Catch::Approx(14.4253));
       regex =
           R"(class='bond-1 atom-1 atom-2' d='M ([\d.]*),([\d.]*) L ([\d.]*),([\d.]*)')";
       dbl = drawnBondLength(regex, text);
-      REQUIRE(dbl == Catch::Approx(14.4));
+      CHECK(dbl == Catch::Approx(14.4));
       check_file_hash(nameBase + "12.svg");
     }
-#endif
   }
 }
 
@@ -5650,8 +5609,8 @@ TEST_CASE("Unspecified stereochemistry means unknown.", "") {
 
   std::regex regex1("class='bond-2 atom-1 atom-3' .*M.*C");
   std::smatch wavyMatch;
-  REQUIRE(std::regex_search(text, wavyMatch, regex1));
-  REQUIRE(wavyMatch.size() == 1);
+  CHECK(std::regex_search(text, wavyMatch, regex1));
+  CHECK(wavyMatch.size() == 1);
 
   std::regex regex2(
       "class='bond-4 atom-4 atom-5' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L "
@@ -5660,7 +5619,7 @@ TEST_CASE("Unspecified stereochemistry means unknown.", "") {
   std::ptrdiff_t const match_count(
       std::distance(std::sregex_iterator(text.begin(), text.end(), regex2),
                     std::sregex_iterator()));
-  REQUIRE(match_count == 2);
+  CHECK(match_count == 2);
 
   // Check that the 2 bonds aren't parallel
   auto cross1Match = std::sregex_iterator(text.begin(), text.end(), regex2);
@@ -5672,7 +5631,7 @@ TEST_CASE("Unspecified stereochemistry means unknown.", "") {
   Point2D point3{stod((*cross1Match)[1]), stod((*cross1Match)[2])};
   Point2D point4{stod((*cross1Match)[3]), stod((*cross1Match)[4])};
   auto vec2 = point3.directionVector(point4);
-  REQUIRE(vec1.dotProduct(vec2) != Catch::Approx(1.0).margin(1.0e-4));
+  CHECK(vec1.dotProduct(vec2) != Catch::Approx(1.0).margin(1.0e-4));
 
   check_file_hash("test_unspec_stereo.svg");
 }
@@ -5690,8 +5649,8 @@ TEST_CASE("Colour H light blue with no atom labels", "") {
   outs.flush();
   std::regex regex1(R"(class='bond-12 atom-6 atom-11'.*fill:#ADD8E5)");
   std::smatch regex1Match;
-  REQUIRE(std::regex_search(text, regex1Match, regex1));
-  REQUIRE(regex1Match.size() == 1);
+  CHECK(std::regex_search(text, regex1Match, regex1));
+  CHECK(regex1Match.size() == 1);
   check_file_hash("light_blue_h_no_label_1.svg");
 }
 
@@ -5699,7 +5658,6 @@ TEST_CASE("Bond Highlights", "") {
   auto m1 = "c1c(OCC)cncc1CCCC=O"_smiles;
   REQUIRE(m1);
   MolDraw2DUtils::prepareMolForDrawing(*m1);
-#if 1
   {
     // only bonds highlighted, continuous highlighting, highlights
     // joining neatly.
@@ -5716,8 +5674,6 @@ TEST_CASE("Bond Highlights", "") {
     outs.flush();
     check_file_hash("bond_highlights_1.svg");
   }
-#endif
-#if 1
   {
     // same as 1, but with highlighting as coloured bonds.  The O for
     // atom 2 is red because it is not highlighted, though bond 1 from
@@ -5736,8 +5692,6 @@ TEST_CASE("Bond Highlights", "") {
     outs.flush();
     check_file_hash("bond_highlights_2.svg");
   }
-#endif
-#if 1
   {
     // same bonds highlighted, but some atoms highlighted with
     // different colours.  Where an atom and a bond off it are
@@ -5768,8 +5722,6 @@ TEST_CASE("Bond Highlights", "") {
     outs.flush();
     check_file_hash("bond_highlights_3.svg");
   }
-#endif
-#if 1
   {
     // same as 3, except that the N on atom 6 isn't highlighted,
     // but both bonds off it are, so it gets the highlight colour.
@@ -5794,8 +5746,6 @@ TEST_CASE("Bond Highlights", "") {
     outs.flush();
     check_file_hash("bond_highlights_4.svg");
   }
-#endif
-#if 1
   {
     // same as 4, except that atom 6 has a highlight colour assigned
     // in the map, but isn't highlighted.  It just happens that it's
@@ -5822,8 +5772,6 @@ TEST_CASE("Bond Highlights", "") {
     outs.flush();
     check_file_hash("bond_highlights_5.svg");
   }
-#endif
-#if 1
   {
     // same as 3, but showing that atom circles can be used
     // to rescue the missing atom highlights.
@@ -5849,8 +5797,6 @@ TEST_CASE("Bond Highlights", "") {
     outs.flush();
     check_file_hash("bond_highlights_6.svg");
   }
-#endif
-#if 1
   {
     // same as 1, but in ACS1996 mode.
     MolDraw2DSVG drawer(-1, -1, -1, -1, NO_FREETYPE);
@@ -5867,8 +5813,6 @@ TEST_CASE("Bond Highlights", "") {
     outs.flush();
     check_file_hash("bond_highlights_7.svg");
   }
-#endif
-#if 1
   {
     // check 3- and 4-way intersections of continuous highlights are ok
     auto m = "c1c(C(C)(C)C)cccc1"_smiles;
@@ -5893,8 +5837,6 @@ TEST_CASE("Bond Highlights", "") {
     outs.flush();
     check_file_hash("bond_highlights_8.svg");
   }
-#endif
-#if 1
   {
     // cyclopropane (Github5592)
     auto m = "CC1CC1"_smiles;
@@ -5928,17 +5870,16 @@ TEST_CASE("Bond Highlights", "") {
       ends.push_back(Point2D(std::stod(match[5]), std::stod(match[6])));
       ends.push_back(Point2D(std::stod(match[7]), std::stod(match[8])));
     }
-    REQUIRE(ends.size() == 12);
+    CHECK(ends.size() == 12);
     // When this had a bug in it, it drew a butterfly-type motif, because
     // ends 2 and 3 were the wrong way round.
     for (int i = 0; i < 12; i += 4) {
-      REQUIRE(!MolDraw2D_detail::doLinesIntersect(
+      CHECK(!MolDraw2D_detail::doLinesIntersect(
           ends[i], ends[i + 3], ends[i + 1], ends[i + 2], nullptr));
     }
     outs.flush();
     check_file_hash("bond_highlights_9.svg");
   }
-#endif
 }
 
 TEST_CASE("drawMolecules should not crash on null molecules",
@@ -5959,7 +5900,7 @@ TEST_CASE("drawMolecules should not crash on null molecules",
   auto nMatches =
       std::distance(std::sregex_iterator(text.begin(), text.end(), regex1),
                     std::sregex_iterator());
-  REQUIRE(nMatches == 11);
+  CHECK(nMatches == 11);
 }
 
 TEST_CASE("Crossed bonds in transdecene") {
@@ -6012,9 +5953,9 @@ M  END)CTAB"_ctab;
           ends.push_back(Point2D(std::stod(match[1]), std::stod(match[2])));
           ends.push_back(Point2D(std::stod(match[3]), std::stod(match[4])));
         }
-        REQUIRE(ends.size() == 4);
-        REQUIRE(!MolDraw2D_detail::doLinesIntersect(ends[0], ends[1], ends[2],
-                                                    ends[3], nullptr));
+        CHECK(ends.size() == 4);
+        CHECK(!MolDraw2D_detail::doLinesIntersect(ends[0], ends[1], ends[2],
+                                                  ends[3], nullptr));
         check_file_hash(nameBase + "1.svg");
       }
     }
@@ -6348,7 +6289,7 @@ M  END
       std::ptrdiff_t const match_count(
           std::distance(std::sregex_iterator(text.begin(), text.end(), rn),
                         std::sregex_iterator()));
-      REQUIRE(match_count == 2);
+      CHECK(match_count == 2);
     }
     check_file_hash(nameBase + ".svg");
   }
@@ -6373,21 +6314,21 @@ TEST_CASE("Github5947: Ellipse extremes not calculated correctly.") {
   std::ptrdiff_t const match_count(
       std::distance(std::sregex_iterator(text.begin(), text.end(), r1),
                     std::sregex_iterator()));
-  REQUIRE(match_count == 6);
+  CHECK(match_count == 6);
   // all the ellipses should have a radius of roughly 72.0
   auto match_begin = std::sregex_iterator(text.begin(), text.end(), r1);
   auto match_end = std::sregex_iterator();
   for (std::sregex_iterator i = match_begin; i != match_end; ++i) {
     std::smatch match = *i;
-    REQUIRE_THAT(stod(match[1]), Catch::Matchers::WithinAbs(72.0, 0.1));
-    REQUIRE_THAT(stod(match[2]), Catch::Matchers::WithinAbs(72.0, 0.1));
+    CHECK_THAT(stod(match[1]), Catch::Matchers::WithinAbs(72.0, 0.1));
+    CHECK_THAT(stod(match[2]), Catch::Matchers::WithinAbs(72.0, 0.1));
   }
 
   // check that the first ellipse is in the right place
   std::regex r2("<ellipse cx='(\\d+\\.\\d+)' cy='(\\d+\\.\\d+)'");
   auto ell1 = *std::sregex_iterator(text.begin(), text.end(), r2);
-  REQUIRE_THAT(stod(ell1[1]), Catch::Matchers::WithinAbs(308.0, 0.1));
-  REQUIRE_THAT(stod(ell1[2]), Catch::Matchers::WithinAbs(200.0, 0.1));
+  CHECK_THAT(stod(ell1[1]), Catch::Matchers::WithinAbs(308.0, 0.1));
+  CHECK_THAT(stod(ell1[2]), Catch::Matchers::WithinAbs(200.0, 0.1));
   check_file_hash(nameBase + ".svg");
 }
 
@@ -6449,15 +6390,15 @@ M  END
     std::ptrdiff_t const match_count(
         std::distance(std::sregex_iterator(text.begin(), text.end(), r),
                       std::sregex_iterator()));
-    REQUIRE(match_count == 10);
+    CHECK(match_count == 10);
 
     // all the ellipses should have a radius of roughly 25.2.
     auto match_begin = std::sregex_iterator(text.begin(), text.end(), r);
     auto match_end = std::sregex_iterator();
     for (std::sregex_iterator i = match_begin; i != match_end; ++i) {
       std::smatch match = *i;
-      REQUIRE_THAT(stod(match[1]), Catch::Matchers::WithinAbs(25.0, 0.1));
-      REQUIRE_THAT(stod(match[2]), Catch::Matchers::WithinAbs(25.0, 0.1));
+      CHECK_THAT(stod(match[1]), Catch::Matchers::WithinAbs(25.0, 0.1));
+      CHECK_THAT(stod(match[2]), Catch::Matchers::WithinAbs(25.0, 0.1));
     }
     check_file_hash(nameBase + ".svg");
   }
@@ -6535,24 +6476,24 @@ M  END
         " L\\s+(\\d+\\.\\d+),(\\d+\\.\\d+) L\\s+(\\d+\\.\\d+),(\\d+\\.\\d+) Z'");
     std::vector<Point2D> ends1;
     extract_ends(text, head1, ends1);
-    REQUIRE(ends1.size() == 3);
+    CHECK(ends1.size() == 3);
 
     std::regex head2(
         "atom-14 atom-12' d='M\\s+(\\d+\\.\\d+),(\\d+\\.\\d+)"
         " L\\s+(\\d+\\.\\d+),(\\d+\\.\\d+) L\\s+(\\d+\\.\\d+),(\\d+\\.\\d+) Z'");
     std::vector<Point2D> ends2;
     extract_ends(text, head2, ends2);
-    REQUIRE(ends2.size() == 3);
+    CHECK(ends2.size() == 3);
 
     auto h1s1 = (ends1[0] - ends1[1]).length();
     auto h2s1 = (ends2[0] - ends2[1]).length();
     // there's still a small difference in size of arrow head because the
     // allowance for mitring is done as a fraction of the overall arrow
     // length.
-    REQUIRE_THAT(h1s1, Catch::Matchers::WithinAbs(h2s1, 0.1));
+    CHECK_THAT(h1s1, Catch::Matchers::WithinAbs(h2s1, 0.1));
     auto h1s2 = (ends1[0] - ends1[2]).length();
     auto h2s2 = (ends2[0] - ends2[2]).length();
-    REQUIRE_THAT(h1s2, Catch::Matchers::WithinAbs(h2s2, 0.1));
+    CHECK_THAT(h1s2, Catch::Matchers::WithinAbs(h2s2, 0.1));
 
     check_file_hash(nameBase + ".svg");
   }
@@ -6601,7 +6542,7 @@ TEST_CASE("Github5963: bond end wrong on wedge") {
     std::ptrdiff_t const match_count(
         std::distance(std::sregex_iterator(text.begin(), text.end(), bond7),
                       std::sregex_iterator()));
-    REQUIRE(match_count == 3);
+    CHECK(match_count == 3);
     auto bond7_match = std::sregex_iterator(text.begin(), text.end(), bond7);
     ++bond7_match;
     std::smatch match7 = *bond7_match;
@@ -6615,8 +6556,8 @@ TEST_CASE("Github5963: bond end wrong on wedge") {
     // line
     Point2D midtri(std::stod(match7[3]), std::stod(match7[4]));
     Point2D startline(std::stod(match8[1]), std::stod(match8[2]));
-    REQUIRE_THAT((midtri - startline).length(),
-                 Catch::Matchers::WithinAbs(0.0, 0.1));
+    CHECK_THAT((midtri - startline).length(),
+               Catch::Matchers::WithinAbs(0.0, 0.1));
     check_file_hash(nameBase + ".svg");
   }
 }
@@ -6723,13 +6664,13 @@ M  END
       std::ptrdiff_t const match_count(
           std::distance(std::sregex_iterator(text.begin(), text.end(), r),
                         std::sregex_iterator()));
-      REQUIRE(match_count == 4);
+      CHECK(match_count == 4);
       auto match_begin = std::sregex_iterator(text.begin(), text.end(), r);
       auto match_end = std::sregex_iterator();
       for (std::sregex_iterator i = match_begin; i != match_end; ++i) {
         std::smatch match = *i;
-        REQUIRE(stod(match[1]) > 0.0);
-        REQUIRE(stod(match[3]) > 0.0);
+        CHECK(stod(match[1]) > 0.0);
+        CHECK(stod(match[3]) > 0.0);
       }
     };
     std::regex bond9(
@@ -6807,7 +6748,7 @@ M  END
     std::ptrdiff_t const match_count(
         std::distance(std::sregex_iterator(text.begin(), text.end(), bond5),
                       std::sregex_iterator()));
-    REQUIRE(match_count == 2);
+    CHECK(match_count == 2);
     auto match_begin = std::sregex_iterator(text.begin(), text.end(), bond5);
     auto match_end = std::sregex_iterator();
     std::vector<float> ys;
@@ -6815,10 +6756,10 @@ M  END
       std::smatch match = *i;
       ys.push_back(stod(match[2]));
       ys.push_back(stod(match[4]));
-      REQUIRE(match[1] == match[3]);
+      CHECK(match[1] == match[3]);
     }
-    REQUIRE(ys[0] == ys[2]);
-    REQUIRE(ys[1] == ys[3]);
+    CHECK(ys[0] == ys[2]);
+    CHECK(ys[1] == ys[3]);
     check_file_hash(nameBase + "_1.svg");
   }
   {
@@ -6842,7 +6783,7 @@ M  END
     std::ptrdiff_t const match_count(
         std::distance(std::sregex_iterator(text.begin(), text.end(), bond5),
                       std::sregex_iterator()));
-    REQUIRE(match_count == 2);
+    CHECK(match_count == 2);
     auto match_begin = std::sregex_iterator(text.begin(), text.end(), bond5);
     auto match_end = std::sregex_iterator();
     std::vector<Point2D> points;
@@ -6853,8 +6794,7 @@ M  END
     }
     auto vec1 = points[0].directionVector(points[1]);
     auto vec2 = points[2].directionVector(points[3]);
-    REQUIRE_THAT(vec1.dotProduct(vec2),
-                 Catch::Matchers::WithinAbs(1.0, 2.0e-4));
+    CHECK_THAT(vec1.dotProduct(vec2), Catch::Matchers::WithinAbs(1.0, 2.0e-4));
     check_file_hash(nameBase + "_2.svg");
   }
 }
@@ -6880,7 +6820,7 @@ TEST_CASE("Down/dashed wedge not visible on small canvas..") {
   std::ptrdiff_t const match_count(
       std::distance(std::sregex_iterator(text.begin(), text.end(), bond12),
                     std::sregex_iterator()));
-  REQUIRE(match_count == 3);
+  CHECK(match_count == 3);
   check_file_hash(nameBase + ".svg");
 }
 
@@ -6923,7 +6863,7 @@ TEST_CASE("Optionally depict complex query atoms in a more compact form") {
     std::string res;
     while (std::getline(ss, line)) {
       if (std::regex_match(line, match, regex)) {
-        REQUIRE(match.size() == 2);
+        CHECK(match.size() == 2);
         res += match[1];
       }
     }
@@ -7406,7 +7346,7 @@ TEST_CASE("Bad double bond - Github 6160") {
     std::ptrdiff_t const match_count(
         std::distance(std::sregex_iterator(text.begin(), text.end(), bond5),
                       std::sregex_iterator()));
-    REQUIRE(match_count == 2);
+    CHECK(match_count == 2);
     auto match_begin = std::sregex_iterator(text.begin(), text.end(), bond5);
     auto match_end = std::sregex_iterator();
     std::vector<Point2D> points;
@@ -7451,7 +7391,7 @@ M  END
     std::ptrdiff_t const match_count(
         std::distance(std::sregex_iterator(text.begin(), text.end(), bond),
                       std::sregex_iterator()));
-    REQUIRE(match_count == 2);
+    CHECK(match_count == 2);
     auto match_begin = std::sregex_iterator(text.begin(), text.end(), bond);
     auto match_end = std::sregex_iterator();
     std::vector<Point2D> points;
@@ -7460,8 +7400,8 @@ M  END
       points.push_back(Point2D(stod(match[1]), stod(match[2])));
       points.push_back(Point2D(stod(match[3]), stod(match[4])));
     }
-    REQUIRE(MolDraw2D_detail::doLinesIntersect(points[0], points[1], points[2],
-                                               points[3], nullptr));
+    CHECK(MolDraw2D_detail::doLinesIntersect(points[0], points[1], points[2],
+                                             points[3], nullptr));
   };
 
   REQUIRE(m);
@@ -7548,7 +7488,7 @@ TEST_CASE(
     std::ptrdiff_t const match_count(
         std::distance(std::sregex_iterator(text.begin(), text.end(), atomLine),
                       std::sregex_iterator()));
-    REQUIRE(match_count == numArcs);
+    CHECK(match_count == numArcs);
     auto match_begin = std::sregex_iterator(text.begin(), text.end(), atomLine);
     auto match_end = std::sregex_iterator();
     // Check that the lengths of the lines in the arc are the correct size.
@@ -7557,10 +7497,10 @@ TEST_CASE(
       auto p1 = Point2D(stod(match[1]), stod(match[2]));
       auto p2 = Point2D(stod(match[3]), stod(match[4]));
       auto p3 = Point2D(stod(match[5]), stod(match[6]));
-      REQUIRE_THAT((p1 - p2).length(),
-                   Catch::Matchers::WithinAbs(arcLength, 0.1));
-      REQUIRE_THAT((p2 - p3).length(),
-                   Catch::Matchers::WithinAbs(arcLength, 0.1));
+      CHECK_THAT((p1 - p2).length(),
+                 Catch::Matchers::WithinAbs(arcLength, 0.1));
+      CHECK_THAT((p2 - p3).length(),
+                 Catch::Matchers::WithinAbs(arcLength, 0.1));
     }
   };
   {
@@ -7837,13 +7777,13 @@ TEST_CASE("Github 6397 - chiral tag overlapping atom label") {
     std::ptrdiff_t const match_count(
         std::distance(std::sregex_iterator(text.begin(), text.end(), absA),
                       std::sregex_iterator()));
-    REQUIRE(match_count == expCount);
+    CHECK(match_count == expCount);
     auto match_begin = std::sregex_iterator(text.begin(), text.end(), absA);
     std::smatch match = *match_begin;
     double x = stod(match[1]);
-    REQUIRE_THAT(x, Catch::Matchers::WithinAbs(expX, 0.1));
+    CHECK_THAT(x, Catch::Matchers::WithinAbs(expX, 0.1));
     double y = stod(match[2]);
-    REQUIRE_THAT(y, Catch::Matchers::WithinAbs(expY, 0.1));
+    CHECK_THAT(y, Catch::Matchers::WithinAbs(expY, 0.1));
   };
   std::string nameBase = "test_github6397";
   auto m1 = R"CTAB(
@@ -8050,7 +7990,7 @@ TEST_CASE("Github #6400: extra padding, no legend apparent") {
   auto text = drawer.getDrawingText();
   // The original bug manifested itself with a font size of 0 for the
   // legend.  Fixed, it comes out at 16.
-  REQUIRE(text.find("font-size:0px") == std::string::npos);
+  CHECK(text.find("font-size:0px") == std::string::npos);
   REQUIRE(text.find("font-size:16px") != std::string::npos);
 
   outs << text;
@@ -8096,7 +8036,7 @@ M  END
     std::ptrdiff_t const match_count(
         std::distance(std::sregex_iterator(text.begin(), text.end(), bond5),
                       std::sregex_iterator()));
-    REQUIRE(match_count == 4);
+    CHECK(match_count == 4);
     auto match_begin = std::sregex_iterator(text.begin(), text.end(), bond5);
     auto match_end = std::sregex_iterator();
     std::vector<Point2D> points;
@@ -8109,9 +8049,9 @@ M  END
     auto d2 = (points[3] - points[7]).length();
     // the distances should be > 10 and roughly equal.  They are
     // 12 and 14 pixels apart in the two molecules.
-    REQUIRE(d1 > 10.0);
-    REQUIRE(d2 > 10.0);
-    REQUIRE_THAT(fabs(d1 - d2), Catch::Matchers::WithinAbs(0.0, 0.1));
+    CHECK(d1 > 10.0);
+    CHECK(d2 > 10.0);
+    CHECK_THAT(fabs(d1 - d2), Catch::Matchers::WithinAbs(0.0, 0.1));
   };
 
   {
@@ -8191,7 +8131,7 @@ M  END
     outs.flush();
     outs.close();
     // All the coords came out as nan in the buggy version
-    REQUIRE(text.find("nan") == std::string::npos);
+    CHECK(text.find("nan") == std::string::npos);
     check_file_hash(baseName + "_1.svg");
   }
   {
@@ -8205,7 +8145,7 @@ M  END
     outs.flush();
     outs.close();
     // All the coords came out as nan in the buggy version
-    REQUIRE(text.find("nan") == std::string::npos);
+    CHECK(text.find("nan") == std::string::npos);
     check_file_hash(baseName + "_2.svg");
   }
 }
@@ -8271,7 +8211,27 @@ TEST_CASE("Lasso highlights") {
     outs << text;
     outs.flush();
     outs.close();
+    // atom 16 should have 1 red arc
+    std::regex a16(
+        "<path class='atom-16' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+).*stroke:#FF0000;");
+    std::ptrdiff_t const match_count(
+        std::distance(std::sregex_iterator(text.begin(), text.end(), a16),
+                      std::sregex_iterator()));
+    CHECK(match_count == 1);
+    auto a16reg = std::sregex_iterator(text.begin(), text.end(), a16);
+    auto dat1 = *a16reg;
+#ifdef RDK_BUILD_FREETYPE_SUPPORT
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(273.1, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(131.2, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(272.1, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(130.0, 0.1));
     check_file_hash(baseName + "1.svg");
+#else
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(274.9, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(130.9, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(273.9, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(129.7, 0.1));
+#endif
   }
   {
     // The non-overlapping atom sets should have radii the same size.
@@ -8303,7 +8263,22 @@ TEST_CASE("Lasso highlights") {
     outs << text;
     outs.flush();
     outs.close();
+#ifdef RDK_BUILD_FREETYPE_SUPPORT
+    // atom 0 should have 1 green arc
+    std::regex a0(
+        "<path class='atom-0' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+).*stroke:#00FF00;");
+    std::ptrdiff_t const match_count(
+        std::distance(std::sregex_iterator(text.begin(), text.end(), a0),
+                      std::sregex_iterator()));
+    CHECK(match_count == 1);
+    auto a0reg = std::sregex_iterator(text.begin(), text.end(), a0);
+    auto dat1 = *a0reg;
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(389.5, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(214.4, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(390.2, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(213.9, 0.1));
     check_file_hash(baseName + "2.svg");
+#endif
   }
   {
     // Another example.
@@ -8337,7 +8312,28 @@ TEST_CASE("Lasso highlights") {
     outs << text;
     outs.flush();
     outs.close();
+#ifdef RDK_BUILD_FREETYPE_SUPPORT
+    // atom 0 should have 4 arcs
+    std::regex a0(
+        "<path class='atom-0' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)");
+    std::ptrdiff_t const match_count(
+        std::distance(std::sregex_iterator(text.begin(), text.end(), a0),
+                      std::sregex_iterator()));
+    CHECK(match_count == 4);
+    auto a0reg = std::sregex_iterator(text.begin(), text.end(), a0);
+    auto dat1 = *a0reg;
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(229.1, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(365.1, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(228.9, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(364.2, 0.1));
+    a0reg++;
+    dat1 = *a0reg;
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(244.3, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(351.7, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(245.2, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(352.0, 0.1));
     check_file_hash(baseName + "3.svg");
+#endif
   }
   {
     // Showing use of highlight_bond_map to control which bonds are drawn.
@@ -8364,14 +8360,42 @@ TEST_CASE("Lasso highlights") {
       outs << text;
       outs.flush();
       outs.close();
+#ifdef RDK_BUILD_FREETYPE_SUPPORT
+      // All the atoms should have 2 arcs except 5 and 6.  Check those for
+      // atom 5.
+      std::regex a5(
+          "<path class='atom-5' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)");
+      std::ptrdiff_t const match_count(
+          std::distance(std::sregex_iterator(text.begin(), text.end(), a5),
+                        std::sregex_iterator()));
+      CHECK(match_count == 3);
+      auto a5reg = std::sregex_iterator(text.begin(), text.end(), a5);
+      auto dat1 = *a5reg;
+      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(223.2, 0.1));
+      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(280.4, 0.1));
+      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(221.9, 0.1));
+      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(280.0, 0.1));
+      a5reg++;
+      dat1 = *a5reg;
+      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(217.4, 0.1));
+      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(251.6, 0.1));
+      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(218.4, 0.1));
+      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(250.7, 0.1));
+      a5reg++;
+      dat1 = *a5reg;
+      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(245.3, 0.1));
+      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(261.0, 0.1));
+      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(245.5, 0.1));
+      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(262.3, 0.1));
       // There should be 2 lines in red, the lasso along the bi-phenyl
       // bond.
       std::regex bond5("<path class='bond-5 atom-5 atom-6.*stroke:#FF0000;");
-      std::ptrdiff_t const match_count(
+      std::ptrdiff_t const match_count1(
           std::distance(std::sregex_iterator(text.begin(), text.end(), bond5),
                         std::sregex_iterator()));
-      REQUIRE(match_count == 2);
+      CHECK(match_count1 == 2);
       check_file_hash(baseName + "4.svg");
+#endif
     }
     // Set up the bond highlights for everything but the bi-phenyl bond,
     // colouring the bonds green although the colour will be ignored.
@@ -8395,13 +8419,36 @@ TEST_CASE("Lasso highlights") {
       outs << text;
       outs.flush();
       outs.close();
+#ifdef RDK_BUILD_FREETYPE_SUPPORT
+      // All the atoms should have 2 arcs except 5 and 6.  Check those for
+      // atom 11.
+      std::regex a11(
+          "<path class='atom-11' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)");
+      std::ptrdiff_t const match_count(
+          std::distance(std::sregex_iterator(text.begin(), text.end(), a11),
+                        std::sregex_iterator()));
+      CHECK(match_count == 2);
+      auto a11reg = std::sregex_iterator(text.begin(), text.end(), a11);
+      auto dat1 = *a11reg;
+      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(223.2, 0.1));
+      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(133.1, 0.1));
+      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(221.8, 0.1));
+      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(132.6, 0.1));
+      a11reg++;
+      dat1 = *a11reg;
+      CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(245.3, 0.1));
+      CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(113.7, 0.1));
+      CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(245.5, 0.1));
+      CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(115.0, 0.1));
+
       // There should not be any red lines for bond 5.
       std::regex bond5("<path class='bond-5 atom-5 atom-6.*stroke:#FF0000;");
-      std::ptrdiff_t const match_count(
+      std::ptrdiff_t const match_count1(
           std::distance(std::sregex_iterator(text.begin(), text.end(), bond5),
                         std::sregex_iterator()));
-      REQUIRE(match_count == 0);
+      CHECK(match_count1 == 0);
       check_file_hash(baseName + "5.svg");
+#endif
     }
   }
   {
@@ -8484,7 +8531,28 @@ M  END)CTAB"_ctab;
     outs << text;
     outs.flush();
     outs.close();
+#ifdef RDK_BUILD_FREETYPE_SUPPORT
+    // The arcs on 13 have been a hassle in the past.  There should be 6 of them
+    std::regex a13(
+        "<path class='atom-13' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)");
+    std::ptrdiff_t const match_count(
+        std::distance(std::sregex_iterator(text.begin(), text.end(), a13),
+                      std::sregex_iterator()));
+    CHECK(match_count == 6);
+    // Check the penultimate one is in the right place
+    auto a13reg = std::sregex_iterator(text.begin(), text.end(), a13);
+    // you can't add 4, apparently.
+    a13reg++;
+    a13reg++;
+    a13reg++;
+    a13reg++;
+    auto dat1 = *a13reg;
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(236.1, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(238.2, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(238.9, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(239.4, 0.1));
     check_file_hash(baseName + "6.svg");
+#endif
   }
   {
     // Bug with different radii in lassos.
@@ -8567,7 +8635,93 @@ M  END)CTAB"_ctab;
     outs << text;
     outs.flush();
     outs.close();
+#ifdef RDK_BUILD_FREETYPE_SUPPORT
+    // The arcs on 13 have been a hassle in the past.  There should be 6 of them
+    std::regex a13(
+        "<path class='atom-13' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)");
+    std::ptrdiff_t const match_count(
+        std::distance(std::sregex_iterator(text.begin(), text.end(), a13),
+                      std::sregex_iterator()));
+    CHECK(match_count == 6);
+    // Check the last one is in the right place
+    auto a13reg = std::sregex_iterator(text.begin(), text.end(), a13);
+    // you can't add 5, apparently.
+    a13reg++;
+    a13reg++;
+    a13reg++;
+    a13reg++;
+    a13reg++;
+    auto dat1 = *a13reg;
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(244.1, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(218.7, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(248.2, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(220.8, 0.1));
     check_file_hash(baseName + "7.svg");
+#endif
+  }
+  {
+    // Simple 4-connected and 0-connected atoms test.
+    auto m = R"CTAB(
+     RDKit          2D
+
+  6  4  0  0  0  0  0  0  0  0999 V2000
+   -1.2990   -0.7500    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.0000   -0.0000    0.0000 S   0  0  0  0  0  0  0  0  0  0  0  0
+    0.7500   -1.2990    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.7500    1.2990    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    1.2990    0.7500    0.0000 N   0  0  0  0  0  4  0  0  0  0  0  0
+    2.2990    0.0000    0.0000 Cl  0  0  0  0  0 15  0  0  0  0  0  0
+  1  2  1  0
+  2  3  2  0
+  2  4  2  0
+  2  5  1  0
+M  CHG  2   5   1   6  -1
+M  END)CTAB"_ctab;
+    REQUIRE(m);
+    MolDraw2DSVG drawer(500, 500);
+    drawer.drawOptions().fillHighlights = false;
+    drawer.drawOptions().addAtomIndices = true;
+    drawer.drawOptions().multiColourHighlightStyle =
+        RDKit::MultiColourHighlightStyle::LASSO;
+    std::map<int, std::vector<DrawColour>> ha_map;
+    std::map<int, std::vector<DrawColour>> hb_map;
+    std::vector<DrawColour> colours = {
+        DrawColour(1.0, 0.0, 0.0), DrawColour(0.0, 1.0, 0.0),
+        DrawColour(0.0, 0.0, 1.0), DrawColour(1.0, 0.55, 0.0)};
+    std::vector<DrawColour> cvec(1, colours[0]);
+    for (unsigned int i = 0; i < m->getNumAtoms(); ++i) {
+      ha_map.insert(std::make_pair(i, cvec));
+    }
+
+    std::map<int, double> h_rads;
+    std::map<int, int> h_lw_mult;
+    drawer.drawMoleculeWithHighlights(*m, "Lasso 8", ha_map, hb_map, h_rads,
+                                      h_lw_mult);
+    drawer.finishDrawing();
+    std::string text = drawer.getDrawingText();
+    std::ofstream outs(baseName + "8.svg");
+    outs << text;
+    outs.flush();
+    outs.close();
+#ifdef RDK_BUILD_FREETYPE_SUPPORT
+    // Check one of the arcs starts in the right place.  There was a time
+    // when they didn't on Windows machines.
+    std::regex a0(
+        "<path class='atom-0' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)");
+    auto dat1 = *std::sregex_iterator(text.begin(), text.end(), a0);
+    CHECK_THAT(stod(dat1[1]), Catch::Matchers::WithinAbs(87.6, 0.1));
+    CHECK_THAT(stod(dat1[2]), Catch::Matchers::WithinAbs(318.1, 0.1));
+    CHECK_THAT(stod(dat1[3]), Catch::Matchers::WithinAbs(86.6, 0.1));
+    CHECK_THAT(stod(dat1[4]), Catch::Matchers::WithinAbs(320.7, 0.1));
+    // There should be no arc for atom 1.
+    std::regex a1(
+        "<path class='atom-1' d='M (\\d+\\.\\d+),(\\d+\\.\\d+) L (\\d+\\.\\d+),(\\d+\\.\\d+)");
+    std::ptrdiff_t const match_count(
+        std::distance(std::sregex_iterator(text.begin(), text.end(), a1),
+                      std::sregex_iterator()));
+    CHECK(match_count == 0);
+    check_file_hash(baseName + "8.svg");
+#endif
   }
 }
 
@@ -8692,10 +8846,10 @@ M  END)RXN";
     std::unique_ptr<ChemicalReaction> rxn(RxnBlockToChemicalReaction(rxnBlock));
     MolDraw2DSVG drawer(-1, -1);
     auto reactIter = rxn->beginReactantTemplates();
-    REQUIRE_THROWS_AS(MolDraw2DUtils::setACS1996Options(
-                          drawer.drawOptions(),
-                          MolDraw2DUtils::meanBondLength(*(*reactIter)) * 0.7),
-                      ValueErrorException);
+    CHECK_THROWS_AS(MolDraw2DUtils::setACS1996Options(
+                        drawer.drawOptions(),
+                        MolDraw2DUtils::meanBondLength(*(*reactIter)) * 0.7),
+                    ValueErrorException);
   }
 }
 
@@ -8721,14 +8875,14 @@ TEST_CASE("Github 6685 - flexicanvas cuts off bottom of reaction") {
         auto y1 = stod(match[2]);
         auto x2 = stod(match[3]);
         auto y2 = stod(match[4]);
-        REQUIRE(x1 >= 0);
-        REQUIRE(x1 <= width);
-        REQUIRE((y1 >= 0 && y1 <= height));
-        REQUIRE(y1 <= height);
-        REQUIRE(x2 >= 0);
-        REQUIRE(x2 <= width);
-        REQUIRE(y2 >= 0);
-        REQUIRE(y2 <= height);
+        CHECK(x1 >= 0);
+        CHECK(x1 <= width);
+        CHECK((y1 >= 0 && y1 <= height));
+        CHECK(y1 <= height);
+        CHECK(x2 >= 0);
+        CHECK(x2 <= width);
+        CHECK(y2 >= 0);
+        CHECK(y2 <= height);
       }
     }
   };
@@ -9121,6 +9275,7 @@ TEST_CASE("Github 6749 : various bad things in the lasso highlighting") {
   drawer.drawOptions().multiColourHighlightStyle =
       RDKit::MultiColourHighlightStyle::LASSO;
   drawer.drawOptions().fillHighlights = false;
+  drawer.drawOptions().addAtomIndices = true;
   drawer.drawMoleculeWithHighlights(*mol, "Bad Lasso", ha_map, hb_map, h_rads,
                                     h_lw_mult);
   drawer.finishDrawing();
@@ -9134,6 +9289,807 @@ TEST_CASE("Github 6749 : various bad things in the lasso highlighting") {
   std::ptrdiff_t const match_count(
       std::distance(std::sregex_iterator(text.begin(), text.end(), atom20),
                     std::sregex_iterator()));
-  REQUIRE(match_count == 3);
+  CHECK(match_count == 3);
   check_file_hash(baseName + "1.svg");
+}
+
+TEST_CASE("atropisomers") {
+  {
+    auto mol =
+        "CC1=CC=C(Cl)C(C)=C1N1C=CC=C1Cl |(-0.7234,-1.1614,;-0.6697,0.3775,;0.69,1.1007,;0.7439,2.6396,;-0.5622,3.4557,;-0.5085,4.9947,;-1.9218,2.7328,;-3.2279,3.5487,;-1.9757,1.1937,;-3.3354,0.4706,;-3.8113,-0.994,;-5.3513,-0.994,;-5.8272,0.4706,;-4.5813,1.3758,;-4.5813,2.9158,),wD:8.8|"_smiles;
+    REQUIRE(mol);
+    bool kekulize = true;
+    bool addChiralHs = true;
+    bool wedgeBonds = true;
+    bool forceCoords = true;
+    bool wavyBonds = true;
+    MolDraw2DUtils::prepareMolForDrawing(*mol, kekulize, addChiralHs,
+                                         wedgeBonds, forceCoords, wavyBonds);
+    CHECK(mol->getBondWithIdx(8)->getBondDir() == Bond::BondDir::NONE);
+    CHECK(mol->getBondWithIdx(8)->getStereo() ==
+          Bond::BondStereo::STEREOATROPCW);
+
+    MOL_PTR_VECT ms{mol.get()};
+    {
+      MolDraw2DSVG drawer(500, 200, 250, 200);
+      std::vector<std::string> legends = {"AtropCanon1"};
+      drawer.drawMolecules(ms, &legends);
+      drawer.finishDrawing();
+      std::string text = drawer.getDrawingText();
+      std::ofstream outs("AtropCanon1.svg");
+      outs << text;
+      outs.flush();
+      check_file_hash("AtropCanon1.svg");
+    }
+  }
+  {
+    auto mol =
+        "O=C1C=CNC(=O)N1C(=C)[C@]([C@H](C)Br)([C@@H](F)C)[C@H](Cl)C |(2.8625,1.0561,;2.2921,-0.5174,;3.4688,-1.0018,;3.6019,-2.4682,;2.3988,-3.3169,;1.0621,-2.6992,;0.1062,-3.9298,;0.9288,-1.2328,;-0.5563,-0.6124,;-1.5367,-1.8,;-0.8947,0.9647,;-0.8778,2.5678,;-0.1398,3.9298,;-1.9563,3.6407,;0.5974,1.3136,;1.1268,-0.0778,;1.9954,1.9251,;-2.4534,0.7177,;-3.6019,1.737,;-3.4495,-0.4655,),wD:14.15,wU:7.7,11.13,10.14,17.18,o1:7,10,14,&1:11,17|"_smiles;
+    REQUIRE(mol);
+    bool kekulize = true;
+    bool addChiralHs = true;
+    bool wedgeBonds = true;
+    bool forceCoords = true;
+    bool wavyBonds = true;
+    MolDraw2DUtils::prepareMolForDrawing(*mol, kekulize, addChiralHs,
+                                         wedgeBonds, forceCoords, wavyBonds);
+    CHECK(mol->getBondWithIdx(7)->getBondDir() == Bond::BondDir::NONE);
+    CHECK(mol->getBondWithIdx(7)->getStereo() ==
+          Bond::BondStereo::STEREOATROPCCW);
+
+    MOL_PTR_VECT ms{mol.get()};
+    {
+      MolDraw2DSVG drawer(500, 200, 250, 200);
+      // drawer.drawOptions().prepareMolsBeforeDrawing = false;
+      std::vector<std::string> legends = {"AtropManyChiralsEnhanced"};
+      drawer.drawMolecules(ms, &legends);
+      drawer.finishDrawing();
+      std::string text = drawer.getDrawingText();
+      std::ofstream outs("AtropManyChiralsEnhanced.svg");
+      outs << text;
+      outs.flush();
+      check_file_hash("AtropManyChiralsEnhanced.svg");
+    }
+  }
+}
+
+TEST_CASE("Github6968 - bad bond highlights with triple bonds") {
+  // The issue is that in the linear highlight across the triple bond,
+  // some of the highlights didn't appear, and others were
+  // triangular - the corners of the rectangle weren't all distinct.
+  auto m = "ClCC#CCOC(=O)Nc1cccc(c1)Cl"_smiles;
+  std::vector<unsigned int> atOrder(m->getNumAtoms(), 0);
+  std::iota(atOrder.begin(), atOrder.end(), 0);
+  REQUIRE(m);
+  {
+    // Because I worried about the atom order giving a non-general
+    // result, repeat it 10 times with atoms in random order.
+    for (int testNum = 0; testNum < 10; ++testNum) {
+      std::unique_ptr<ROMol> mol(MolOps::renumberAtoms(*m, atOrder));
+      MolDraw2DSVG drawer(350, 300);
+      std::vector<int> highlightAtoms = {};
+      // Helpfully, the atoms are scrambled but not the bonds.
+      std::vector<int> highlightBonds = {1, 2, 3};
+
+      drawer.drawOptions().addAtomIndices = true;
+      drawer.drawOptions().addBondIndices = true;
+      drawer.drawMolecule(*mol, "", &highlightAtoms, &highlightBonds);
+      drawer.finishDrawing();
+      auto text = drawer.getDrawingText();
+      std::regex bond(
+          "<path class='bond-(\\d+) atom-(\\d+) atom-(\\d+)' d='M (-?\\d+.\\d+),"
+          "(-?\\d+.\\d+) L (-?\\d+.\\d+),(-?\\d+.\\d+) L (-?\\d+.\\d+),"
+          "(-?\\d+.\\d+) L (-?\\d+.\\d+),(-?\\d+.\\d+) Z' style=");
+
+      auto match_begin = std::sregex_iterator(text.begin(), text.end(), bond);
+      auto match_end = std::sregex_iterator();
+      for (std::sregex_iterator i = match_begin; i != match_end; ++i) {
+        std::smatch match = *i;
+        std::vector<Point2D> pts;
+        for (int j = 4; j < 12; j += 2) {
+          pts.push_back(Point2D(stod(match[j]), stod(match[j + 1])));
+        }
+        // None of the points should be on top of each other
+        for (size_t j = 0; j < 3; ++j) {
+          for (size_t k = j + 1; k < 4; ++k) {
+            CHECK((pts[j] - pts[k]).lengthSq() > 1.0e-4);
+          }
+        }
+      }
+      if (testNum == 0) {
+        std::ofstream outs("testGithub6968.svg");
+        outs << text;
+        outs.close();
+        check_file_hash("testGithub6968.svg");
+      }
+      std::shuffle(atOrder.begin(), atOrder.end(),
+                   std::mt19937{std::random_device{}()});
+    }
+  }
+}
+
+TEST_CASE("Github7036 - triple bond to wedge not right") {
+  // The issue is that the middle line of a triple bond
+  // ends in the wrong place when the incident bond is
+  // a wedge.  Wedge to single bond included for visual
+  // check that that isn't broken in the fix.
+  // The 2 different layouts should be checked as the initial fix didn't work
+  // with the 2nd layout.
+  std::vector<std::string> smiles = {
+      "N#C[C@H]1C[C@@H](CN)CCN1 |(4.10168,-1.04221,;2.70424,-0.4971,;1.30679,0.0480054,;0.135989,-0.889667,;-1.26146,-0.344561,;-2.43226,-1.28223,;-3.82971,-0.737127,;-1.48811,1.13822,;-0.317308,2.07589,;1.08014,1.53078,),wU:2.1,4.4|",
+      "N#C[C@H]1C[C@@H](CN)CCN1 |(-2.255,-1.6954,;-1.388,-1.1972,;-0.521,-0.699,;-0.519,0.301,;0.348,0.7992,;0.35,1.7992,;1.217,2.2976,;1.213,0.2976,;1.211,-0.7024,;0.344,-1.2006,),wU:2.1,4.4|"};
+  for (int i = 0; i < 2; ++i) {
+    auto m = v2::SmilesParse::MolFromSmiles(smiles[i]);
+    REQUIRE(m);
+    MolDraw2DSVG drawer(350, 300);
+    drawer.drawOptions().addAtomIndices = true;
+    drawer.drawOptions().addBondIndices = true;
+    drawer.drawMolecule(*m);
+    drawer.finishDrawing();
+    auto text = drawer.getDrawingText();
+    std::string svgFile(
+        std::string("testGithub7036_" + std::string(i ? "1" : "2") + ".svg"));
+    std::ofstream outs(svgFile);
+    outs << text;
+    outs.close();
+
+    std::regex bond(
+        "<path class='bond-8 atom-8 atom-9' d='M (-?\\d+.\\d+),(-?\\d+.\\d+)"
+        " L (-?\\d+.\\d+),(-?\\d+.\\d+)' style=");
+    // The problem is the first line in the bond, which comes in 2 parts
+    // that should be co-linear.
+    auto match_begin = std::sregex_iterator(text.begin(), text.end(), bond);
+    std::smatch match = *match_begin;
+    std::vector<Point2D> pts;
+    pts.push_back(Point2D(stod(match[1]), stod(match[2])));
+    pts.push_back(Point2D(stod(match[3]), stod(match[4])));
+    ++match_begin;
+    match = *match_begin;
+    pts.push_back(Point2D(stod(match[1]), stod(match[2])));
+    pts.push_back(Point2D(stod(match[3]), stod(match[4])));
+    double dot = pts[0].directionVector(pts[1]).dotProduct(
+        pts[2].directionVector(pts[3]));
+    CHECK_THAT(fabs(dot), Catch::Matchers::WithinAbs(1.0, 0.001));
+    check_file_hash(svgFile);
+  }
+}
+
+TEST_CASE("Github7317 - very long bond not drawn to both atoms") {
+  auto m1 = R"CTAB(2244
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 13 13 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 O 2.598085 -1.499986 0.000000 0
+M  V30 2 O -1.299010 -3.749995 0.000000 0
+M  V30 3 O 9.923686 -6.081460 0.000000 0
+M  V30 4 O 3.897122 0.750042 0.000000 0
+M  V30 5 C 1.299042 -0.749993 0.000000 0
+M  V30 6 C 0.000027 -1.499967 0.000000 0
+M  V30 7 C 1.299015 0.749974 0.000000 0
+M  V30 8 C -1.299015 -0.749974 0.000000 0
+M  V30 9 C -0.000027 1.499967 0.000000 0
+M  V30 10 C -1.299042 0.749993 0.000000 0
+M  V30 11 C 0.000005 -3.000021 0.000000 0
+M  V30 12 C 3.897099 -0.750011 0.000000 0
+M  V30 13 C 5.196142 -1.500004 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 5
+M  V30 2 1 1 12
+M  V30 3 1 2 11
+M  V30 4 2 3 11
+M  V30 5 2 4 12
+M  V30 6 2 5 6
+M  V30 7 1 5 7
+M  V30 8 1 6 8
+M  V30 9 1 6 11
+M  V30 10 2 7 9
+M  V30 11 2 8 10
+M  V30 12 1 9 10
+M  V30 13 1 12 13
+M  V30 END BOND
+M  V30 END CTAB
+M  END)CTAB"_ctab;
+  REQUIRE(m1);
+  MolDraw2DSVG drawer(350, 300);
+  drawer.drawOptions().addAtomIndices = true;
+  drawer.drawOptions().addBondIndices = true;
+  drawer.drawMolecule(*m1);
+  drawer.finishDrawing();
+  auto text = drawer.getDrawingText();
+  std::regex bond3(
+      "<path class='bond-3 atom-2 atom-10' d='M (-?\\d+.\\d+),(-?\\d+.\\d+)"
+      " L (-?\\d+.\\d+),(-?\\d+.\\d+)' style=");
+  auto match3_begin = std::sregex_iterator(text.begin(), text.end(), bond3);
+  auto match3_end = std::sregex_iterator();
+  std::vector<Point2D> pts3;
+  for (std::sregex_iterator i = match3_begin; i != match3_end; ++i) {
+    std::smatch match = *i;
+    pts3.push_back(Point2D(stod(match[1]), stod(match[2])));
+    pts3.push_back(Point2D(stod(match[3]), stod(match[4])));
+  }
+
+  std::regex bond8(
+      "<path class='bond-8 atom-5 atom-10' d='M (-?\\d+.\\d+),(-?\\d+.\\d+)"
+      " L (-?\\d+.\\d+),(-?\\d+.\\d+)' style=");
+  auto match_begin8 = std::sregex_iterator(text.begin(), text.end(), bond8);
+  std::smatch match8 = *match_begin8;
+  std::vector<Point2D> pts8;
+  pts8.push_back(Point2D(stod(match8[1]), stod(match8[2])));
+  pts8.push_back(Point2D(stod(match8[3]), stod(match8[4])));
+
+  // pts3[3] and pts3[7] are the atom 10 ends of bond3, pts8[1] is
+  // the atom 10 end of bond 8.  They should be close to each other.
+  CHECK((pts8[1] - pts3[3]).length() < 10.0);
+  CHECK((pts8[1] - pts3[7]).length() < 10.0);
+  if ((pts8[1] - pts3[3]).length() >= 10.0 ||
+      (pts8[1] - pts3[7]).length() >= 10.0) {
+    // Someone will want to have a look at it.
+    std::ofstream outs("testGithub7317.svg");
+    outs << text;
+    outs.close();
+  }
+}
+
+#ifdef RDK_BUILD_CAIRO_SUPPORT
+TEST_CASE(
+    "github #7409: drawing mol with a non zero confID results in bad confID error") {
+  SECTION("basics") {
+    auto m = "CC |(-0.75,0,;0.75,0,)|"_smiles;
+    REQUIRE(m);
+    CHECK(m->getNumConformers() == 1);
+    m->getConformer().setId(5);
+    MolDraw2DCairo drawer(350, 300);
+    // it's enough to test that this doesn't throw
+    drawer.drawMolecule(*m);
+  }
+}
+#endif
+
+TEST_CASE("wedge non-single bonds") {
+  int panelHeight = -1;
+  int panelWidth = -1;
+  bool noFreeType = false;
+  MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+  drawer.drawOptions().prepareMolsBeforeDrawing = false;
+
+  SECTION("basics 1: aromatic bonds") {
+    auto m =
+        "CC(=O)C1=CC=CC=C1C |wU:1.0, (-0.954,-1.74918,;-0.9532,-0.74918,;-1.8188,-0.24858,;-0.0868,-0.24998,;0.7788,-0.75058,;1.6452,-0.25138,;1.646,0.74862,;0.7804,1.24942,;-0.086,0.75002,;-0.9516,1.25082,)|"_smiles;
+    REQUIRE(m);
+    m->getBondBetweenAtoms(3, 4)->setBondDir(Bond::BondDir::BEGINWEDGE);
+    {
+      int panelHeight = -1;
+      int panelWidth = -1;
+      bool noFreeType = false;
+      MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+      drawer.drawOptions().prepareMolsBeforeDrawing = false;
+      drawer.drawMolecule(*m);
+      drawer.finishDrawing();
+      auto text = drawer.getDrawingText();
+      std::ofstream outs("testWedgeNonSingleBonds-1.svg");
+      outs << text;
+      outs.close();
+      check_file_hash("testWedgeNonSingleBonds-1.svg");
+    }
+
+    m->getBondBetweenAtoms(3, 4)->setBondDir(Bond::BondDir::BEGINDASH);
+    {
+      int panelHeight = -1;
+      int panelWidth = -1;
+      bool noFreeType = false;
+      MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+      drawer.drawOptions().prepareMolsBeforeDrawing = false;
+      drawer.drawMolecule(*m);
+      drawer.finishDrawing();
+      auto text = drawer.getDrawingText();
+      std::ofstream outs("testWedgeNonSingleBonds-2.svg");
+      outs << text;
+      outs.close();
+      check_file_hash("testWedgeNonSingleBonds-2.svg");
+    }
+  }
+  SECTION("basics 2 : aromatic bonds, draw to a heteroatom") {
+    auto m =
+        "CC(=O)C1=NC=CC=C1C |wU:1.0, (-0.954,-1.74918,;-0.9532,-0.74918,;-1.8188,-0.24858,;-0.0868,-0.24998,;0.7788,-0.75058,;1.6452,-0.25138,;1.646,0.74862,;0.7804,1.24942,;-0.086,0.75002,;-0.9516,1.25082,)|"_smiles;
+    REQUIRE(m);
+    m->getBondBetweenAtoms(3, 4)->setBondDir(Bond::BondDir::BEGINWEDGE);
+    {
+      int panelHeight = -1;
+      int panelWidth = -1;
+      bool noFreeType = false;
+      MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+      drawer.drawOptions().prepareMolsBeforeDrawing = false;
+      drawer.drawMolecule(*m);
+      drawer.finishDrawing();
+      auto text = drawer.getDrawingText();
+      std::ofstream outs("testWedgeNonSingleBonds-3.svg");
+      outs << text;
+      outs.close();
+      check_file_hash("testWedgeNonSingleBonds-3.svg");
+    }
+
+    m->getBondBetweenAtoms(3, 4)->setBondDir(Bond::BondDir::BEGINDASH);
+    {
+      int panelHeight = -1;
+      int panelWidth = -1;
+      bool noFreeType = false;
+      MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+      drawer.drawOptions().prepareMolsBeforeDrawing = false;
+      drawer.drawMolecule(*m);
+      drawer.finishDrawing();
+      auto text = drawer.getDrawingText();
+      std::ofstream outs("testWedgeNonSingleBonds-4.svg");
+      outs << text;
+      outs.close();
+      check_file_hash("testWedgeNonSingleBonds-4.svg");
+    }
+  }
+
+  SECTION("basics 3: double bonds") {
+    auto m =
+        "CC(=O)C1=CC=CC=C1C |wU:1.0, (-0.954,-1.74918,;-0.9532,-0.74918,;-1.8188,-0.24858,;-0.0868,-0.24998,;0.7788,-0.75058,;1.6452,-0.25138,;1.646,0.74862,;0.7804,1.24942,;-0.086,0.75002,;-0.9516,1.25082,)|"_smiles;
+    REQUIRE(m);
+    MolOps::Kekulize(*m);
+    CHECK(m->getBondBetweenAtoms(3, 4)->getBondType() ==
+          Bond::BondType::DOUBLE);
+    m->getBondBetweenAtoms(3, 4)->setBondDir(Bond::BondDir::BEGINWEDGE);
+    {
+      int panelHeight = -1;
+      int panelWidth = -1;
+      bool noFreeType = false;
+      MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+      drawer.drawOptions().prepareMolsBeforeDrawing = false;
+      drawer.drawMolecule(*m);
+      drawer.finishDrawing();
+      auto text = drawer.getDrawingText();
+      std::ofstream outs("testWedgeNonSingleBonds-5.svg");
+      outs << text;
+      outs.close();
+      check_file_hash("testWedgeNonSingleBonds-5.svg");
+    }
+
+    m->getBondBetweenAtoms(3, 4)->setBondDir(Bond::BondDir::BEGINDASH);
+    {
+      int panelHeight = -1;
+      int panelWidth = -1;
+      bool noFreeType = false;
+      MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+      drawer.drawOptions().prepareMolsBeforeDrawing = false;
+      drawer.drawMolecule(*m);
+      drawer.finishDrawing();
+      auto text = drawer.getDrawingText();
+      std::ofstream outs("testWedgeNonSingleBonds-6.svg");
+      outs << text;
+      outs.close();
+      check_file_hash("testWedgeNonSingleBonds-6.svg");
+    }
+  }
+  SECTION("basics 3: double bonds, draw to a heteroatom") {
+    auto m =
+        "CC(=O)C1=NC=CC=C1C |wU:1.0, (-0.954,-1.74918,;-0.9532,-0.74918,;-1.8188,-0.24858,;-0.0868,-0.24998,;0.7788,-0.75058,;1.6452,-0.25138,;1.646,0.74862,;0.7804,1.24942,;-0.086,0.75002,;-0.9516,1.25082,)|"_smiles;
+    REQUIRE(m);
+    MolOps::Kekulize(*m);
+    CHECK(m->getBondBetweenAtoms(3, 4)->getBondType() ==
+          Bond::BondType::DOUBLE);
+    m->getBondBetweenAtoms(3, 4)->setBondDir(Bond::BondDir::BEGINWEDGE);
+    {
+      int panelHeight = -1;
+      int panelWidth = -1;
+      bool noFreeType = false;
+      MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+      drawer.drawOptions().prepareMolsBeforeDrawing = false;
+      drawer.drawMolecule(*m);
+      drawer.finishDrawing();
+      auto text = drawer.getDrawingText();
+      std::ofstream outs("testWedgeNonSingleBonds-7.svg");
+      outs << text;
+      outs.close();
+      check_file_hash("testWedgeNonSingleBonds-7.svg");
+    }
+
+    m->getBondBetweenAtoms(3, 4)->setBondDir(Bond::BondDir::BEGINDASH);
+    {
+      int panelHeight = -1;
+      int panelWidth = -1;
+      bool noFreeType = false;
+      MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+      drawer.drawOptions().prepareMolsBeforeDrawing = false;
+      drawer.drawMolecule(*m);
+      drawer.finishDrawing();
+      auto text = drawer.getDrawingText();
+      std::ofstream outs("testWedgeNonSingleBonds-8.svg");
+      outs << text;
+      outs.close();
+      check_file_hash("testWedgeNonSingleBonds-8.svg");
+    }
+  }
+  SECTION(
+      "basics 3: make sure reapplyMolBlockWedging is called before prepareMolForDrawing") {
+    auto m = R"CTAB(
+  Mrv2311 05242408162D          
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 14 15 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C 2.0006 -1.54 0 0
+M  V30 2 N 2.0006 -3.08 0 0
+M  V30 3 C 0.6669 -3.85 0 0
+M  V30 4 C -0.6668 -3.08 0 0
+M  V30 5 C -0.6668 -1.54 0 0
+M  V30 6 C -2.0006 -0.77 0 0
+M  V30 7 C 0.6669 -0.77 0 0
+M  V30 8 C 0.6669 0.77 0 0
+M  V30 9 C -0.6668 1.54 0 0
+M  V30 10 C -2.0006 0.77 0 0
+M  V30 11 C -0.6668 3.08 0 0
+M  V30 12 C 0.6669 3.85 0 0
+M  V30 13 C 2.0006 3.08 0 0
+M  V30 14 C 2.0006 1.54 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 2 2 3
+M  V30 3 1 3 4
+M  V30 4 2 4 5
+M  V30 5 1 5 6
+M  V30 6 1 7 5 CFG=3
+M  V30 7 2 7 1
+M  V30 8 1 7 8
+M  V30 9 2 8 9
+M  V30 10 1 9 10
+M  V30 11 1 9 11
+M  V30 12 2 11 12
+M  V30 13 1 12 13
+M  V30 14 2 13 14
+M  V30 15 1 8 14
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)CTAB"_ctab;
+    REQUIRE(m);
+    int panelHeight = -1;
+    int panelWidth = -1;
+    bool noFreeType = true;
+    MolDraw2DSVG drawer(350, 300, panelWidth, panelHeight, noFreeType);
+    drawer.drawOptions().useMolBlockWedging = true;
+    drawer.drawMolecule(*m);
+    drawer.finishDrawing();
+    auto text = drawer.getDrawingText();
+    std::ofstream outs("testWedgingShouldBeOnSingleBond.svg");
+    outs << text;
+    outs.close();
+    check_file_hash("testWedgingShouldBeOnSingleBond.svg");
+    std::regex regex1(
+        "<path class='bond-5 atom-6 atom-4'.*style='fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1\\.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />");
+    std::regex regex2(
+        "<path class='bond-5 atom-6 atom-4'.*style='fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2\\.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1' />");
+    size_t nRegex1Matches = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), regex1),
+        std::sregex_token_iterator());
+    CHECK(nRegex1Matches > 6);  // check the bond is hashed
+    auto dat2 = *std::sregex_iterator(text.begin(), text.end(), regex2);
+    CHECK(dat2.empty());  // check the bond is single
+  }
+}
+
+TEST_CASE("avoid duplicate enhanced stereo labels") {
+  static const std::string AND1("and1");
+  auto m = "C[C@H](O)[C@H](C)F |&1:1,3,r|"_smiles;
+  REQUIRE(m);
+  for (bool addStereoAnnotation : {false, true}) {
+    int panelHeight = -1;
+    int panelWidth = -1;
+    bool noFreeType = true;
+    MolDraw2DSVG drawer(300, 300, panelWidth, panelHeight, noFreeType);
+    drawer.drawOptions().addStereoAnnotation = addStereoAnnotation;
+    drawer.drawMolecule(*m);
+    drawer.finishDrawing();
+    auto text = drawer.getDrawingText();
+    std::string svgFile(std::string(
+        "testDuplicateEnhancedStereoLabelsAddAnnotation" +
+        std::string(addStereoAnnotation ? "True" : "False") + ".svg"));
+    std::ofstream outs(svgFile);
+    outs << text;
+    outs.close();
+    check_file_hash(svgFile);
+    for (const char &c : AND1) {
+      std::regex regex(std::string("<text\\s+.*>") + c +
+                       std::string("</text>"));
+      size_t nOccurrences = std::distance(
+          std::sregex_token_iterator(text.begin(), text.end(), regex),
+          std::sregex_token_iterator());
+      // there should be only 2 "and1" labels, not 4
+      CHECK(nOccurrences == 2);
+    }
+  }
+}
+
+TEST_CASE("Draw atom map numbers on complex query atoms") {
+  std::unique_ptr<ChemicalReaction> rxn(RxnSmartsToChemicalReaction(
+      "[C:1](=[O:2])-[OD1].[N!H0:3]>>[C:1](=[O:2])[N:3]"));
+  REQUIRE(rxn);
+  {
+    // Use NO_FREETYPE so that the characters appear in an
+    // easily found manner in the SVG.
+    MolDraw2DSVG drawer(600, 200, 600, 200, NO_FREETYPE);
+    drawer.drawReaction(*rxn);
+    drawer.finishDrawing();
+    auto text = drawer.getDrawingText();
+    std::string svgFile = "testComplexQueryAtomMap.svg";
+    std::ofstream outs(svgFile);
+    outs << text;
+    outs.close();
+    check_file_hash(svgFile);
+    std::regex regex(std::string("<text\\s+.*>:</text>"));
+    size_t nOccurrences = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), regex),
+        std::sregex_token_iterator());
+    // there should be 6 colons drawn
+    CHECK(nOccurrences == 6);
+  }
+}
+
+TEST_CASE("Draw hetero atoms in black if highlighted") {
+  {
+    auto mol = "OC(=O)c1ccc(C(=O)O)cc1"_smiles;
+    REQUIRE(mol);
+    MolDraw2DSVG drawer(350, 300, 350, 300, NO_FREETYPE);
+    drawer.drawOptions().highlightColour = DrawColour(1, 0.0, 0.0);
+    std::vector<int> highlightAtoms = {0, 1, 2};
+    drawer.drawMolecule(*mol, "", &highlightAtoms);
+    drawer.finishDrawing();
+    auto text = drawer.getDrawingText();
+    std::ofstream outs("testHighlightHeteroAtoms_1.svg");
+    outs << text;
+    outs.close();
+    // there should be 3 black characters and 3 red
+    std::regex regex1("<text .*;fill:#000000.*</text>");
+    size_t nBlack = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), regex1),
+        std::sregex_token_iterator());
+    CHECK(nBlack == 3);
+    std::regex regex2("<text .*;fill:#FF0000.*</text>");
+    size_t nRed = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), regex2),
+        std::sregex_token_iterator());
+    CHECK(nRed == 3);
+    check_file_hash("testHighlightHeteroAtoms_1.svg");
+  }
+  {
+    auto mol = "OC(=O)c1ccc(C(=O)O)cc1"_smiles;
+    REQUIRE(mol);
+    MolDraw2DSVG drawer(350, 300, 350, 300, NO_FREETYPE);
+    setDarkMode(drawer);
+    std::vector<int> highlightAtoms = {0, 1, 2};
+    drawer.drawMolecule(*mol, "", &highlightAtoms);
+    drawer.finishDrawing();
+    auto text = drawer.getDrawingText();
+    std::ofstream outs("testHighlightHeteroAtoms_2.svg");
+    outs << text;
+    outs.close();
+    // there should be 3 "carbon" characters and 3 pinky ones
+    std::regex regex1("<text .*;fill:#E5E5E5.*</text>");
+    size_t nBlack = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), regex1),
+        std::sregex_token_iterator());
+    CHECK(nBlack == 3);
+    std::regex regex2("<text .*;fill:#FF3333.*</text>");
+    size_t nRed = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), regex2),
+        std::sregex_token_iterator());
+    CHECK(nRed == 3);
+    check_file_hash("testHighlightHeteroAtoms_2.svg");
+  }
+}
+
+TEST_CASE("Github 7739 - Bad multi-coloured wedge") {
+  std::string fileStem = "testGithub_7739_";
+  {
+    auto mol =
+        "O=C1C=CNC(=O)N1C(=C)[C@]([C@H](C)Br)([C@@H](F)C)[C@H](Cl)C |(2.8625,1.0561,;2.2921,-0.5174,;3.4688,-1.0018,;3.6019,-2.4682,;2.3988,-3.3169,;1.0621,-2.6992,;0.1062,-3.9298,;0.9288,-1.2328,;-0.5563,-0.6124,;-1.5367,-1.8,;-0.8947,0.9647,;-0.8778,2.5678,;-0.1398,3.9298,;-1.9563,3.6407,;0.5974,1.3136,;1.1268,-0.0778,;1.9954,1.9251,;-2.4534,0.7177,;-3.6019,1.737,;-3.4495,-0.4655,),wD:14.15,wU:7.7,11.13,10.14,17.18,o1:7,10,14,&1:11,17|"_smiles;
+    REQUIRE(mol);
+    bool kekulize = true;
+    bool addChiralHs = true;
+    bool wedgeBonds = true;
+    bool forceCoords = true;
+    bool wavyBonds = true;
+    MolDraw2DUtils::prepareMolForDrawing(*mol, kekulize, addChiralHs,
+                                         wedgeBonds, forceCoords, wavyBonds);
+    MolDraw2DSVG drawer(600, 600);
+    drawer.drawOptions().addAtomIndices = true;
+    drawer.drawOptions().addBondIndices = true;
+    std::string legend = fileStem + "1";
+    drawer.drawMolecule(*mol, legend);
+    drawer.finishDrawing();
+    std::string text = drawer.getDrawingText();
+    std::ofstream outs(fileStem + "1.svg");
+    outs << text;
+    outs.flush();
+    // In the original, buggy version, there were 3 triangles making
+    // up the black part of bond 6.  There are only 2 in the fixed version.
+    std::regex bond6(
+        "<path class='bond-6 atom-7 atom-5' .*style='fill:#000000;"
+        "fill-rule:evenodd;fill-opacity:1;stroke:#000000;");
+    size_t nOccurrences6 = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), bond6),
+        std::sregex_token_iterator());
+    // on ARM macs we were getting different wedging... that needs to be looked
+    // into separately
+    std::regex bond19(
+        "<path class='bond-19 atom-7 atom-1' .*style='fill:#000000;"
+        "fill-rule:evenodd;fill-opacity:1;stroke:#000000;");
+    size_t nOccurrences19 = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), bond19),
+        std::sregex_token_iterator());
+    CHECK((nOccurrences6 == 2 || nOccurrences19 == 2));
+
+    check_file_hash(fileStem + "1.svg");
+  }
+  // This next not broke in early iterations of the fixing.
+  {
+    auto mol =
+        "N=c1nc([C@@H]2CCCCN2)cc(N)n1O |(0.81024,2.46595,;0.80944,1.46595,;-0.05696,0.966747,;-0.05776,-0.0332533,;-0.92416,-0.532653,;-1.78976,-0.0318533,;-2.65616,-0.531253,;-2.65696,-1.53125,;-1.79136,-2.03185,;-0.92496,-1.53265,;0.80784,-0.534053,;1.67424,-0.0346533,;2.53984,-0.535253,;1.67504,0.965347,;2.54144,1.46475,),wU:4.3|"_smiles;
+    REQUIRE(mol);
+
+    MolDraw2DSVG drawer(600, 600);
+    MolDraw2DUtils::prepareMolForDrawing(*mol);
+    drawer.drawOptions().addAtomIndices = true;
+    drawer.drawOptions().addBondIndices = true;
+    std::string legend = fileStem + "2";
+    drawer.drawMolecule(*mol, legend);
+    drawer.finishDrawing();
+    std::string text = drawer.getDrawingText();
+    std::ofstream outs(fileStem + "2.svg");
+    outs << text;
+    outs.flush();
+    std::regex bond3(
+        "<path class='bond-3 atom-4 atom-3' .*style='fill:#000000;"
+        "fill-rule:evenodd;fill-opacity:1;stroke:#000000;");
+    size_t nOccurrences = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), bond3),
+        std::sregex_token_iterator());
+    CHECK(nOccurrences == 2);
+    check_file_hash(fileStem + "2.svg");
+  }
+
+  {
+    auto mol =
+        "O=C1C=CNC(=O)C1C(=C)[C@]([C@H](C)Br)([C@@H](F)C)[C@H](Cl)C |(2.8625,1.0561,;2.2921,-0.5174,;3.4688,-1.0018,;3.6019,-2.4682,;2.3988,-3.3169,;1.0621,-2.6992,;0.1062,-3.9298,;0.9288,-1.2328,;-0.5563,-0.6124,;-1.5367,-1.8,;-0.8947,0.9647,;-0.8778,2.5678,;-0.1398,3.9298,;-1.9563,3.6407,;0.5974,1.3136,;1.1268,-0.0778,;1.9954,1.9251,;-2.4534,0.7177,;-3.6019,1.737,;-3.4495,-0.4655,),wD:14.15,wU:7.7,11.13,10.14,17.18,o1:7,10,14,&1:11,17|"_smiles;
+    REQUIRE(mol);
+    bool kekulize = true;
+    bool addChiralHs = true;
+    bool wedgeBonds = true;
+    bool forceCoords = true;
+    bool wavyBonds = true;
+    MolDraw2DUtils::prepareMolForDrawing(*mol, kekulize, addChiralHs,
+                                         wedgeBonds, forceCoords, wavyBonds);
+    MolDraw2DSVG drawer(600, 600);
+    drawer.drawOptions().addAtomIndices = true;
+    drawer.drawOptions().addBondIndices = true;
+    std::string legend = fileStem + "3";
+    drawer.drawMolecule(*mol, legend);
+    drawer.finishDrawing();
+    std::string text = drawer.getDrawingText();
+    std::ofstream outs(fileStem + "3.svg");
+    outs << text;
+    outs.flush();
+    std::regex bond19(
+        "<path class='bond-19 atom-7 atom-1' .*style='fill:#000000;"
+        "fill-rule:evenodd;fill-opacity:1;stroke:#000000;");
+    size_t nOccurrences = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), bond19),
+        std::sregex_token_iterator());
+    CHECK(nOccurrences == 1);
+    check_file_hash(fileStem + "3.svg");
+  }
+  {
+    auto mol =
+        "C=C1C=CNC(=O)C1C(=C)[C@]([C@H](C)Br)([C@@H](F)C)[C@H](Cl)C |(2.8625,1.0561,;2.2921,-0.5174,;3.4688,-1.0018,;3.6019,-2.4682,;2.3988,-3.3169,;1.0621,-2.6992,;0.1062,-3.9298,;0.9288,-1.2328,;-0.5563,-0.6124,;-1.5367,-1.8,;-0.8947,0.9647,;-0.8778,2.5678,;-0.1398,3.9298,;-1.9563,3.6407,;0.5974,1.3136,;1.1268,-0.0778,;1.9954,1.9251,;-2.4534,0.7177,;-3.6019,1.737,;-3.4495,-0.4655,),wD:14.15,wU:7.7,11.13,10.14,17.18,o1:7,10,14,&1:11,17|"_smiles;
+    REQUIRE(mol);
+    bool kekulize = true;
+    bool addChiralHs = true;
+    bool wedgeBonds = true;
+    bool forceCoords = true;
+    bool wavyBonds = true;
+    MolDraw2DUtils::prepareMolForDrawing(*mol, kekulize, addChiralHs,
+                                         wedgeBonds, forceCoords, wavyBonds);
+    MolDraw2DSVG drawer(600, 600);
+    drawer.drawOptions().addAtomIndices = true;
+    drawer.drawOptions().addBondIndices = true;
+    std::string legend = fileStem + "4";
+    drawer.drawMolecule(*mol, legend);
+    drawer.finishDrawing();
+    std::string text = drawer.getDrawingText();
+    std::ofstream outs(fileStem + "4.svg");
+    outs << text;
+    outs.flush();
+    std::regex bond19(
+        "<path class='bond-19 atom-7 atom-1' .*style='fill:#000000;"
+        "fill-rule:evenodd;fill-opacity:1;stroke:#000000;");
+    size_t nOccurrences = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), bond19),
+        std::sregex_token_iterator());
+    CHECK(nOccurrences == 1);
+    check_file_hash(fileStem + "4.svg");
+  }
+  {
+    auto mol = "C1[C@@H](C=C)CCN[C@H]1C#N"_smiles;
+    REQUIRE(mol);
+    bool kekulize = true;
+    bool addChiralHs = true;
+    bool wedgeBonds = true;
+    bool forceCoords = true;
+    bool wavyBonds = true;
+    MolDraw2DUtils::prepareMolForDrawing(*mol, kekulize, addChiralHs,
+                                         wedgeBonds, forceCoords, wavyBonds);
+    MolDraw2DSVG drawer(600, 600);
+    drawer.drawOptions().addAtomIndices = true;
+    drawer.drawOptions().addBondIndices = true;
+    std::string legend = fileStem + "5";
+    drawer.drawMolecule(*mol, legend);
+    drawer.finishDrawing();
+    std::string text = drawer.getDrawingText();
+    std::ofstream outs(fileStem + "5.svg");
+    outs << text;
+    outs.flush();
+    std::regex bond19(
+        "<path class='bond-1 atom-1 atom-2' .*style='fill:#000000;"
+        "fill-rule:evenodd;fill-opacity:1;stroke:#000000;");
+    size_t nOccurrences = std::distance(
+        std::sregex_token_iterator(text.begin(), text.end(), bond19),
+        std::sregex_token_iterator());
+    CHECK(nOccurrences == 1);
+    check_file_hash(fileStem + "5.svg");
+  }
+}
+
+TEST_CASE("idx out of bounds should not cause a segfault") {
+  auto m = "C"_smiles;
+  {
+    MolDraw2DSVG drawer(300, 300, -1, -1, NO_FREETYPE);
+    std::map<int, std::vector<DrawColour>> atomCols{{2, {DrawColour(0, 0, 0)}}};
+    std::map<int, std::vector<DrawColour>> bondCols;
+    std::map<int, double> atomRads{{2, 1.0}};
+    std::map<int, int> bondMults;
+    REQUIRE_THROWS_AS(
+        drawer.drawMoleculeWithHighlights(*m, "nocrash", atomCols, bondCols,
+                                          atomRads, bondMults),
+        Invar::Invariant);
+  }
+  {
+    MolDraw2DSVG drawer(300, 300, -1, -1, NO_FREETYPE);
+    std::map<int, std::vector<DrawColour>> atomCols;
+    std::map<int, std::vector<DrawColour>> bondCols{{2, {DrawColour(0, 0, 0)}}};
+    std::map<int, double> atomRads;
+    std::map<int, int> bondMults;
+    REQUIRE_THROWS_AS(
+        drawer.drawMoleculeWithHighlights(*m, "nocrash", atomCols, bondCols,
+                                          atomRads, bondMults),
+        Invar::Invariant);
+  }
+  {
+    MolDraw2DSVG drawer(300, 300, -1, -1, NO_FREETYPE);
+    std::map<int, std::vector<DrawColour>> atomCols{{0, {DrawColour(0, 0, 0)}}};
+    std::map<int, std::vector<DrawColour>> bondCols;
+    std::map<int, double> atomRads{{2, 1.0}};
+    std::map<int, int> bondMults;
+    REQUIRE_NOTHROW(drawer.drawMoleculeWithHighlights(
+        *m, "nocrash", atomCols, bondCols, atomRads, bondMults));
+  }
+  {
+    MolDraw2DSVG drawer(300, 300, -1, -1, NO_FREETYPE);
+    std::map<int, std::vector<DrawColour>> atomCols;
+    std::map<int, std::vector<DrawColour>> bondCols{{0, {DrawColour(0, 0, 0)}}};
+    std::map<int, double> atomRads;
+    std::map<int, int> bondMults{{2, 10}};
+    REQUIRE_THROWS_AS(
+        drawer.drawMoleculeWithHighlights(*m, "nocrash", atomCols, bondCols,
+                                          atomRads, bondMults),
+        Invar::Invariant);
+  }
 }

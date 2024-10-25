@@ -32,7 +32,7 @@ TEST_CASE("Github #5863: failure in WedgeMolBonds") {
     auto env = findAtomEnvironmentOfRadiusN(*mol, radius + 1, atomId);
     std::unique_ptr<ROMol> frag(Subgraphs::pathToSubmol(*mol, env));
     REQUIRE(frag);
-    WedgeMolBonds(*frag, &frag->getConformer());
+    Chirality::wedgeMolBonds(*frag, &frag->getConformer());
     INFO(MolToV3KMolBlock(*frag));
     CHECK(frag->getBondBetweenAtoms(9, 10)->getBondDir() !=
           Bond::BondDir::NONE);
@@ -582,7 +582,7 @@ M  END
 
       REQUIRE(m);
       CHECK(m->getAtomWithIdx(2)->getChiralTag() ==
-            Atom::ChiralType::CHI_UNSPECIFIED);
+            Atom::ChiralType::CHI_TETRAHEDRAL_CCW);
     }
   }
 }
@@ -635,7 +635,7 @@ M  V30 END CTAB
 M  END
 )CTAB";
 
-    auto m = MolBlockToMol(molblock, true, false, false);
+    std::unique_ptr<RWMol> m(MolBlockToMol(molblock, true, false, false));
 
     REQUIRE(m);
     CHECK(m->getBondWithIdx(1)->getStereo() == Bond::BondStereo::STEREONONE);

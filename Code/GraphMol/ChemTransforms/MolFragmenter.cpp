@@ -1087,14 +1087,35 @@ std::unique_ptr<ROMol> molzip(std::vector<ROMOL_SPTR> &decomposition,
     }
   }
 
-  const auto combinedMol = std::accumulate(
-      decomposition.begin() + 1, decomposition.end(), decomposition[0],
-      [](const auto &combined, const auto &mol) {
-        auto c = combineMols(*combined, *mol);
-        ROMOL_SPTR ptr(c);
-        return ptr;
-      });
+  if (decomposition.empty()) {
+    return nullptr;
+  }
 
+  // When the rgroup decomposition splits a ring, it puts it in both
+  //  rgroups, so remove these
+  std::vector<ROMOL_SPTR> mols;
+  if (params.label != MolzipLabel::FragmentOnBonds &&
+      decomposition.size() > 1) {
+    std::vector<std::string> existing_smiles;
+    for (size_t idx = 1; idx < decomposition.size(); ++idx) {
+      auto &mol = decomposition[idx];
+      auto smiles = MolToSmiles(*mol);
+      if (std::find(existing_smiles.begin(), existing_smiles.end(), smiles) ==
+          existing_smiles.end()) {
+        mols.push_back(mol);
+        existing_smiles.push_back(smiles);
+      }
+    }
+  }
+
+  auto combinedMol = decomposition[0];
+  if (!mols.empty()) {
+    combinedMol = std::accumulate(
+        mols.begin(), mols.end(), decomposition[0],
+        [](const auto &combined, const auto &mol) {
+          return boost::shared_ptr<ROMol>(combineMols(*combined, *mol));
+        });
+  }
   const static ROMol b;
   std::optional attachmentMappingOption = std::map<int, int>();
   auto zippedMol = molzip(*combinedMol, b, params, attachmentMappingOption);
@@ -1134,6 +1155,21 @@ std::unique_ptr<ROMol> molzip(std::vector<ROMOL_SPTR> &decomposition,
   }
 
   return zippedMol;
+}
+
+std::unique_ptr<ROMol> molzip(const std::map<std::string, ROMOL_SPTR> &row,
+                              const MolzipParams &params) {
+  auto core = row.find("Core");
+  PRECONDITION(core != row.end(), "RGroup has no Core, cannot molzip");
+  std::vector<ROMOL_SPTR> mols;
+  mols.push_back(core->second);
+  for (auto it : row) {
+    if (it.first != "Core") {
+      mols.push_back(it.second);
+    }
+  }
+
+  return molzip(mols, params);
 }
 
 }  // end of namespace RDKit

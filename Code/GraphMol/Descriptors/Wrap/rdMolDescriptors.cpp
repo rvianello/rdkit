@@ -7,12 +7,15 @@
 //  which is included in the file license.txt, found at the root
 //  of the RDKit source tree.
 //
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 #include <RDBoost/Wrap.h>
 #include <GraphMol/Atom.h>
 #include <GraphMol/GraphMol.h>
 
 #include <RDGeneral/BoostStartInclude.h>
 #include <RDGeneral/BoostEndInclude.h>
+#include <RDGeneral/RDLog.h>
 
 #include <GraphMol/Descriptors/MolDescriptors.h>
 #include <GraphMol/Descriptors/AtomFeat.h>
@@ -20,6 +23,7 @@
 #include <GraphMol/Fingerprints/AtomPairs.h>
 #include <GraphMol/Fingerprints/MorganFingerprints.h>
 #include <GraphMol/Fingerprints/MACCS.h>
+#include <GraphMol/Descriptors/DCLV.h>
 #include <DataStructs/BitVects.h>
 
 #include <GraphMol/Descriptors/USRDescriptor.h>
@@ -353,11 +357,14 @@ double hkAlphaHelper(const RDKit::ROMol &mol, python::object atomContribs) {
   return kappaHelper(RDKit::Descriptors::calcHallKierAlpha, mol, atomContribs);
 }
 
-RDKit::SparseIntVect<std::uint32_t> *MorganFingerprintHelper(
-    const RDKit::ROMol &mol, unsigned int radius, int nBits,
-    python::object invariants, python::object fromAtoms, bool useChirality,
-    bool useBondTypes, bool useFeatures, bool useCounts, python::object bitInfo,
-    bool includeRedundantEnvironments) {
+[[deprecated(
+    "please use MorganGenerator")]] RDKit::SparseIntVect<std::uint32_t> *
+MorganFingerprintHelper(const RDKit::ROMol &mol, unsigned int radius, int nBits,
+                        python::object invariants, python::object fromAtoms,
+                        bool useChirality, bool useBondTypes, bool useFeatures,
+                        bool useCounts, python::object bitInfo,
+                        bool includeRedundantEnvironments) {
+  RDLog::deprecationWarning("please use MorganGenerator");
   std::vector<boost::uint32_t> *invars = nullptr;
   if (invariants) {
     unsigned int nInvar =
@@ -493,11 +500,14 @@ RDKit::SparseIntVect<std::uint32_t> *GetHashedMorganFingerprint(
                                  bitInfo, includeRedundantEnvironments);
 }
 
-ExplicitBitVect *GetMorganFingerprintBV(
-    const RDKit::ROMol &mol, unsigned int radius, unsigned int nBits,
-    python::object invariants, python::object fromAtoms, bool useChirality,
-    bool useBondTypes, bool useFeatures, python::object bitInfo,
-    bool includeRedundantEnvironments) {
+[[deprecated("please use MorganGenerator")]] ExplicitBitVect *
+GetMorganFingerprintBV(const RDKit::ROMol &mol, unsigned int radius,
+                       unsigned int nBits, python::object invariants,
+                       python::object fromAtoms, bool useChirality,
+                       bool useBondTypes, bool useFeatures,
+                       python::object bitInfo,
+                       bool includeRedundantEnvironments) {
+  RDLog::deprecationWarning("please use MorganGenerator");
   std::vector<boost::uint32_t> *invars = nullptr;
   if (invariants) {
     unsigned int nInvar =
@@ -1011,7 +1021,6 @@ BOOST_PYTHON_MODULE(rdMolDescriptors) {
        python::arg("includeChirality") = false),
       docString.c_str(),
       python::return_value_policy<python::manage_new_object>());
-
   docString = "Returns a Morgan fingerprint for a molecule";
   python::def(
       "GetMorganFingerprint", GetMorganFingerprint,
@@ -1548,15 +1557,16 @@ BOOST_PYTHON_MODULE(rdMolDescriptors) {
       "See rdkit.Chem.rdMolDescriptor.Properties.GetProperty and \n"
       "rdkit.Chem.Descriptor.Properties.PropertyFunctor for creating new ones";
   python::class_<RDKit::Descriptors::PropertyFunctor,
-                 RDKit::Descriptors::PropertyFunctor *,
                  boost::shared_ptr<RDKit::Descriptors::PropertyFunctor>,
                  boost::noncopyable>("PropertyFunctor", docString.c_str(),
                                      python::no_init)
       .def("__call__", &RDKit::Descriptors::PropertyFunctor::operator(),
+           python::args("self", "mol"),
            "Compute the property for the specified molecule")
       .def("GetName", &RDKit::Descriptors::PropertyFunctor::getName,
-           "Return the name of the property to calculate")
+           python::args("self"), "Return the name of the property to calculate")
       .def("GetVersion", &RDKit::Descriptors::PropertyFunctor::getVersion,
+           python::args("self"),
            "Return the version of the calculated property");
 
   iterable_converter().from_python<std::vector<std::string>>();
@@ -1578,20 +1588,23 @@ BOOST_PYTHON_MODULE(rdMolDescriptors) {
 
   python::class_<RDKit::Descriptors::Properties,
                  RDKit::Descriptors::Properties *>(
-      "Properties", docString.c_str(), python::init<>())
-      .def(python::init<const std::vector<std::string> &>())
+      "Properties", docString.c_str(), python::init<>(python::args("self")))
+      .def(python::init<const std::vector<std::string> &>(
+          python::args("self", "propNames")))
       .def("GetPropertyNames",
            &RDKit::Descriptors::Properties::getPropertyNames,
+           python::args("self"),
            "Return the property names computed by this instance")
       .def("ComputeProperties",
            &RDKit::Descriptors::Properties::computeProperties,
-           (python::arg("mol"), python::arg("annotateMol") = false),
+           ((python::arg("self"), python::arg("mol")),
+            python::arg("annotateMol") = false),
            "Return a list of computed properties, if annotateMol==True, "
            "annotate the molecule with "
            "the computed properties.")
       .def("AnnotateProperties",
            &RDKit::Descriptors::Properties::annotateProperties,
-           python::arg("mol"),
+           (python::arg("self"), python::arg("mol")),
            "Annotate the molecule with the computed properties.  These "
            "properties will be available "
            "as SDData or from mol.GetProp(prop)")
@@ -1611,8 +1624,10 @@ BOOST_PYTHON_MODULE(rdMolDescriptors) {
   python::class_<PythonPropertyFunctor, boost::noncopyable,
                  python::bases<RDKit::Descriptors::PropertyFunctor>>(
       "PythonPropertyFunctor", "",
-      python::init<PyObject *, const std::string &, const std::string &>())
+      python::init<PyObject *, const std::string &, const std::string &>(
+          python::args("self", "callback", "name", "version")))
       .def("__call__", &PythonPropertyFunctor::operator(),
+           python::args("self", "mol"),
            "Compute the property for the specified molecule");
 
   docString =
@@ -1622,7 +1637,8 @@ BOOST_PYTHON_MODULE(rdMolDescriptors) {
                  boost::noncopyable>("PropertyRangeQuery", docString.c_str(),
                                      python::no_init)
       .def("Match",
-           &Queries::RangeQuery<double, RDKit::ROMol const &, true>::Match);
+           &Queries::RangeQuery<double, RDKit::ROMol const &, true>::Match,
+           python::args("self", "what"));
 
   docString =
       "Generates a Range property for the specified property, between min and "
@@ -1635,6 +1651,41 @@ BOOST_PYTHON_MODULE(rdMolDescriptors) {
               (python::arg("name"), python::arg("min"), python::arg("max")),
               docString.c_str(),
               python::return_value_policy<python::manage_new_object>());
+
+  docString =
+      R"DOC(ARGUMENTS:
+      "   - mol: molecule or protein under consideration
+      "   - isProtein: flag to indicate if the input is a protein (default=False, free ligand).
+      "   - includeLigand: flag to include or exclude a bound ligand when input is a protein (default=True)
+      "   - probeRadius: radius of the solvent probe (default=1.2)
+      "   - depth: control of number of dots per atom (default=4)
+      "   - dotDensity: control of accuracy (default=0)
+      ")DOC";
+  python::class_<RDKit::Descriptors::DoubleCubicLatticeVolume>(
+      "DoubleCubicLatticeVolume",
+      "Class for the Double Cubic Lattice Volume method",
+      python::init<const RDKit::ROMol &,
+                   python::optional<bool, bool, double, int, int>>(
+          (python::args("self", "mol"), python::args("isProtein") = false,
+           python::args("includeLigand") = true,
+           python::args("probeRadius") = 1.2, python::args("depth") = 4,
+           python::args("dotDensity") = 0),
+          docString.c_str()))
+      .def("GetSurfaceArea",
+           &RDKit::Descriptors::DoubleCubicLatticeVolume::getSurfaceArea,
+           "Get the Surface Area of the Molecule or Protein")
+      .def("GetVolume",
+           &RDKit::Descriptors::DoubleCubicLatticeVolume::getVolume,
+           "Get the Total Volume of the Molecule or Protein")
+      .def("GetVDWVolume",
+           &RDKit::Descriptors::DoubleCubicLatticeVolume::getVDWVolume,
+           "Get the van der Waals Volume of the Molecule or Protein")
+      .def("GetCompactness",
+           &RDKit::Descriptors::DoubleCubicLatticeVolume::getCompactness,
+           "Get the Compactness of the Protein")
+      .def("GetPackingDensity",
+           &RDKit::Descriptors::DoubleCubicLatticeVolume::getPackingDensity,
+           "Get the PackingDensity of the Protein");
 
 #ifdef RDK_BUILD_DESCRIPTORS3D
   python::scope().attr("_CalcCoulombMat_version") =

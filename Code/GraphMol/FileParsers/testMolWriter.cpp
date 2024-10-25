@@ -739,7 +739,7 @@ void testMolFileTotalValence() {
     TEST_ASSERT(m1->getNumAtoms() == 1);
     TEST_ASSERT(m1->getAtomWithIdx(0)->getNoImplicit());
     TEST_ASSERT(m1->getAtomWithIdx(0)->getNumExplicitHs() == 1);
-    TEST_ASSERT(m1->getAtomWithIdx(0)->getNumRadicalElectrons() == 1);
+    TEST_ASSERT(m1->getAtomWithIdx(0)->getNumRadicalElectrons() == 3);
 
     delete m1;
   }
@@ -1086,6 +1086,44 @@ void testV3000WriterDetails() {
   }
 
   BOOST_LOG(rdInfoLog) << "done" << std::endl;
+}
+
+void testV3000DoublePrecision() {
+  BOOST_LOG(rdInfoLog)
+      << "testing V3000 outputs coordinates at maximum robust double precision"
+      << std::endl;
+  std::string rdbase = getenv("RDBASE");
+  rdbase += "/Code/GraphMol/FileParsers/test_data/";
+  {
+    std::string fName = rdbase + "precision.v3k.mol";
+    std::unique_ptr<RWMol> mol(MolFileToMol(fName));
+    TEST_ASSERT(mol);
+    size_t numAtoms = mol->getNumAtoms();
+    TEST_ASSERT(numAtoms == 7);
+    MolWriterParams params{true, true, true, 15};
+    std::string molBlock = MolToMolBlock(*mol, params, -1);
+    std::unique_ptr<RWMol> readMol(MolBlockToMol(molBlock));
+    TEST_ASSERT(numAtoms == readMol->getNumAtoms());
+    const Conformer &conformer = mol->getConformer();
+    const Conformer &readConformer = readMol->getConformer();
+    for (size_t i = 0; i < numAtoms; i++) {
+      std::cout << std::setprecision(15) << conformer.getAtomPos(i).x << ' '
+                << readConformer.getAtomPos(i).x << std::setprecision(6)
+                << std::endl;
+      TEST_ASSERT(std::abs(conformer.getAtomPos(i).x -
+                           readConformer.getAtomPos(i).x) < 1e-15);
+      std::cout << std::setprecision(15) << conformer.getAtomPos(i).y << ' '
+                << readConformer.getAtomPos(i).y << std::setprecision(6)
+                << std::endl;
+      TEST_ASSERT(std::abs(conformer.getAtomPos(i).y -
+                           readConformer.getAtomPos(i).y) < 1e-15);
+      std::cout << std::setprecision(15) << conformer.getAtomPos(i).z << ' '
+                << readConformer.getAtomPos(i).z << std::setprecision(6)
+                << std::endl;
+      TEST_ASSERT(std::abs(conformer.getAtomPos(i).z -
+                           readConformer.getAtomPos(i).z) < 1e-15);
+    }
+  }
 }
 
 void testGithub187() {
@@ -1529,8 +1567,53 @@ void testMolFileWriterDativeBonds() {
   }
 }
 
+void testRGPMolFileWriterV2KV3K() {
+  BOOST_LOG(rdInfoLog)
+      << "testing that R groups do not lead either to M  ISO or MASS records"
+      << std::endl;
+  {
+    auto m = R"CTAB(
+
+     RDKit          2D
+  4  3  0  0  0  0  0  0  0  0999 V2000
+    0.0000    2.4750    0.0000 R#  0  0  0  0  0  0  0  0  0  0  0  0
+    0.7145    2.0625    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.4289    2.4750    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    0.7145    1.2375    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  1  0
+  2  3  2  0
+  2  4  1  0
+M  RGP  1   1   2
+M  END)CTAB"_ctab;
+    auto mbV2K = MolToMolBlock(*m);
+    TEST_ASSERT(mbV2K.find("M  ISO") == std::string::npos);
+    TEST_ASSERT(mbV2K.find("M  RGP") != std::string::npos);
+    auto mbV3K = MolToV3KMolBlock(*m);
+    TEST_ASSERT(mbV3K.find("MASS") == std::string::npos);
+    TEST_ASSERT(mbV3K.find("RGROUPS") != std::string::npos);
+  }
+  {
+    auto m = R"CTAB(
+  MJ201100                      
+
+  3  2  0  0  0  0  0  0  0  0999 V2000
+   -1.5623    1.6625    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.2767    1.2500    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.5623    2.4875    0.0000 A   0  0  0  0  0  0  0  0  0  0  0  0
+  2  1  1  0  0  0  0
+  1  3  1  0  0  0  0
+M  ISO  1   3   3
+M  END)CTAB"_ctab;
+    auto mbV2K = MolToMolBlock(*m);
+    TEST_ASSERT(mbV2K.find("M  ISO") != std::string::npos);
+    auto mbV3K = MolToV3KMolBlock(*m);
+    TEST_ASSERT(mbV3K.find("MASS") != std::string::npos);
+  }
+}
+
 int main() {
   RDLog::InitLogs();
+
 #if 1
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n";
   BOOST_LOG(rdInfoLog) << "Running testSmilesWriter()\n";
@@ -1625,6 +1708,12 @@ int main() {
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n\n";
 
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n";
+  BOOST_LOG(rdInfoLog) << "Running testV3000DoublePrecision()\n";
+  testV3000DoublePrecision();
+  BOOST_LOG(rdInfoLog) << "Finished\n";
+  BOOST_LOG(rdInfoLog) << "-----------------------------------------\n\n";
+
+  BOOST_LOG(rdInfoLog) << "-----------------------------------------\n";
   testGithub187();
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n\n";
 
@@ -1674,5 +1763,9 @@ int main() {
 
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n";
   testMolFileWriterDativeBonds();
+  BOOST_LOG(rdInfoLog) << "-----------------------------------------\n\n";
+
+  BOOST_LOG(rdInfoLog) << "-----------------------------------------\n";
+  testRGPMolFileWriterV2KV3K();
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n\n";
 }

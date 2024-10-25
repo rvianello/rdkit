@@ -45,7 +45,7 @@
 static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"test1_1.svg", 1617157703U},
     {"test1_2.svg", 1799670018U},
-    {"test1_3.svg", 1405829717U},
+    {"test1_3.svg", 2382509631U},
     {"test1_4.svg", 4252277495U},
     {"test1_5.svg", 2811480876U},
     {"test1_6.svg", 2635907956U},
@@ -65,13 +65,13 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"testGithub781_4.svg", 112971309U},
     {"testGithub781_5.svg", 2840696942U},
     {"testGithub781_6.svg", 1059414825U},
-    {"test3_1.svg", 889048138U},
-    {"test3_2.svg", 1972487697U},
+    {"test3_1.svg", 586189704U},
+    {"test3_2.svg", 1700916148U},
     {"test3_3.svg", 1375178959U},
     {"test3_4.svg", 187720898U},
-    {"test3_5.svg", 2015616393U},
+    {"test3_5.svg", 300865579U},
     {"test3_6.svg", 729637096U},
-    {"test3_7.svg", 943637684U},
+    {"test3_7.svg", 2700118064U},
     {"test774_1.svg", 1108618931U},
     {"test774_2.svg", 577567569U},
     {"test9_1.svg", 1484349178U},
@@ -97,8 +97,8 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"test10_2.svg", 3289667916U},
     {"test10_3.svg", 4023382194U},
     {"test10_4.svg", 3214052296U},
-    {"test10_5.svg", 1334786394U},
-    {"test10_6.svg", 961103536U},
+    {"test10_5.svg", 1068653509U},
+    {"test10_6.svg", 2996130233U},
     {"test11_1.svg", 4207175431U},
     {"test11_2.svg", 3961405929U},
     {"test12_1.svg", 881731720U},
@@ -117,8 +117,8 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"test1322_2.svg", 2146899217U},
     {"test14_1.svg", 3999745197U},
     {"test14_2.svg", 1367250174U},
-    {"test15_1.svg", 171187731U},
-    {"test15_2.svg", 3753370867U},
+    {"test15_1.svg", 4158796364U},
+    {"test15_2.svg", 1402213714U},
     {"test17_1.svg", 75329691U},
     {"test17_2.svg", 2699803606U},
     {"test17_3.svg", 2996396838U},
@@ -158,10 +158,10 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"testGithub3305_1.svg", 3688394300U},
     {"testGithub3305_2.svg", 3172298658U},
     {"testGithub3305_3.svg", 30441258U},
-    {"testGithub3305_4.svg", 2015616393U},
-    {"testGithub3305_5.svg", 3435115096U},
-    {"testGithub3305_6.svg", 743524022U},
-    {"testGithub3305_7.svg", 1550264020U},
+    {"testGithub3305_4.svg", 300865579U},
+    {"testGithub3305_5.svg", 1335449325U},
+    {"testGithub3305_6.svg", 4242832627U},
+    {"testGithub3305_7.svg", 1080046861U},
     {"testGithub3391_1.svg", 288775907U},
     {"testGithub3391_2.svg", 476444125U},
     {"testGithub3391_3.svg", 1867069133U},
@@ -176,7 +176,7 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
 static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"test1_1.svg", 550835844U},
     {"test1_2.svg", 1800381435U},
-    {"test1_3.svg", 3158610530U},
+    {"test1_3.svg", 2440830147U},
     {"test1_4.svg", 3696344414U},
     {"test1_5.svg", 762580538U},
     {"test1_6.svg", 3976836415U},
@@ -196,13 +196,13 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"testGithub781_4.svg", 617169423U},
     {"testGithub781_5.svg", 2840696942U},
     {"testGithub781_6.svg", 2700448827U},
-    {"test3_1.svg", 2560729602U},
-    {"test3_2.svg", 3091708435U},
+    {"test3_1.svg", 1864668966U},
+    {"test3_2.svg", 1703099924U},
     {"test3_3.svg", 2859175047U},
     {"test3_4.svg", 2538983199U},
-    {"test3_5.svg", 1988697987U},
+    {"test3_5.svg", 268764605U},
     {"test3_6.svg", 106421589U},
-    {"test3_7.svg", 574199840U},
+    {"test3_7.svg", 182072330U},
     {"test774_1.svg", 1806511429U},
     {"test774_2.svg", 3280904264U},
     {"test9_1.svg", 1559079325U},
@@ -228,8 +228,8 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"test10_2.svg", 1982678359U},
     {"test10_3.svg", 2508340199U},
     {"test10_4.svg", 658399503U},
-    {"test10_5.svg", 3665442005U},
-    {"test10_6.svg", 33420281U},
+    {"test10_5.svg", 3850553917U},
+    {"test10_6.svg", 1317798742U},
     {"test11_1.svg", 3099676431U},
     {"test11_2.svg", 877258820U},
     {"test12_1.svg", 883261302U},
@@ -248,17 +248,17 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"test1322_2.svg", 831946976U},
     {"test14_1.svg", 2006572335U},
     {"test14_2.svg", 4239272366U},
-    {"test15_1.svg", 3583975911U},
-    {"test15_2.svg", 4277437976U},
+    {"test15_1.svg", 3763622059U},
+    {"test15_2.svg", 1532704867U},
     {"test17_1.svg", 2496201320U},
     {"test17_2.svg", 1781539117U},
     {"test17_3.svg", 1326675939U},
     {"test17_4.svg", 3705607024U},
     {"test18_1.svg", 2903860946U},
     {"test18_2.svg", 2863786258U},
-    {"test18_3.svg", 3383506027U},
+    {"test18_3.svg", 1289123656U},
     {"test18_4.svg", 3866177118U},
-    {"test18_5.svg", 4126418288U},
+    {"test18_5.svg", 510653044U},
     {"test18_6.svg", 3900355221U},
     {"test18_7.svg", 1968448844U},
     {"test19_1.svg", 3910758575U},
@@ -287,10 +287,10 @@ static const std::map<std::string, std::hash_result_t> SVG_HASHES = {
     {"testGithub3305_1.svg", 3688394300U},
     {"testGithub3305_2.svg", 3172298658U},
     {"testGithub3305_3.svg", 30441258U},
-    {"testGithub3305_4.svg", 1988697987U},
-    {"testGithub3305_5.svg", 1917609765U},
-    {"testGithub3305_6.svg", 2904540137U},
-    {"testGithub3305_7.svg", 3852534675U},
+    {"testGithub3305_4.svg", 268764605U},
+    {"testGithub3305_5.svg", 889227771U},
+    {"testGithub3305_6.svg", 661247164U},
+    {"testGithub3305_7.svg", 1237001849U},
     {"testGithub3391_1.svg", 4243890317U},
     {"testGithub3391_2.svg", 2264009815U},
     {"testGithub3391_3.svg", 3992580431U},
@@ -396,7 +396,7 @@ void test1() {
     auto m = "CO[C@@H](O)C1=C(O[C@H](F)Cl)C(C#N)=C1ONNC[NH3+]"_smiles;
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     std::ofstream outs("test1_1.svg");
     MolDraw2DSVG drawer(300, 300, outs);
     drawer.drawMolecule(*m);
@@ -411,7 +411,7 @@ void test1() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     MolDraw2DSVG drawer(300, 300);
     drawer.drawMolecule(*m);
     drawer.finishDrawing();
@@ -425,7 +425,7 @@ void test1() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     std::ofstream outs("test1_2.svg");
     MolDraw2DSVG drawer(300, 300, outs);
     drawer.drawMolecule(*m);
@@ -440,7 +440,7 @@ void test1() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     std::ofstream outs("test1_3.svg");
     MolDraw2DSVG drawer(300, 300, outs);
     std::vector<int> highlights;
@@ -459,7 +459,7 @@ void test1() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     std::ofstream outs("test1_4.svg");
     MolDraw2DSVG drawer(300, 300, outs);
     drawer.drawOptions().additionalAtomLabelPadding = 0.25;
@@ -480,7 +480,7 @@ void test1() {
     TEST_ASSERT(m);
     std::unique_ptr<ROMol> romol(MolOps::removeAllHs(*m));
     RDDepict::compute2DCoords(*romol);
-    WedgeMolBonds(*romol, &(romol->getConformer()));
+    Chirality::wedgeMolBonds(*romol, &(romol->getConformer()));
     std::ofstream outs("test1_5.svg");
     MolDraw2DSVG drawer(300, 300, outs);
     drawer.drawMolecule(*romol);
@@ -500,7 +500,7 @@ void test1() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     MolDraw2DSVG drawer(300, 300);
     drawer.drawMolecule(*m);
     drawer.finishDrawing();
@@ -517,7 +517,7 @@ void test1() {
     auto m = "c1ccncc1COC"_smiles;
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     std::ofstream outs("test1_7.svg");
     MolDraw2DSVG drawer(300, 300);
     drawer.drawOptions().splitBonds = true;
@@ -631,7 +631,7 @@ void test3() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     static const int ha[] = {0, 3, 4, 5};
     std::vector<int> highlight_atoms(ha, ha + sizeof(ha) / sizeof(int));
     std::map<int, std::string> atomLabels;
@@ -670,7 +670,7 @@ void test3() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     static const int ha[] = {0, 3, 4, 5};
     std::vector<int> highlight_atoms(ha, ha + sizeof(ha) / sizeof(int));
 
@@ -702,7 +702,7 @@ void test3() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     static const int ha[] = {11, 12, 13, 14, 15, 16};
     std::vector<int> highlight_atoms(ha, ha + sizeof(ha) / sizeof(int));
     std::map<int, DrawColour> highlight_colors;
@@ -737,7 +737,7 @@ void test3() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     static const int ha[] = {11, 12, 13, 14, 15, 16, 3};
     std::vector<int> highlight_atoms(ha, ha + sizeof(ha) / sizeof(int));
     std::map<int, DrawColour> highlight_colors;
@@ -777,7 +777,7 @@ void test3() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
 
     static const int ha[] = {17, 18, 19, 20, 21, 6, 7, 8, 9, 31, 32};
     std::vector<int> highlight_atoms(ha, ha + sizeof(ha) / sizeof(int));
@@ -817,7 +817,7 @@ void test3() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
 
     MolDrawOptions options;
     static const int ha1[] = {17, 18, 19, 20, 21};
@@ -857,7 +857,7 @@ void test3() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
 
     MolDrawOptions options;
     options.continuousHighlight = true;
@@ -938,7 +938,7 @@ void test5() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     MolDrawOptions options;
     options.dummiesAreAttachments = true;
     options.atomLabels[0] = "R1";
@@ -970,7 +970,7 @@ void test5() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m, nullptr, true);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     MolDrawOptions options;
     options.dummiesAreAttachments = true;
 #ifdef RDK_BUILD_CAIRO_SUPPORT
@@ -1002,7 +1002,7 @@ void test5() {
     TEST_ASSERT(m);
     m->getBondBetweenAtoms(1, 2)->setBondDir(Bond::UNKNOWN);
     RDDepict::compute2DCoords(*m, nullptr, true);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     MolDrawOptions options;
     options.dummiesAreAttachments = true;
 #ifdef RDK_BUILD_CAIRO_SUPPORT
@@ -1113,7 +1113,7 @@ void test6() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     MolDraw2DSVG drawer(300, 300);
     drawer.drawMolecule(*m);
     drawer.finishDrawing();
@@ -1568,7 +1568,7 @@ void testGithub774() {
     RWMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     MolOps::Kekulize(*m);
 
 #ifdef RDK_BUILD_CAIRO_SUPPORT
@@ -1606,7 +1606,7 @@ void testGithub774() {
     RWMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     MolOps::Kekulize(*m);
 
 #ifdef RDK_BUILD_CAIRO_SUPPORT
@@ -1627,7 +1627,7 @@ void testGithub774() {
       outs.close();
       check_file_hash(nameBase + ".svg");
     }
-    // m->setProp("_Name","mol");
+    // m->setProp("_Name","mol");\home\tad\cdd\cdd_rdkit\pr_atropisomers2\rdkit\Code\GraphMol\MolDraw2D\test1.cppChirality::
     // std::cerr<<MolToMolBlock(*m)<<std::endl;
     delete m;
   }
@@ -1640,7 +1640,7 @@ void test9MolLegends() {
     auto m = "CC[13CH2][CH2:7][CH-]C[15NH2+]C"_smiles;
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     MolDraw2DSVG drawer(300, 300);
     drawer.drawMolecule(*m, "mol legend");
     drawer.finishDrawing();
@@ -1867,7 +1867,7 @@ void testGithub910() {
     ROMol *m = SmilesToMol(smiles);
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     std::ofstream outs("test910_1.svg");
     MolDraw2DSVG drawer(600, 300, outs);
     drawer.drawMolecule(*m);
@@ -3684,7 +3684,7 @@ void testGithub2931() {
     std::string smiles = "CO[C@@H](O)C1=C(O[C@H](F)Cl)C(C#N)=C1ONNC[NH3+]";
     std::unique_ptr<ROMol> m(SmilesToMol(smiles));
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
 
     std::vector<std::string> smarts = {"CONN", "N#CC~CO", "C=CON", "CONNCN"};
     std::vector<DrawColour> colours = {
@@ -4135,7 +4135,7 @@ void test21FontFile() {
     auto m = "CO[C@@H](O)C1=C(O[C@H](F)Cl)C(C#N)=C1ONNC[NH3+]"_smiles;
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     std::ofstream outs("test21_1.svg");
     MolDraw2DSVG drawer(500, 500, outs);
     std::string fName = getenv("RDBASE");
@@ -4151,7 +4151,7 @@ void test21FontFile() {
     auto m = "CO[C@@H](O)C1=C(O[C@H](F)Cl)C(C#N)=C1ONNC[NH3+]"_smiles;
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
     std::ofstream outs("test21_2.svg");
     MolDraw2DSVG drawer(500, 500, outs);
     std::string fName = getenv("RDBASE");
@@ -4280,7 +4280,7 @@ void testGithub3305() {
     auto m = "CCOC(=O)Nc1ccc(SCC2COC(Cn3ccnc3)(c3ccc(Cl)cc3Cl)O2)cc1"_smiles;
     TEST_ASSERT(m);
     RDDepict::compute2DCoords(*m);
-    WedgeMolBonds(*m, &(m->getConformer()));
+    Chirality::wedgeMolBonds(*m, &(m->getConformer()));
 
     static const int ha[] = {17, 18, 19, 20, 21, 6, 7, 8, 9, 31, 32};
     std::vector<int> highlight_atoms(ha, ha + sizeof(ha) / sizeof(int));

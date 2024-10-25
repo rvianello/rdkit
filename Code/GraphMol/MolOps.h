@@ -1,6 +1,5 @@
 //
-//  Copyright (C) 2001-2021 Greg Landrum and Rational Discovery LLC
-//  Copyright (c) 2014, Novartis Institutes for BioMedical Research Inc.
+//  Copyright (C) 2001-2024 Greg Landrum and other RDKit contributors
 //
 //   @@ All Rights Reserved @@
 //  This file is part of the RDKit.
@@ -9,8 +8,8 @@
 //  of the RDKit source tree.
 //
 #include <RDGeneral/export.h>
-#ifndef _RD_MOL_OPS_H_
-#define _RD_MOL_OPS_H_
+#ifndef RD_MOL_OPS_H
+#define RD_MOL_OPS_H
 
 #include <vector>
 #include <map>
@@ -21,6 +20,7 @@
 #include <RDGeneral/BoostEndInclude.h>
 #include <RDGeneral/types.h>
 #include "SanitException.h"
+#include <RDGeneral/FileParseException.h>
 
 RDKIT_GRAPHMOL_EXPORT extern const int ci_LOCAL_INF;
 namespace RDKit {
@@ -88,6 +88,32 @@ RDKIT_GRAPHMOL_EXPORT unsigned int getMolFrags(
 /*!
 
   \param mol     the molecule of interest
+  \param molFrags used to return the disconnected fragments as molecules.
+                  Any contents on input will be cleared.
+  \param sanitizeFrags  toggles sanitization of the fragments after
+                        they are built
+  \param frags used to return the mapping of Atoms->fragments.
+     if provided, \c frags will be <tt>mol->getNumAtoms()</tt> long
+         on return and will contain the fragment assignment for each Atom.
+  \param fragsMolAtomMapping  used to return the Atoms in each fragment
+     On return \c mapping will be \c numFrags long, and each entry
+     will contain the indices of the Atoms in that fragment.
+   \param copyConformers  toggles copying conformers of the fragments after
+                        they are built
+  \return the number of fragments found.
+
+*/
+RDKIT_GRAPHMOL_EXPORT unsigned int getMolFrags(
+    const ROMol &mol, std::vector<std::unique_ptr<ROMol>> &molFrags,
+    bool sanitizeFrags = true, std::vector<int> *frags = nullptr,
+    std::vector<std::vector<int>> *fragsMolAtomMapping = nullptr,
+    bool copyConformers = true);
+
+//! splits a molecule into its component fragments
+/// (disconnected components of the molecular graph)
+/*!
+
+  \param mol     the molecule of interest
   \param sanitizeFrags  toggles sanitization of the fragments after
                         they are built
   \param frags used to return the mapping of Atoms->fragments.
@@ -121,12 +147,35 @@ RDKIT_GRAPHMOL_EXPORT std::vector<boost::shared_ptr<ROMol>> getMolFrags(
   \return a map of the fragments and their labels
 
 */
+
 template <typename T>
 RDKIT_GRAPHMOL_EXPORT std::map<T, boost::shared_ptr<ROMol>>
 getMolFragsWithQuery(const ROMol &mol, T (*query)(const ROMol &, const Atom *),
                      bool sanitizeFrags = true,
                      const std::vector<T> *whiteList = nullptr,
                      bool negateList = false);
+//! splits a molecule into pieces based on labels assigned using a query,
+//! putting them into a map of std::unique_ptr<ROMol>.
+/*!
+
+  \param mol     the molecule of interest
+  \param query   the query used to "label" the molecule for fragmentation
+  \param molFrags used to return the disconnected fragments as molecules.
+                 Any contents on input will be cleared.
+  \param sanitizeFrags  toggles sanitization of the fragments after
+                        they are built
+  \param whiteList  if provided, only labels in the list will be kept
+  \param negateList if true, the white list logic will be inverted: only labels
+                    not in the list will be kept
+
+  \return the number of fragments
+
+*/
+template <typename T>
+RDKIT_GRAPHMOL_EXPORT unsigned int getMolFragsWithQuery(
+    const ROMol &mol, T (*query)(const ROMol &, const Atom *),
+    std::map<T, std::unique_ptr<ROMol>> &molFrags, bool sanitizeFrags = true,
+    const std::vector<T> *whiteList = nullptr, bool negateList = false);
 
 #if 0
     //! finds a molecule's minimum spanning tree (MST)
@@ -455,6 +504,7 @@ typedef enum {
   SANITIZE_CLEANUPCHIRALITY = 0x100,
   SANITIZE_ADJUSTHS = 0x200,
   SANITIZE_CLEANUP_ORGANOMETALLICS = 0x400,
+  SANITIZE_CLEANUPATROPISOMERS = 0x800,
   SANITIZE_ALL = 0xFFFFFFF
 } SanitizeFlags;
 
@@ -540,8 +590,11 @@ typedef enum {
   AROMATICITY_RDKIT = 0x1,
   AROMATICITY_SIMPLE = 0x2,
   AROMATICITY_MDL = 0x4,
+  AROMATICITY_MMFF94 = 0x8,
   AROMATICITY_CUSTOM = 0xFFFFFFF  ///< use a function
 } AromaticityModel;
+
+RDKIT_GRAPHMOL_EXPORT void setMMFFAromaticity(RWMol &mol);
 
 //! Sets up the aromaticity for a molecule
 /*!
@@ -920,8 +973,45 @@ RDKIT_GRAPHMOL_EXPORT std::list<int> getShortestPath(const ROMol &mol, int aid1,
 //! \name Stereochemistry
 //! @{
 
-//! removes bogus chirality markers (those on non-sp3 centers):
+// class to hold hybridizations
+
+class Hybridizations {
+ public:
+  Hybridizations() {
+    throw FileParseException("not to be called without a mol parameter");
+  };
+  Hybridizations(const ROMol &mol);
+  Hybridizations(const Hybridizations &) {
+    throw FileParseException("not to be called without a mol parameter");
+  };
+
+  ~Hybridizations() = default;
+
+  Atom::HybridizationType operator[](int idx) {
+    return static_cast<Atom::HybridizationType>(d_hybridizations[idx]);
+  }
+  // Atom::HybridizationType &operator[](unsigned int idx) {
+  //      return static_cast<Atom::HybridizationType>(d_hybridizations[idx]);
+  //   d_hybridizations[d_hybridizations[idx]];
+  // }
+
+  // // void clear() { d_hybridizations.clear(); }
+  // // void resize(unsigned int sz) { d_hybridizations.resize(sz); }
+  unsigned int size() const { return d_hybridizations.size(); }
+
+ private:
+  std::vector<int> d_hybridizations;
+};
+
+//! removes bogus chirality markers (e.g. tetrahedral flags on non-sp3 centers):
 RDKIT_GRAPHMOL_EXPORT void cleanupChirality(RWMol &mol);
+
+//! \overload
+RDKIT_GRAPHMOL_EXPORT void cleanupAtropisomers(RWMol &);
+//! removes bogus atropisomeric markers (e.g. those without sp2 begin and end
+//! atoms):
+RDKIT_GRAPHMOL_EXPORT void cleanupAtropisomers(RWMol &mol,
+                                               Hybridizations &hybridizations);
 
 //! \brief Uses a conformer to assign ChiralTypes to a molecule's atoms
 /*!
@@ -975,20 +1065,29 @@ RDKIT_GRAPHMOL_EXPORT void detectBondStereochemistry(ROMol &mol,
 RDKIT_GRAPHMOL_EXPORT void setDoubleBondNeighborDirections(
     ROMol &mol, const Conformer *conf = nullptr);
 //! removes directions from single bonds. Wiggly bonds will have the property
-//! _UnknownStereo set on them. If retainCisTransInfo is true,
-//! ENDUPRIGHT and ENDDOWNRIGHT bond directions will not be cleared
-RDKIT_GRAPHMOL_EXPORT void clearSingleBondDirFlags(
-    ROMol &mol, bool retainCisTransInfo = false);
+//! _UnknownStereo set on them
+RDKIT_GRAPHMOL_EXPORT void clearSingleBondDirFlags(ROMol &mol,
+                                                   bool onlyWedgeFlags = false);
+
+//! removes directions from all bonds. Wiggly bonds and cross bonds will have
+//! the property _UnknownStereo set on them
+RDKIT_GRAPHMOL_EXPORT void clearAllBondDirFlags(ROMol &mol);
+RDKIT_GRAPHMOL_EXPORT void clearDirFlags(ROMol &mol,
+                                         bool onlyWedgeFlags = false);
 
 //! Assign CIS/TRANS bond stereochemistry tags based on neighboring
 //! directions
 RDKIT_GRAPHMOL_EXPORT void setBondStereoFromDirections(ROMol &mol);
 
-//! Assign stereochemistry tags to atoms (i.e. R/S) and bonds (i.e. Z/E)
+//! Assign stereochemistry tags to atoms and bonds.
 /*!
-  Does the CIP stereochemistry assignment for the molecule's atoms
-  (R/S) and double bond (Z/E). Chiral atoms will have a property
-  '_CIPCode' indicating their chiral code.
+  If useLegacyStereoPerception is true, it also does the CIP stereochemistry
+  assignment for the molecule's atoms (R/S) and double bonds (Z/E).
+  This assignment is based on legacy code which is fast, but is
+  known to incorrectly assign CIP labels in some cases.
+  instead, to assign CIP labels based on an accurate, though slower,
+  implementation of the CIP rules, call CIPLabeler::assignCIPLabels().
+  Chiral atoms will have a property '_CIPCode' indicating their chiral code.
 
   \param mol     the molecule to use
   \param cleanIt if true, any existing values of the property `_CIPCode`
@@ -1097,6 +1196,45 @@ RDKIT_GRAPHMOL_EXPORT ROMol *dativeBondsToHaptic(const ROMol &mol);
 //! \overload modifies molecule in place.
 RDKIT_GRAPHMOL_EXPORT void dativeBondsToHaptic(RWMol &mol);
 
+/*!
+  Calculates a molecule's average molecular weight
+
+  \param mol        the molecule of interest
+  \param onlyHeavy  (optional) if this is true (the default is false),
+      only heavy atoms will be included in the MW calculation
+
+  \return the AMW
+*/
+RDKIT_GRAPHMOL_EXPORT double getAvgMolWt(const ROMol &mol,
+                                         bool onlyHeavy = false);
+/*!
+  Calculates a molecule's exact molecular weight
+
+  \param mol        the molecule of interest
+  \param onlyHeavy  (optional) if this is true (the default is false),
+      only heavy atoms will be included in the MW calculation
+
+  \return the exact MW
+*/
+RDKIT_GRAPHMOL_EXPORT double getExactMolWt(const ROMol &mol,
+                                           bool onlyHeavy = false);
+
+/*!
+  Calculates a molecule's formula
+
+  \param mol        the molecule of interest
+  \param separateIsotopes  if true, isotopes will show up separately in the
+     formula. So C[13CH2]O will give the formula: C[13C]H6O
+  \param abbreviateHIsotopes  if true, 2H and 3H will be represented as
+     D and T instead of [2H] and [3H]. This only applies if \c separateIsotopes
+     is true
+
+  \return the formula as a string
+*/
+RDKIT_GRAPHMOL_EXPORT std::string getMolFormula(
+    const ROMol &mol, bool separateIsotopes = false,
+    bool abbreviateHIsotopes = true);
+
 namespace details {
 //! not recommended for use in other code
 RDKIT_GRAPHMOL_EXPORT void KekulizeFragment(
@@ -1107,6 +1245,74 @@ RDKIT_GRAPHMOL_EXPORT void KekulizeFragment(
 // If the bond is dative, and it has a common_properties::MolFileBondEndPts
 // prop, returns a vector of the indices of the atoms mentioned in the prop.
 RDKIT_GRAPHMOL_EXPORT std::vector<int> hapticBondEndpoints(const Bond *bond);
+
+}  // namespace details
+
+//! attachment points encoded as attachPt properties are added to the graph as
+/// dummy atoms
+/*!
+ *
+ * @param mol the molecule of interest
+ * @param addAsQueries if true, the dummy atoms will be added as null queries
+ *       (i.e. they will match any atom in a substructure search)
+ * @param addCoords if true and the molecule has one or more conformers,
+ *    positions for the attachment points will be added to the conformer(s).
+ *
+ */
+RDKIT_GRAPHMOL_EXPORT void expandAttachmentPoints(RWMol &mol,
+                                                  bool addAsQueries = true,
+                                                  bool addCoords = true);
+//! dummy atoms in the graph are removed and replaced with attachment point
+//! annotations on the attached atoms
+/*!
+ *
+ * @param mol the molecule of interest
+ * @param markedOnly if true, only dummy atoms with the _fromAttachPoint
+ *    property will be collapsed
+ *
+ * In order for a dummy atom to be considered for collapsing it must have:
+ * - degree 1 with a single or unspecified bond
+ * - the bond to it can not be wedged
+ * - either no query or be an AtomNullQuery
+ *
+ */
+RDKIT_GRAPHMOL_EXPORT void collapseAttachmentPoints(RWMol &mol,
+                                                    bool markedOnly = true);
+
+namespace details {
+//! attachment points encoded as attachPt properties are added to the graph as
+/// dummy atoms
+/*!
+ *
+ * @param mol the molecule of interest
+ * @param atomIdx the index of the atom to which the attachment point should be
+ *       added
+ * @param val the attachment point value. Should be 1 or 2
+ * @param addAsQueries if true, the dummy atoms will be added as null queries
+ *       (i.e. they will match any atom in a substructure search)
+ * @param addCoords if true and the molecule has one or more conformers,
+ *    positions for the attachment points will be added to the conformer(s).
+ *
+ */
+RDKIT_GRAPHMOL_EXPORT unsigned int addExplicitAttachmentPoint(
+    RWMol &mol, unsigned int atomIdx, unsigned int val, bool addAsQuery = true,
+    bool addCoords = true);
+
+//! returns whether or not an atom is an attachment point
+/*!
+ *
+ * @param mol the molecule of interest
+ * @param markedOnly if true, only dummy atoms with the _fromAttachPoint
+ *    property will be collapsed
+ *
+ * In order for a dummy atom to be considered for collapsing it must have:
+ * - degree 1 with a single or unspecified bond
+ * - the bond to it can not be wedged
+ * - either no query or be an AtomNullQuery
+ *
+ */
+RDKIT_GRAPHMOL_EXPORT bool isAttachmentPoint(const Atom *atom,
+                                             bool markedOnly = true);
 
 }  // namespace details
 

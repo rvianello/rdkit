@@ -30,15 +30,15 @@ python::list convertVecPairInt(const std::vector<std::pair<int, int>> &vec) {
   return pyres;
 }
 
-python::list bondMatches(const RDKit::RascalMCES::RascalResult &res) {
-  return convertVecPairInt(res.getBondMatches());
+python::list bondMatches(const RDKit::RascalMCES::RascalResult &self) {
+  return convertVecPairInt(self.getBondMatches());
 }
-python::list atomMatches(const RDKit::RascalMCES::RascalResult &res) {
-  return convertVecPairInt(res.getAtomMatches());
+python::list atomMatches(const RDKit::RascalMCES::RascalResult &self) {
+  return convertVecPairInt(self.getAtomMatches());
 }
 
-void largestFragmentOnly(RDKit::RascalMCES::RascalResult &res) {
-  res.largestFragOnly();
+void largestFragmentOnly(RDKit::RascalMCES::RascalResult &self) {
+  self.largestFragOnly();
 }
 
 struct RascalResult_wrapper {
@@ -49,13 +49,14 @@ struct RascalResult_wrapper {
         .def_readonly("smartsString",
                       &RDKit::RascalMCES::RascalResult::getSmarts,
                       "SMARTS string defining the MCES.")
-        .def("bondMatches", &bondMatches,
+        .def("bondMatches", bondMatches, python::args("self"),
              "A function returning a list of list "
              "of tuples, each inner list containing the matching bonds in the "
              "MCES as tuples of bond indices from mol1 and mol2")
-        .def("atomMatches", &atomMatches, "Likewise for atoms.")
+        .def("atomMatches", atomMatches, python::args("self"),
+             "Likewise for atoms.")
         .def(
-            "largestFragmentOnly", &largestFragmentOnly,
+            "largestFragmentOnly", largestFragmentOnly, python::args("self"),
             "Function that cuts the MCES down to the single largest frag.  This cannot be undone.")
         .def_readonly("similarity",
                       &RDKit::RascalMCES::RascalResult::getSimilarity,
@@ -79,7 +80,7 @@ struct RascalResult_wrapper {
 namespace RDKit {
 
 python::list findMCESWrapper(const ROMol &mol1, const ROMol &mol2,
-                             python::object py_opts) {
+                             const python::object &py_opts) {
   RascalMCES::RascalOptions opts;
   if (!py_opts.is_none()) {
     opts = python::extract<RascalMCES::RascalOptions>(py_opts);
@@ -122,7 +123,8 @@ python::list packOutputMols(
   return pyres;
 }
 
-python::list rascalClusterWrapper(python::object mols, python::object py_opts) {
+python::list rascalClusterWrapper(python::object mols,
+                                  const python::object &py_opts) {
   RascalMCES::RascalClusterOptions opts;
   if (!py_opts.is_none()) {
     opts = python::extract<RascalMCES::RascalClusterOptions>(py_opts);
@@ -137,7 +139,7 @@ python::list rascalClusterWrapper(python::object mols, python::object py_opts) {
 }
 
 python::list rascalButinaClusterWrapper(python::object mols,
-                                        python::object py_opts) {
+                                        const python::object &py_opts) {
   RascalMCES::RascalClusterOptions opts;
   if (!py_opts.is_none()) {
     opts = python::extract<RascalMCES::RascalClusterOptions>(py_opts);
@@ -175,6 +177,12 @@ BOOST_PYTHON_MODULE(rdRascalMCES) {
                      &RDKit::RascalMCES::RascalOptions::ringMatchesRingOnly,
                      "If True (default), ring bonds won't match ring bonds.")
       .def_readwrite(
+          "exactConnectionsMatch",
+          &RDKit::RascalMCES::RascalOptions::exactConnectionsMatch,
+          "If True (default is False), atoms will only match atoms if they have the same\n"
+          " number of explicit connections.  E.g. the central atom of\n"
+          " C(C)(C) won't match either atom in CC")
+      .def_readwrite(
           "minFragSize", &RDKit::RascalMCES::RascalOptions::minFragSize,
           "Imposes a minimum on the number of atoms in a fragment that may be part of the MCES.  Default -1 means no minimum.")
       .def_readwrite(
@@ -190,7 +198,29 @@ BOOST_PYTHON_MODULE(rdRascalMCES) {
           " estimates were, set this to True, and examine the tier1Sim and tier2Sim properties of the result then returned.")
       .def_readwrite(
           "timeout", &RDKit::RascalMCES::RascalOptions::timeout,
-          "Maximum time (in seconds) to spend on an individual MCESs determination.  Default 60, -1 means no limit.");
+          "Maximum time (in seconds) to spend on an individual MCESs determination.  Default 60, -1 means no limit.")
+      .def_readwrite(
+          "maxBondMatchPairs",
+          &RDKit::RascalMCES::RascalOptions::maxBondMatchPairs,
+          "Too many matching bond (vertex) pairs can cause the process to run out of memory."
+          "  The default of 1000 is fairly safe.  Increase with caution, as memory use increases"
+          " with the square of this number.  ")
+      .def_readwrite("equivalentAtoms",
+                     &RDKit::RascalMCES::RascalOptions::equivalentAtoms,
+                     "SMARTS strings defining atoms that should"
+                     "be considered equivalent. e.g."
+                     "[F,Cl,Br,I] so all halogens will match each other."
+                     "Space-separated list allowing more than 1"
+                     "class of equivalent atoms.")
+      .def_readwrite("ignoreBondOrders",
+                     &RDKit::RascalMCES::RascalOptions::ignoreBondOrders,
+                     "If True, will treat all bonds as the same,"
+                     " irrespective of order.  Default=False.")
+      .def_readwrite("ignoreAtomAromaticity",
+                     &RDKit::RascalMCES::RascalOptions::ignoreAtomAromaticity,
+                     "If True, matches atoms solely on atomic number."
+                     "  If False, will treat aromatic and aliphatic atoms"
+                     " as different.  Default=True.");
 
   docString =
       "Find one or more MCESs between the 2 molecules given.  Returns a list of "

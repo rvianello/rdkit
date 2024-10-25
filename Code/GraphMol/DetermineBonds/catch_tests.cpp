@@ -393,3 +393,89 @@ H   0.0         0.0           0.0
     determineBonds(*m);
   }
 }
+
+TEST_CASE("github 6961: P-H bonds not found in phosphine") {
+  SECTION("as reported") {
+    std::string xyz = R"XYZ(4
+xyz file
+P 9.9999767321286015 9.9999428968490651 9.9298216136095618 
+H 8.8082284983002523 9.9999330478847508 10.7216030817151875 
+H 10.5974890657086007 11.0338788274478361 10.7168666854072114 
+H 10.5976057038625981 8.9661452278177478 10.7170086192680003)XYZ";
+    std::unique_ptr<RWMol> m(XYZBlockToMol(xyz));
+    REQUIRE(m);
+    determineBonds(*m);
+    CHECK(m->getNumBonds() == 3);
+    CHECK(m->getBondBetweenAtoms(0, 1));
+    CHECK(m->getBondBetweenAtoms(0, 2));
+    CHECK(m->getBondBetweenAtoms(0, 3));
+  }
+}
+
+TEST_CASE(
+    "github #7299: DetermineBondOrders() does not assign single bonds correctly") {
+  SECTION("as reported") {
+    RWMol m;
+    bool updateLabel = true;
+    bool takeOwnership = true;
+    m.addAtom(new Atom(6), updateLabel, takeOwnership);
+    m.addAtom(new Atom(8), updateLabel, takeOwnership);
+    m.addAtom(new Atom(8), updateLabel, takeOwnership);
+    m.addAtom(new Atom(8), updateLabel, takeOwnership);
+    m.addAtom(new Atom(1), updateLabel, takeOwnership);
+    m.addAtom(new Atom(1), updateLabel, takeOwnership);
+    m.addBond(0, 1, Bond::UNSPECIFIED);
+    m.addBond(0, 2, Bond::UNSPECIFIED);
+    m.addBond(0, 3, Bond::UNSPECIFIED);
+    m.addBond(2, 4, Bond::UNSPECIFIED);
+    m.addBond(3, 5, Bond::UNSPECIFIED);
+    int charge = 0;
+    bool allowChargedFragments = true;
+    bool embedChiral = false;
+    determineBondOrders(m, charge, allowChargedFragments, embedChiral);
+    for (auto bnd : m.bonds()) {
+      if (bnd->getIdx()) {
+        CHECK(bnd->getBondType() == Bond::SINGLE);
+      } else {
+        CHECK(bnd->getBondType() == Bond::DOUBLE);
+      }
+    }
+  }
+}
+
+TEST_CASE(
+    "github #7331: DetermineBondOrders() makes incorrect assumptions about valence") {
+  SECTION("as reported") {
+    // do not anything here that needs implicit Hs
+    std::vector<std::string> smiles = {
+        "O=NO[Cl+][O-]",
+        "[O-][I+3]([O-])([O-])[O-]",
+        "[O-][I+2]([O-])[O-]",
+        "F[P-](F)(F)(F)(F)F",
+        "F[C+](F)F",
+        "F[C-](F)F",
+        "F[N+](F)(F)F",
+        "F[N-]F",
+        "F[Cl+]F",
+        "F[Br+]F",
+        "O=[Cl+]",
+    };
+    for (const auto &smi : smiles) {
+      INFO(smi);
+      auto m = v2::SmilesParse::MolFromSmiles(smi);
+      REQUIRE(m);
+      int charge = 0;
+      for (auto atom : m->atoms()) {
+        charge += atom->getFormalCharge();
+      }
+      bool allowChargedFragments = true;
+      bool embedChiral = false;
+      RWMol m2(*m);
+      determineBondOrders(m2, charge, allowChargedFragments, embedChiral);
+      for (auto bnd : m2.bonds()) {
+        CHECK(bnd->getBondType() ==
+              m->getBondWithIdx(bnd->getIdx())->getBondType());
+      }
+    }
+  }
+}
