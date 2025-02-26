@@ -355,6 +355,7 @@ bool DetectAtropisomerChiralityOneBond(Bond *bond, ROMol &mol,
           << std::endl;
       return false;
     }
+
     if (bond1DirResult.second == Bond::BEGINWEDGE ||
         bond2DirResult.second == Bond::BEGINDASH) {
       bond->setStereo(Bond::BondStereo::STEREOATROPCCW);
@@ -538,13 +539,11 @@ void detectAtropisomerChirality(ROMol &mol, const Conformer *conf) {
 
   bool foundAtrop = false;
   for (auto bondToTry : bondsToTry) {
-    if (bondToTry->getBeginAtom()->getImplicitValence() == -1) {
-      bondToTry->getBeginAtom()->calcExplicitValence(false);
-      bondToTry->getBeginAtom()->calcImplicitValence(false);
+    if (bondToTry->getBeginAtom()->needsUpdatePropertyCache()) {
+      bondToTry->getBeginAtom()->updatePropertyCache(false);
     }
-    if (bondToTry->getEndAtom()->getImplicitValence() == -1) {
-      bondToTry->getEndAtom()->calcExplicitValence(false);
-      bondToTry->getEndAtom()->calcImplicitValence(false);
+    if (bondToTry->getEndAtom()->needsUpdatePropertyCache()) {
+      bondToTry->getEndAtom()->updatePropertyCache(false);
     }
     if (bondToTry->getBondType() != Bond::SINGLE ||
         bondToTry->getStereo() == Bond::BondStereo::STEREOANY ||

@@ -32,6 +32,7 @@ const std::string _BondsPotentialStereo = "_BondsPotentialStereo";
 const std::string _ChiralAtomRank = "_chiralAtomRank";
 const std::string _CIPCode = "_CIPCode";
 const std::string _CIPRank = "_CIPRank";
+const std::string _CanonicalRankingNumber = "_CanonicalRankingNumber";
 const std::string _ChiralityPossible = "_ChiralityPossible";
 const std::string _CrippenLogP = "_CrippenLogP";
 const std::string _CrippenMR = "_CrippenMR";
@@ -57,6 +58,7 @@ const std::string _QueryMass = "_QueryMass";
 const std::string _ReactionDegreeChanged = "_ReactionDegreeChanged";
 const std::string reactantAtomIdx = "react_atom_idx";
 const std::string reactionMapNum = "old_mapno";
+const std::string reactantIdx = "react_idx";
 
 const std::string _RingClosures = "_RingClosures";
 const std::string _SLN_s = "_SLN_s";

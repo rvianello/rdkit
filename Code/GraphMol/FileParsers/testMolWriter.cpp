@@ -503,14 +503,9 @@ void testSDMemoryCorruption() {
   auto *writer = new SDWriter(os, false);
 
   STR_VECT names;
-#if 1
   ROMol *m1 = sdsup.next();
   MolOps::sanitizeMol(*(RWMol *)m1);
   delete m1;
-#else
-  ROMol *m1 = SmilesToMol("C1CC1");
-  TEST_ASSERT(m1);
-#endif
   sdsup.reset();
   int nDone = 0;
   while (!sdsup.atEnd()) {
@@ -536,7 +531,6 @@ void testSDMemoryCorruption() {
 
   delete writer;
   delete os;
-#if 1
   // now read in the file we just finished writing
   SDMolSupplier reader(ofile);
   int i = 0;
@@ -549,7 +543,6 @@ void testSDMemoryCorruption() {
     delete mol;
     i++;
   }
-#endif
 }
 
 void testIssue3525000() {
@@ -1594,7 +1587,7 @@ M  END)CTAB"_ctab;
   }
   {
     auto m = R"CTAB(
-  MJ201100                      
+  MJ201100
 
   3  2  0  0  0  0  0  0  0  0999 V2000
    -1.5623    1.6625    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
@@ -1611,10 +1604,71 @@ M  END)CTAB"_ctab;
   }
 }
 
+void testMolFileGithub8265() {
+  BOOST_LOG(rdInfoLog) << "-----------------------------------------\n";
+  BOOST_LOG(rdInfoLog) << "Running testMolFileGithub8265()\n";
+  auto m = "C"_smiles;
+  auto conf = new Conformer(1);
+  m->addConformer(conf);
+  
+  for( int i=0; i<2; ++i) {
+    RDGeom::Point3D pos{0., 0., 0.};
+   
+    // Make sure se switch to V3000 then coords are out of bounds
+    //  and that we stay with V2K otherwise.
+    {
+      pos[i] = 100000.;
+      conf->setAtomPos(0, pos);
+      auto mbV2K = MolToMolBlock(*m);
+      TEST_ASSERT(mbV2K.find("M  V30") != std::string::npos);
+      MolBlockToMol(mbV2K);
+      try {
+        MolToV2KMolBlock(*m);
+        TEST_ASSERT(0);
+      } catch(ValueErrorException &e) {
+        TEST_ASSERT(std::string("V2000 format does not support atom positions <= -10000 or >= 100000")
+                    == e.what());
+      }
+    }
+    
+    {
+      pos[i] = 99999.;
+      conf->setAtomPos(0, pos);
+      auto mbV2k = MolToMolBlock(*m);
+      TEST_ASSERT(mbV2k.find("M  V30") == std::string::npos);
+      MolBlockToMol(mbV2k);
+    }
+
+    {
+      pos[i] = -10000.;
+      conf->setAtomPos(0, pos);
+      auto mbV2k = MolToMolBlock(*m);
+      TEST_ASSERT(mbV2k.find("M  V30") != std::string::npos);
+      MolBlockToMol(mbV2k);
+      try {
+        MolToV2KMolBlock(*m);
+        TEST_ASSERT(0);
+      } catch(ValueErrorException &e) {
+        TEST_ASSERT(std::string("V2000 format does not support atom positions <= -10000 or >= 100000")
+                    == e.what());
+      }
+    }
+
+    {
+      pos[i] = -9999.;
+      conf->setAtomPos(0, pos);
+      auto mbV2k = MolToMolBlock(*m);
+      TEST_ASSERT(mbV2k.find("M  V30") == std::string::npos);
+      MolBlockToMol(mbV2k);
+    }
+  }
+  BOOST_LOG(rdInfoLog) << "Finished\n";
+  BOOST_LOG(rdInfoLog) << "-----------------------------------------\n\n";
+}
+
 int main() {
   RDLog::InitLogs();
 
-#if 1
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n";
   BOOST_LOG(rdInfoLog) << "Running testSmilesWriter()\n";
   testSmilesWriter();
@@ -1741,8 +1795,6 @@ int main() {
   testNeedsUpdatePropertyCacheSDWriter();
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n\n";
 
-#endif
-
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n";
   BOOST_LOG(rdInfoLog) << "Running testIssue3525000()\n";
   testIssue3525000();
@@ -1768,4 +1820,6 @@ int main() {
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n";
   testRGPMolFileWriterV2KV3K();
   BOOST_LOG(rdInfoLog) << "-----------------------------------------\n\n";
+  
+  testMolFileGithub8265();
 }

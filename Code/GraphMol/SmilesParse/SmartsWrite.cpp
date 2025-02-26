@@ -410,7 +410,19 @@ std::string getBondSmartsSimple(const Bond *bond,
   } else if (descrip == "BondInRing") {
     res += "@";
   } else if (descrip == "SingleOrAromaticBond") {
-    // don't need to do anything here... :-)
+    auto dir = bond->getBondDir();
+    switch(dir) {
+      case Bond::ENDDOWNRIGHT: {
+        res += "\\";
+        break;
+      }
+      case Bond::ENDUPRIGHT: {
+        res += "/";
+        break;
+      }
+      default:
+        break;
+    }
   } else if (descrip == "SingleOrDoubleBond") {
     res += "-,=";
   } else if (descrip == "DoubleOrAromaticBond") {
@@ -645,8 +657,9 @@ std::string FragmentSmartsConstruct(
   // thinks we already called findSSSR - to do some atom ranking
   // but for smarts we are going to ignore that part. We will artificially
   // set the "SSSR" property to an empty property
+
   mol.getRingInfo()->reset();
-  mol.getRingInfo()->initialize();
+  mol.getRingInfo()->initialize(FIND_RING_TYPE_SYMM_SSSR);
   for (auto &atom : mol.atoms()) {
     atom->updatePropertyCache(false);
   }

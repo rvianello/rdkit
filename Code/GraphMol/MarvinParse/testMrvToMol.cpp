@@ -719,6 +719,7 @@ class MrvTests {
             ".expected.cxsmi";
 
         SmilesWriteParams ps;
+        ps.cleanStereo = molFileTest->sanitizeFlag;
         ps.canonical = true;
         unsigned int flags = SmilesWrite::CXSmilesFields::CX_COORDS |
                              SmilesWrite::CXSmilesFields::CX_MOLFILE_VALUES |
@@ -893,6 +894,7 @@ class MrvTests {
     // the molecule tests - starting with molfiles/sdf
     if (testToRun == "" || testToRun == "sdfTests") {
       std::list<MolTest> sdfTests{
+          MolTest("145323811.mol", true, 172, 176, true, false),
           MolTest("NewChiralTest.sdf", true, 13, 14, true,
                   false),  // wedges NOT reapplied
           MolTest("NewChiralTest.sdf", true, 13, 14, false,

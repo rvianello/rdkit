@@ -9,6 +9,9 @@
 //  of the RDKit source tree.
 //
 #include "MultithreadedMolSupplier.h"
+
+#include <RDGeneral/RDLog.h>
+
 namespace RDKit {
 
 namespace v2 {
@@ -34,7 +37,12 @@ void MultithreadedMolSupplier::reader() {
   unsigned int lineNum, index;
   while (extractNextRecord(record, lineNum, index)) {
     if (readCallback) {
-      record = readCallback(record, index);
+      try {
+        record = readCallback(record, index);
+      } catch (std::exception &e) {
+        BOOST_LOG(rdErrorLog)
+            << "Read callback exception: " << e.what() << std::endl;
+      }
     }
     auto r = std::make_tuple(record, lineNum, index);
     d_inputQueue->push(r);
@@ -46,12 +54,13 @@ void MultithreadedMolSupplier::writer() {
   std::tuple<std::string, unsigned int, unsigned int> r;
   while (d_inputQueue->pop(r)) {
     try {
-      auto mol = processMoleculeRecord(std::get<0>(r), std::get<1>(r));
+      std::unique_ptr<RWMol> mol(
+          processMoleculeRecord(std::get<0>(r), std::get<1>(r)));
       if (mol && writeCallback) {
         writeCallback(*mol, std::get<0>(r), std::get<2>(r));
       }
       auto temp = std::tuple<RWMol *, std::string, unsigned int>{
-          mol, std::get<0>(r), std::get<2>(r)};
+          mol.release(), std::get<0>(r), std::get<2>(r)};
       d_outputQueue->push(temp);
     } catch (...) {
       // fill the queue wih a null value
@@ -78,7 +87,11 @@ std::unique_ptr<RWMol> MultithreadedMolSupplier::next() {
     d_lastRecordId = std::get<2>(r);
     std::unique_ptr<RWMol> res{std::get<0>(r)};
     if (res && nextCallback) {
-      nextCallback(*res, *this);
+      try {
+        nextCallback(*res, *this);
+      } catch (...) {
+        // Ignore exception and proceed with mol as is.
+      }
     }
     return res;
   }
